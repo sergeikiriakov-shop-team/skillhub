@@ -16,7 +16,7 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { ScoreBadge, ScoreBreakdown } from "../components/Score";
@@ -25,18 +25,10 @@ export default function SkillDetail() {
   const { id } = useParams();
   const skillId = Number(id);
   const navigate = useNavigate();
-  const qc = useQueryClient();
 
   const { data: skill, isLoading } = useQuery({
     queryKey: ["skill", skillId],
     queryFn: () => api.getSkill(skillId),
-  });
-  const health = useQuery({ queryKey: ["health"], queryFn: api.health });
-
-  const reevaluate = useMutation({
-    mutationFn: () => api.reevaluate(skillId),
-    onSuccess: () =>
-      setTimeout(() => qc.invalidateQueries({ queryKey: ["skill", skillId] }), 1500),
   });
   const remove = useMutation({
     mutationFn: () => api.deleteSkill(skillId),
@@ -81,26 +73,10 @@ export default function SkillDetail() {
               ))}
             </Group>
           </div>
-          <Group>
-            <Button
-              variant="light"
-              onClick={() => reevaluate.mutate()}
-              loading={reevaluate.isPending}
-              disabled={!health.data?.llm_enabled}
-            >
-              Re-evaluate
-            </Button>
-            <Button color="red" variant="subtle" onClick={() => remove.mutate()}>
-              Delete
-            </Button>
-          </Group>
+          <Button color="red" variant="subtle" onClick={() => remove.mutate()}>
+            Delete
+          </Button>
         </Group>
-
-        {reevaluate.isSuccess && (
-          <Alert color="blue" variant="light">
-            Re-evaluation scheduled — refresh in a few seconds.
-          </Alert>
-        )}
 
         <Grid>
           {/* Left: content */}
@@ -196,8 +172,7 @@ export default function SkillDetail() {
                 </Stack>
               ) : (
                 <Text size="sm" c="dimmed">
-                  Not evaluated yet.
-                  {!health.data?.llm_enabled && " Set ANTHROPIC_API_KEY to enable."}
+                  Not evaluated yet — run the SkillHub skill in Claude Code to score it.
                 </Text>
               )}
             </Card>

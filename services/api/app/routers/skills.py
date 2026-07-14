@@ -1,16 +1,14 @@
-"""Skill CRUD, upload and per-skill re-evaluation."""
+"""Skill upload / import, listing and retrieval. Evaluation is submitted separately
+(see routers/evaluations.py) by Claude Code — the service does not call an LLM."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from skillhub_core import pipeline, repository, serializers
-from skillhub_core.config import get_settings
 from skillhub_core.db import get_session
 from skillhub_core.schemas import Reference, SkillCreate, SkillDetail, SkillSummary
-
-from ..background import run_llm_for_skill
 
 router = APIRouter(tags=["skills"])
 
@@ -19,31 +17,24 @@ router = APIRouter(tags=["skills"])
 def list_skills(
     search: str | None = None,
     category: str | None = None,
+    evaluated: bool | None = None,
     session: Session = Depends(get_session),
 ) -> list[SkillSummary]:
-    skills = repository.list_skills(session, search=search, category=category)
+    """List skills. ``evaluated=false`` returns the work queue for the evaluator."""
+    skills = repository.list_skills(session, search=search, category=category, evaluated=evaluated)
     return [serializers.skill_to_summary(s) for s in skills]
 
 
 @router.post("/skills", response_model=SkillDetail, status_code=201)
-def create_skill(
-    payload: SkillCreate,
-    background: BackgroundTasks,
-    session: Session = Depends(get_session),
-) -> SkillDetail:
+def create_skill(payload: SkillCreate, session: Session = Depends(get_session)) -> SkillDetail:
     references = [Reference(path=r.path, content=r.content) for r in payload.references]
-    # Fast path: parse + upsert + embed synchronously; run the (slow) LLM steps in the background.
     result = pipeline.ingest_raw(
         session,
         content=payload.content,
         author=payload.author,
         references=references,
         source_format=payload.source_format,
-        run_llm=False,
     )
-    if payload.evaluate and get_settings().llm_enabled:
-        background.add_task(run_llm_for_skill, result.skill_id)
-
     skill = repository.get_skill(session, result.skill_id)
     if skill is None:  # pragma: no cover - just created
         raise HTTPException(status_code=500, detail="Skill was not persisted")

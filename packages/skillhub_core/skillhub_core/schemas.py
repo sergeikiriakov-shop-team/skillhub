@@ -91,13 +91,34 @@ class ReferenceIn(BaseModel):
 
 
 class SkillCreate(BaseModel):
-    """Payload for uploading a skill via the portal."""
+    """Payload for uploading/importing a skill. The service parses, embeds and stores it;
+    evaluation is done separately by Claude Code (POST /api/skills/{id}/assessment)."""
 
     content: str = Field(description="Raw SKILL.md text, including YAML frontmatter.")
     author: str | None = None
     references: list[ReferenceIn] = Field(default_factory=list)
     source_format: str = "claude_skill"
-    evaluate: bool = Field(default=True, description="Run LLM evaluation/categorization in background.")
+
+
+class AssessmentIn(BaseModel):
+    """A completed assessment submitted by the evaluator (Claude Code)."""
+
+    evaluation: EvaluationResult
+    categorization: CategorizationResult | None = None
+    model: str = Field(default="claude-code", description="What produced the assessment.")
+    rubric_version: str | None = Field(
+        default=None, description="Defaults to the server's current rubric version."
+    )
+
+
+class RubricOut(BaseModel):
+    """Everything the evaluator needs to score a skill consistently."""
+
+    rubric_version: str
+    instructions: str
+    dimensions: list[dict]
+    evaluation_schema: dict
+    categories: list[dict]
 
 
 class CategoryOut(BaseModel):

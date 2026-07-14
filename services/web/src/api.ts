@@ -66,13 +66,11 @@ export interface SkillCreate {
   author?: string | null;
   references?: { path: string; content: string }[];
   source_format?: string;
-  evaluate?: boolean;
 }
 
 export interface Health {
   status: string;
-  llm_enabled: boolean;
-  model: string;
+  rubric_version?: string;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -101,8 +99,6 @@ export const api = {
   createSkill: (payload: SkillCreate) =>
     request<SkillDetail>("/skills", { method: "POST", body: JSON.stringify(payload) }),
   deleteSkill: (id: number) => request<void>(`/skills/${id}`, { method: "DELETE" }),
-  reevaluate: (id: number) =>
-    request<{ status: string }>(`/skills/${id}/reevaluate`, { method: "POST" }),
   listCategories: () => request<CategoryInfo[]>("/categories"),
   search: (q: string) => request<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`),
 };

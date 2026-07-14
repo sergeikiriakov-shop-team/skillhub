@@ -1,20 +1,8 @@
-import { AppShell, Badge, Group, Text, Title, Anchor } from "@mantine/core";
-import { useQuery } from "@tanstack/react-query";
+import { AppShell, Group, Text, Title, Anchor } from "@mantine/core";
 import { Link, Route, Routes } from "react-router-dom";
-import { api } from "./api";
 import Catalog from "./pages/Catalog";
 import SkillDetail from "./pages/SkillDetail";
 import Upload from "./pages/Upload";
-
-function HealthBadge() {
-  const { data } = useQuery({ queryKey: ["health"], queryFn: api.health });
-  if (!data) return null;
-  return (
-    <Badge color={data.llm_enabled ? "teal" : "gray"} variant="light">
-      LLM {data.llm_enabled ? `on · ${data.model}` : "off"}
-    </Badge>
-  );
-}
 
 export default function App() {
   return (
@@ -36,7 +24,6 @@ export default function App() {
             <Anchor component={Link} to="/upload">
               Upload
             </Anchor>
-            <HealthBadge />
           </Group>
         </Group>
       </AppShell.Header>

@@ -1,7 +1,6 @@
 import {
   Alert,
   Button,
-  Checkbox,
   Container,
   Group,
   Paper,
@@ -40,7 +39,6 @@ export default function Upload() {
   const [author, setAuthor] = useState("");
   const [content, setContent] = useState("");
   const [format, setFormat] = useState("claude_skill");
-  const [evaluate, setEvaluate] = useState(true);
   const [refs, setRefs] = useState<Ref[]>([]);
 
   const create = useMutation({
@@ -49,7 +47,6 @@ export default function Upload() {
         content,
         author: author || null,
         source_format: format,
-        evaluate,
         references: refs.filter((r) => r.path && r.content),
       }),
     onSuccess: (skill) => navigate(`/skills/${skill.id}`),
@@ -60,8 +57,9 @@ export default function Upload() {
       <Stack gap="md">
         <Title order={2}>Upload a skill</Title>
         <Text c="dimmed" size="sm">
-          Paste the raw <code>SKILL.md</code> (with YAML frontmatter). It is parsed, embedded and —
-          if the LLM is enabled — evaluated and categorized in the background.
+          Paste the raw <code>SKILL.md</code> (with YAML frontmatter). It is parsed, embedded and
+          stored. Quality scoring is done separately by Claude Code (the SkillHub skill) and shown
+          here once submitted.
         </Text>
 
         <TextInput
@@ -144,15 +142,7 @@ export default function Upload() {
           </Stack>
         </Paper>
 
-        <Checkbox
-          label="Evaluate & categorize with Claude after upload"
-          checked={evaluate}
-          onChange={(e) => setEvaluate(e.currentTarget.checked)}
-        />
-
-        {create.isError && (
-          <Alert color="red">{(create.error as Error).message}</Alert>
-        )}
+        {create.isError && <Alert color="red">{(create.error as Error).message}</Alert>}
 
         <Group justify="flex-end">
           <Button

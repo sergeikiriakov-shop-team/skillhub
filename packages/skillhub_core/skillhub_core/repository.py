@@ -171,7 +171,10 @@ def _loaded_skill_query():
 
 
 def list_skills(
-    session: Session, search: str | None = None, category: str | None = None
+    session: Session,
+    search: str | None = None,
+    category: str | None = None,
+    evaluated: bool | None = None,
 ) -> list[Skill]:
     stmt = _loaded_skill_query()
     if search:
@@ -182,7 +185,15 @@ def list_skills(
     if category:
         stmt = stmt.join(Skill.categories).join(SkillCategory.category).where(Category.key == category)
     stmt = stmt.order_by(Skill.name)
-    return list(session.scalars(stmt).unique().all())
+    skills = list(session.scalars(stmt).unique().all())
+    if evaluated is not None:
+        # A skill counts as evaluated when its latest version has at least one evaluation.
+        skills = [
+            s
+            for s in skills
+            if bool(s.latest_version and s.latest_version.evaluations) == evaluated
+        ]
+    return skills
 
 
 def get_skill(session: Session, skill_id: int) -> Skill | None:
