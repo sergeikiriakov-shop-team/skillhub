@@ -3,7 +3,6 @@ import {
   Alert,
   Anchor,
   Badge,
-  Button,
   Card,
   Container,
   Divider,
@@ -16,23 +15,18 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { ScoreBadge, ScoreBreakdown } from "../components/Score";
 
 export default function SkillDetail() {
   const { id } = useParams();
   const skillId = Number(id);
-  const navigate = useNavigate();
 
   const { data: skill, isLoading } = useQuery({
     queryKey: ["skill", skillId],
     queryFn: () => api.getSkill(skillId),
-  });
-  const remove = useMutation({
-    mutationFn: () => api.deleteSkill(skillId),
-    onSuccess: () => navigate("/"),
   });
 
   if (isLoading) {
@@ -73,9 +67,6 @@ export default function SkillDetail() {
               ))}
             </Group>
           </div>
-          <Button color="red" variant="subtle" onClick={() => remove.mutate()}>
-            Delete
-          </Button>
         </Group>
 
         <Grid>

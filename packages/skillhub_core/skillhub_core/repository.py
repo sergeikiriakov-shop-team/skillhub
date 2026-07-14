@@ -200,6 +200,41 @@ def get_skill(session: Session, skill_id: int) -> Skill | None:
     return session.scalars(_loaded_skill_query().where(Skill.id == skill_id)).unique().first()
 
 
+def stats(session: Session) -> dict:
+    """Aggregate numbers for the read-only dashboard."""
+    skills = list_skills(session)
+    scored: list[tuple[Skill, float]] = []
+    for s in skills:
+        version = s.latest_version
+        evaluation = version.latest_evaluation if version else None
+        if evaluation is not None:
+            scored.append((s, float(evaluation.overall_score)))
+
+    labels = {c["key"]: c["label"] for c in get_taxonomy(session)}
+    cat_counts: dict[str, int] = {}
+    for s in skills:
+        for sc in s.categories:
+            if sc.category is not None:
+                cat_counts[sc.category.key] = cat_counts.get(sc.category.key, 0) + 1
+
+    by_category = sorted(
+        [{"key": k, "label": labels.get(k, k), "count": v} for k, v in cat_counts.items()],
+        key=lambda d: -d["count"],
+    )
+    top = [
+        {"id": s.id, "name": s.name, "overall": round(sc, 2)}
+        for s, sc in sorted(scored, key=lambda t: -t[1])[:5]
+    ]
+    avg = round(sum(sc for _, sc in scored) / len(scored), 2) if scored else None
+    return {
+        "total": len(skills),
+        "evaluated": len(scored),
+        "avg_overall": avg,
+        "by_category": by_category,
+        "top": top,
+    }
+
+
 def find_similar(session: Session, skill: Skill, limit: int = 5) -> list[tuple[Skill, float]]:
     """Cosine-similarity neighbours of a skill's latest version, excluding itself."""
     version = skill.latest_version

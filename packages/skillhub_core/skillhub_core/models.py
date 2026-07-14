@@ -38,6 +38,13 @@ from .constants import (  # noqa: F401
 
 EMBEDDING_DIM = get_settings().embedding_dim
 
+# --- roles (ascending capability) ---
+ROLE_VIEWER = "viewer"
+ROLE_CONTRIBUTOR = "contributor"  # may upload skills
+ROLE_EVALUATOR = "evaluator"  # may submit evaluations (marked by an admin)
+ROLE_ADMIN = "admin"  # may manage users
+ROLES = (ROLE_VIEWER, ROLE_CONTRIBUTOR, ROLE_EVALUATOR, ROLE_ADMIN)
+
 
 class Base(DeclarativeBase):
     pass
@@ -155,6 +162,30 @@ class SkillCategory(Base):
     category: Mapped["Category"] = relationship(back_populates="skills")
 
     __table_args__ = (UniqueConstraint("skill_id", "category_id", name="uq_skill_category"),)
+
+
+class User(Base):
+    """A team member with an access token. Reads are open; uploads/evaluations require a role."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    role: Mapped[str] = mapped_column(String(20), default=ROLE_CONTRIBUTOR)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    @property
+    def can_upload(self) -> bool:
+        return self.role in (ROLE_CONTRIBUTOR, ROLE_EVALUATOR, ROLE_ADMIN)
+
+    @property
+    def can_evaluate(self) -> bool:
+        return self.role in (ROLE_EVALUATOR, ROLE_ADMIN)
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == ROLE_ADMIN
 
 
 class SkillEmbedding(Base):

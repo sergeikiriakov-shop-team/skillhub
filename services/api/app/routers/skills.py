@@ -1,5 +1,7 @@
-"""Skill upload / import, listing and retrieval. Evaluation is submitted separately
-(see routers/evaluations.py) by Claude Code — the service does not call an LLM."""
+"""Skill upload / import, listing and retrieval.
+
+Reads are open. Uploading requires the contributor role; deletion requires admin.
+Evaluation is submitted separately (routers/evaluations.py) by users with the evaluator role."""
 
 from __future__ import annotations
 
@@ -8,7 +10,10 @@ from sqlalchemy.orm import Session
 
 from skillhub_core import pipeline, repository, serializers
 from skillhub_core.db import get_session
+from skillhub_core.models import User
 from skillhub_core.schemas import Reference, SkillCreate, SkillDetail, SkillSummary
+
+from ..auth import require_admin, require_upload
 
 router = APIRouter(tags=["skills"])
 
@@ -20,18 +25,22 @@ def list_skills(
     evaluated: bool | None = None,
     session: Session = Depends(get_session),
 ) -> list[SkillSummary]:
-    """List skills. ``evaluated=false`` returns the work queue for the evaluator."""
+    """List skills (open). ``evaluated=false`` returns the work queue for evaluators."""
     skills = repository.list_skills(session, search=search, category=category, evaluated=evaluated)
     return [serializers.skill_to_summary(s) for s in skills]
 
 
 @router.post("/skills", response_model=SkillDetail, status_code=201)
-def create_skill(payload: SkillCreate, session: Session = Depends(get_session)) -> SkillDetail:
+def create_skill(
+    payload: SkillCreate,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_upload),
+) -> SkillDetail:
     references = [Reference(path=r.path, content=r.content) for r in payload.references]
     result = pipeline.ingest_raw(
         session,
         content=payload.content,
-        author=payload.author,
+        author=payload.author or user.name,  # default attribution to the uploader
         references=references,
         source_format=payload.source_format,
     )
@@ -52,7 +61,11 @@ def get_skill(skill_id: int, session: Session = Depends(get_session)) -> SkillDe
 
 
 @router.delete("/skills/{skill_id}", status_code=204, response_class=Response)
-def delete_skill(skill_id: int, session: Session = Depends(get_session)) -> Response:
+def delete_skill(
+    skill_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_admin),
+) -> Response:
     skill = repository.get_skill(session, skill_id)
     if skill is None:
         raise HTTPException(status_code=404, detail="Skill not found")

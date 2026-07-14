@@ -7,8 +7,11 @@ from sqlalchemy.orm import Session
 
 from skillhub_core import repository, serializers
 from skillhub_core.db import get_session
+from skillhub_core.models import User
 from skillhub_core.rubric import RUBRIC_VERSION
 from skillhub_core.schemas import AssessmentIn, EvaluationOut, SkillDetail
+
+from ..auth import require_evaluate
 
 router = APIRouter(tags=["evaluations"])
 
@@ -26,7 +29,10 @@ def list_evaluations(skill_id: int, session: Session = Depends(get_session)) -> 
 
 @router.post("/skills/{skill_id}/assessment", response_model=SkillDetail)
 def submit_assessment(
-    skill_id: int, payload: AssessmentIn, session: Session = Depends(get_session)
+    skill_id: int,
+    payload: AssessmentIn,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_evaluate),
 ) -> SkillDetail:
     """Store an evaluation (and optional categorization) produced by the evaluator.
     The payload is validated against the rubric schema on the way in."""

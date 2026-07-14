@@ -15,7 +15,7 @@ from skillhub_core.config import get_settings
 from skillhub_core.db import init_db
 from skillhub_core.rubric import RUBRIC_VERSION
 
-from .routers import categories, evaluations, rubric, search, skills
+from .routers import admin, categories, evaluations, rubric, search, skills, stats
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("skillhub.api")
@@ -46,6 +46,8 @@ app.include_router(categories.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(evaluations.router, prefix="/api")
 app.include_router(rubric.router, prefix="/api")
+app.include_router(stats.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 
 
 @app.get("/api/health")

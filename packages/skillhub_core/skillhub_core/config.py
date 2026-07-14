@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # --- API ---
     skillhub_cors_origins: str = "http://localhost:5173,http://localhost:8080"
 
+    # --- Auth ---
+    # Bootstrap admin token: on first boot, if no users exist and this is set, an admin user
+    # is created with this token. Writes (upload) and evaluations require a token; reads are open.
+    skillhub_admin_token: str = ""
+
     @property
     def database_url(self) -> str:
         return (

@@ -61,6 +61,14 @@ export interface SearchHit {
   similarity: number | null;
 }
 
+export interface Stats {
+  total: number;
+  evaluated: number;
+  avg_overall: number | null;
+  by_category: { key: string; label: string; count: number }[];
+  top: { id: number; name: string; overall: number }[];
+}
+
 export interface SkillCreate {
   content: string;
   author?: string | null;
@@ -101,4 +109,5 @@ export const api = {
   deleteSkill: (id: number) => request<void>(`/skills/${id}`, { method: "DELETE" }),
   listCategories: () => request<CategoryInfo[]>("/categories"),
   search: (q: string) => request<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`),
+  stats: () => request<Stats>("/stats"),
 };

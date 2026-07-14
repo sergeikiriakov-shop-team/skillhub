@@ -4,6 +4,7 @@ import {
   Container,
   Group,
   Loader,
+  Paper,
   Select,
   SimpleGrid,
   Text,
@@ -42,6 +43,42 @@ function SkillCard({ skill, similarity }: { skill: SkillSummary; similarity?: nu
         ))}
       </Group>
     </Card>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string }) {
+  return (
+    <Paper withBorder radius="md" p="sm" miw={110}>
+      <Text size="xl" fw={700}>
+        {value}
+      </Text>
+      <Text size="xs" c="dimmed">
+        {label}
+      </Text>
+    </Paper>
+  );
+}
+
+function StatsBar() {
+  const { data } = useQuery({ queryKey: ["stats"], queryFn: api.stats });
+  if (!data) return null;
+  const pct = data.total ? Math.round((data.evaluated / data.total) * 100) : 0;
+  return (
+    <Group gap="sm" align="center">
+      <StatTile label="Skills" value={String(data.total)} />
+      <StatTile label="Evaluated" value={`${data.evaluated} (${pct}%)`} />
+      <StatTile
+        label="Avg score"
+        value={data.avg_overall != null ? data.avg_overall.toFixed(1) : "—"}
+      />
+      <Group gap={4}>
+        {data.by_category.slice(0, 5).map((c) => (
+          <Badge key={c.key} variant="light" size="lg">
+            {c.label}: {c.count}
+          </Badge>
+        ))}
+      </Group>
+    </Group>
   );
 }
 
@@ -89,6 +126,8 @@ export default function Catalog() {
           </div>
         </Group>
 
+        <StatsBar />
+
         <Group>
           <TextInput
             flex={1}
@@ -112,7 +151,7 @@ export default function Catalog() {
           </Group>
         ) : items.length === 0 ? (
           <Text c="dimmed" ta="center" mt="xl">
-            No skills yet. Import some via the seed command, or add one on the Upload page.
+            No skills yet — import some via Claude Code (the SkillHub skill) or the seed command.
           </Text>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">

@@ -35,6 +35,14 @@ def init_db() -> None:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     Base.metadata.create_all(engine)
     _seed_categories()
+    _bootstrap_admin()
+
+
+def _bootstrap_admin() -> None:
+    from . import auth
+
+    with SessionLocal() as session:
+        auth.ensure_bootstrap_admin(session, _settings.skillhub_admin_token)
 
 
 def _seed_categories() -> None:
