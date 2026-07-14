@@ -19,6 +19,7 @@ services:
       retries: 10
 
   api:
+    image: skillhub-api
     build:
       context: .
       dockerfile: services/api/Dockerfile
@@ -49,6 +50,7 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   web:
+    image: skillhub-web
     build:
       context: .
       dockerfile: services/web/Dockerfile

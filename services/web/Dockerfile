@@ -2,9 +2,12 @@
 FROM node:20-slim AS build
 WORKDIR /app
 COPY services/web/package.json ./
-# fetch timeouts/retries so a stalled socket fails fast instead of hanging forever on flaky
-# or VPN networks. If installs still hang, it is an MTU black hole — see README → Troubleshooting.
-ENV npm_config_fetch_timeout=60000 \
+# Serialize downloads: on VPN / constrained networks npm's parallel tarball fetches stall
+# (single downloads work, the parallel batch hangs). maxsockets=1 fixes it (~3 min install).
+# On a fast network build with --build-arg NPM_MAXSOCKETS=15 for full parallelism.
+ARG NPM_MAXSOCKETS=1
+ENV npm_config_maxsockets=${NPM_MAXSOCKETS} \
+    npm_config_fetch_timeout=60000 \
     npm_config_fetch_retries=5 \
     npm_config_fetch_retry_mintimeout=2000 \
     npm_config_fetch_retry_maxtimeout=60000

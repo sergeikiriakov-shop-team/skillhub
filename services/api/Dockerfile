@@ -13,6 +13,11 @@ RUN apt-get update \
 
 RUN pip install --upgrade pip
 
+# Install CPU-only PyTorch first. sentence-transformers pulls torch, and the default Linux
+# wheel is the huge CUDA build (~2GB of nvidia deps). The CPU wheel is a fraction of the size
+# — critical on slow / VPN networks. skillhub_core then finds torch already satisfied.
+RUN pip install --index-url https://download.pytorch.org/whl/cpu torch
+
 # Install the shared core (brings SQLAlchemy, pgvector, langchain, sentence-transformers, ...).
 COPY packages/skillhub_core /tmp/skillhub_core
 RUN pip install /tmp/skillhub_core

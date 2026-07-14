@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from skillhub_core import pipeline, repository, serializers
@@ -60,10 +60,11 @@ def get_skill(skill_id: int, session: Session = Depends(get_session)) -> SkillDe
     return serializers.skill_to_detail(skill, similar)
 
 
-@router.delete("/skills/{skill_id}", status_code=204)
-def delete_skill(skill_id: int, session: Session = Depends(get_session)) -> None:
+@router.delete("/skills/{skill_id}", status_code=204, response_class=Response)
+def delete_skill(skill_id: int, session: Session = Depends(get_session)) -> Response:
     skill = repository.get_skill(session, skill_id)
     if skill is None:
         raise HTTPException(status_code=404, detail="Skill not found")
     session.delete(skill)
     session.commit()
+    return Response(status_code=204)
