@@ -56,10 +56,17 @@ Install `skills/skillhub/SKILL.md` into Claude Code (or point it at the repo). S
 - git: `bd1449a` MVP · `797c21b` VPN/MTU build fixes + 204 fix · `76ab4d3` handoff ·
   `<pivot>` store+display + Claude-Code evaluator · `<auth>` multi-user auth + read-only frontend.
 
+## MCP server (done)
+`services/mcp/` — a thin stdio FastMCP+httpx wrapper over the authed REST API. Image
+`skillhub-mcp` (build: `DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp`). Tools:
+`list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `get_stats`,
+`upload_skill` (contributor+), `submit_assessment` (evaluator). Each dev adds it to `.mcp.json`
+(`docker run -i ... -e SKILLHUB_TOKEN=<theirs> skillhub-mcp`) — see `services/mcp/README.md`.
+Verified from a container against the running API.
+
 ## Next
-- **MCP server** wrapping the (now authed) REST API, so each dev's Claude Code connects with
-  their token — tools: `upload_skill`, `list_unevaluated`, `get_rubric`, `submit_assessment`,
-  `search`, `get_skill`. Thin FastMCP/httpx layer; add as a compose service.
+- **Trial upload via Claude Code** using the MCP (connect it, then upload a real SKILL.md and
+  evaluate it). A trial `evaluator` user `dev-trial` was created for this.
 - Then: "optimal skills" (synthesis of an ideal skill from a cluster) display + richer stats.
 - Later/optional: Airflow to orchestrate scheduled headless `claude -p` re-evaluation.
 
