@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+**/.vite
+.venv
+venv
+**/__pycache__
+**/*.egg-info
+.git
+.gitignore
+hf_cache
+**/.pytest_cache
+**/.ruff_cache
+.env
+services/airflow/logs

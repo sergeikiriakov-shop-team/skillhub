@@ -1,0 +1,121 @@
+name: skillhub
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-skillhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skillhub}
+      POSTGRES_DB: ${POSTGRES_DB:-skillhub}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skillhub} -d ${POSTGRES_DB:-skillhub}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SKILLHUB_LLM_MODEL: ${SKILLHUB_LLM_MODEL:-claude-sonnet-5}
+      SKILLHUB_LLM_TEMPERATURE: ${SKILLHUB_LLM_TEMPERATURE:-0}
+      SKILLHUB_LLM_MAX_TOKENS: ${SKILLHUB_LLM_MAX_TOKENS:-4096}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-384}
+      POSTGRES_USER: ${POSTGRES_USER:-skillhub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skillhub}
+      POSTGRES_DB: ${POSTGRES_DB:-skillhub}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      SKILLHUB_CORS_ORIGINS: ${SKILLHUB_CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      # Source mounts for hot-reload during development.
+      - ./packages/skillhub_core/skillhub_core:/app/skillhub_core
+      - ./services/api/app:/app/app
+      # Cache the embedding model between restarts (first run downloads it).
+      - hf_cache:/root/.cache/huggingface
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  web:
+    build:
+      context: .
+      dockerfile: services/web/Dockerfile
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+  # --- Orchestration (optional): `docker compose --profile airflow up -d` ---
+  # Airflow only orchestrates; the heavy lifting stays in the API (the DAGs call it over
+  # HTTP). This keeps Airflow on its own pinned dependency set (SQLAlchemy 1.4) with no
+  # clash against skillhub_core (SQLAlchemy 2.0).
+  airflow-init:
+    profiles: ["airflow"]
+    image: apache/airflow:2.10.4-python3.12
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: &airflow-env
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-skillhub}:${POSTGRES_PASSWORD:-skillhub}@db:5432/airflow
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      # Base URL the DAGs use to reach the SkillHub API.
+      SKILLHUB_API_URL: http://api:8000
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username "${AIRFLOW_ADMIN_USER:-airflow}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD:-airflow}" \
+          --firstname Skill --lastname Hub --role Admin --email admin@skillhub.local || true
+
+  airflow-webserver:
+    profiles: ["airflow"]
+    image: apache/airflow:2.10.4-python3.12
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment: *airflow-env
+    volumes:
+      - ./services/airflow/dags:/opt/airflow/dags:ro
+    ports:
+      - "${AIRFLOW_WEB_PORT:-8081}:8080"
+    command: webserver
+
+  airflow-scheduler:
+    profiles: ["airflow"]
+    image: apache/airflow:2.10.4-python3.12
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment: *airflow-env
+    volumes:
+      - ./services/airflow/dags:/opt/airflow/dags:ro
+    command: scheduler
+
+volumes:
+  pgdata:
+  hf_cache:
+
+networks:
+  default:
+    driver_opts:
+      # Lower this (e.g. 1280) via DOCKER_MTU in .env if you are behind a VPN and large
+      # transfers hang. Affects the runtime network only; see README → Troubleshooting for
+      # the matching build-time (daemon) MTU fix.
+      com.docker.network.driver.mtu: "${DOCKER_MTU:-1500}"

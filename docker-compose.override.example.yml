@@ -1,0 +1,13 @@
+# Copy to docker-compose.override.yml to mount your local Prologistics skills into the
+# API container for seeding. Docker Compose auto-merges docker-compose.override.yml.
+#
+#   cp docker-compose.override.example.yml docker-compose.override.yml
+#   docker compose up -d
+#   docker compose exec api python -m skillhub_core.seed --path /seed/skills --no-llm
+#
+# Adjust the host path to your checkout of the prologistics repo.
+
+services:
+  api:
+    volumes:
+      - ../prologistics/ai.readme/skills:/seed/skills:ro

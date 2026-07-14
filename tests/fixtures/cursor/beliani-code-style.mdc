@@ -1,0 +1,11 @@
+---
+description: Mandatory PHP/SQL code style rules for this repository.
+globs:
+  - "**/*.php"
+  - "**/*.sql"
+alwaysApply: true
+---
+
+# Beliani code style
+
+Follow the repository PHP/SQL conventions.
