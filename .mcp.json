@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "skillhub": {
+      "command": "docker",
+      "args": [
+        "run", "--rm", "-i",
+        "--env-file", ".env",
+        "-e", "SKILLHUB_URL=http://host.docker.internal:8000",
+        "skillhub-mcp"
+      ]
+    }
+  }
+}
