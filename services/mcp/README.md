@@ -51,3 +51,6 @@ Once connected, ask Claude Code things like:
 - "Evaluate the pending SkillHub skills" → `list_unevaluated` → `get_rubric` → `get_skill` →
   `submit_assessment` for each.
 - "What's in SkillHub about SQL?" → `search`.
+- "Install the `beliani-db-schema` skill from SkillHub into my project" → `search`/`get_skill`,
+  then Claude Code writes `skill_md` + `references[]` into `.claude/skills/<name>/` with its own
+  Write tool (the server can't write to your disk).

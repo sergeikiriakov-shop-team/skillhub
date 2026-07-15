@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from . import adapters
 from .models import Evaluation, Skill
 from .schemas import (
     CategoryOut,
     EvaluationOut,
+    ParsedSkill,
     ReferenceIn,
     SimilarSkill,
     SkillDetail,
@@ -67,6 +69,19 @@ def skill_to_summary(skill: Skill) -> SkillSummary:
     )
 
 
+def _canonical_skill_md(skill: Skill) -> str:
+    """Render the full SKILL.md a developer would drop into their Claude Code skills dir."""
+    version = skill.latest_version
+    if version is None:
+        return ""
+    parsed = ParsedSkill(
+        name=skill.name,
+        description=version.description or "",
+        body_md=version.body_md or "",
+    )
+    return adapters.to_claude_skill(parsed)
+
+
 def skill_to_detail(skill: Skill, similar: list[tuple[Skill, float]] | None = None) -> SkillDetail:
     version = skill.latest_version
     evaluation = version.latest_evaluation if version else None
@@ -84,6 +99,7 @@ def skill_to_detail(skill: Skill, similar: list[tuple[Skill, float]] | None = No
         updated_at=skill.updated_at,
         trigger_text=version.trigger_text if version else None,
         body_md=version.body_md if version else "",
+        skill_md=_canonical_skill_md(skill),
         references=[ReferenceIn(**r) for r in (version.references or [])] if version else [],
         section_headings=version.section_headings if version else [],
         version_no=version.version_no if version else 0,

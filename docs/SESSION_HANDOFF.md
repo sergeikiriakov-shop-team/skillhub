@@ -16,7 +16,14 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   Bootstrap admin: on first boot with an empty users table, `SKILLHUB_ADMIN_TOKEN` becomes the
   admin. Local dev token in `.env`: `dev-admin-token-change-me`.
 - **Frontend = read-only dashboard** (catalog + semantic search + per-skill detail + a stats
-  strip). No upload/evaluate/delete UI — those happen via Claude Code / the API.
+  strip). No upload/evaluate/delete UI — those happen via Claude Code / the API. It is fully
+  **bilingual (RU/EN)** via a lightweight home-grown i18n (`services/web/src/i18n.tsx`, toggle in
+  the header, choice persisted to localStorage), and has a **Guide** page (`/guide`) with
+  developer instructions. Only static UI chrome is translated; API data stays as stored.
+- **Install a skill into your Claude Code.** `GET /api/skills/{id}` returns `skill_md` (the ready
+  canonical SKILL.md); each skill page shows an "Install into Claude Code" phrase to paste. The
+  actual install is done by the user's own Claude Code (via the `skillhub` skill / MCP `get_skill`):
+  it writes `skill_md` + `references[]` into `.claude/skills/<name>/` with its own Write tool.
 - **No LLM in the service, no LangChain.** Embeddings are local (`sentence-transformers`,
   pgvector) for search / duplicate detection. The dormant `skillhub_core/llm/` package and the
   stale `services/airflow/` DAG have been **removed**. Orchestration (scheduled headless

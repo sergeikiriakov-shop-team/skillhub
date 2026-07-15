@@ -3,8 +3,11 @@ import {
   Alert,
   Anchor,
   Badge,
+  Button,
   Card,
+  Code,
   Container,
+  CopyButton,
   Divider,
   Grid,
   Group,
@@ -19,8 +22,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { ScoreBadge, ScoreBreakdown } from "../components/Score";
+import { useI18n } from "../i18n";
 
 export default function SkillDetail() {
+  const { t } = useI18n();
   const { id } = useParams();
   const skillId = Number(id);
 
@@ -39,12 +44,13 @@ export default function SkillDetail() {
   if (!skill) {
     return (
       <Container>
-        <Alert color="red">Skill not found.</Alert>
+        <Alert color="red">{t("detail.notFound")}</Alert>
       </Container>
     );
   }
 
   const evalr = skill.latest_evaluation;
+  const installPhrase = t("detail.installPhrase", { name: skill.name });
 
   return (
     <Container size="xl">
@@ -56,7 +62,11 @@ export default function SkillDetail() {
               <ScoreBadge value={skill.overall_score} />
             </Group>
             <Text c="dimmed" size="sm">
-              by {skill.author ?? "unknown"} · v{skill.version_no} · {skill.source_format}
+              {t("detail.meta", {
+                author: skill.author ?? t("catalog.unknownAuthor"),
+                version: skill.version_no,
+                format: skill.source_format,
+              })}
             </Text>
             <Group gap={4} mt="xs">
               {skill.categories.map((c) => (
@@ -73,7 +83,7 @@ export default function SkillDetail() {
           {/* Left: content */}
           <Grid.Col span={{ base: 12, md: 8 }}>
             {skill.trigger_text && (
-              <Alert color="indigo" variant="light" title="When to use" mb="md">
+              <Alert color="indigo" variant="light" title={t("detail.whenToUse")} mb="md">
                 {skill.trigger_text}
               </Alert>
             )}
@@ -93,7 +103,7 @@ export default function SkillDetail() {
             {skill.references.length > 0 && (
               <Card withBorder radius="md" padding="md" mt="md">
                 <Text fw={600} mb="xs">
-                  References
+                  {t("detail.references")}
                 </Text>
                 <Accordion variant="contained">
                   {skill.references.map((ref) => (
@@ -118,11 +128,38 @@ export default function SkillDetail() {
             )}
           </Grid.Col>
 
-          {/* Right: evaluation + similar */}
+          {/* Right: install + evaluation + similar */}
           <Grid.Col span={{ base: 12, md: 4 }}>
+            <Card withBorder radius="md" padding="md" mb="md">
+              <Group justify="space-between" align="center" mb="xs" wrap="nowrap">
+                <Text fw={600}>{t("detail.installTitle")}</Text>
+                <CopyButton value={installPhrase}>
+                  {({ copied, copy }) => (
+                    <Button
+                      size="compact-xs"
+                      variant="light"
+                      color={copied ? "teal" : "gray"}
+                      onClick={copy}
+                    >
+                      {copied ? t("common.copied") : t("common.copy")}
+                    </Button>
+                  )}
+                </CopyButton>
+              </Group>
+              <Text size="sm" c="dimmed" mb={6}>
+                {t("detail.installHint")}
+              </Text>
+              <Code block style={{ whiteSpace: "pre-wrap" }}>
+                {installPhrase}
+              </Code>
+              <Text size="xs" c="dimmed" mt={6}>
+                {t("detail.installNote", { name: skill.name })}
+              </Text>
+            </Card>
+
             <Card withBorder radius="md" padding="md">
               <Text fw={600} mb="sm">
-                Quality evaluation
+                {t("detail.qualityEval")}
               </Text>
               {evalr ? (
                 <Stack gap="sm">
@@ -131,7 +168,7 @@ export default function SkillDetail() {
                   {evalr.strengths.length > 0 && (
                     <div>
                       <Text size="sm" fw={600} c="teal">
-                        Strengths
+                        {t("detail.strengths")}
                       </Text>
                       <List size="sm">
                         {evalr.strengths.map((s, i) => (
@@ -143,7 +180,7 @@ export default function SkillDetail() {
                   {evalr.weaknesses.length > 0 && (
                     <div>
                       <Text size="sm" fw={600} c="orange">
-                        Weaknesses
+                        {t("detail.weaknesses")}
                       </Text>
                       <List size="sm">
                         {evalr.weaknesses.map((w, i) => (
@@ -158,23 +195,26 @@ export default function SkillDetail() {
                     </Text>
                   )}
                   <Text size="xs" c="dimmed">
-                    {evalr.model} · rubric v{evalr.rubric_version}
+                    {t("detail.evalMeta", {
+                      model: evalr.model,
+                      version: evalr.rubric_version,
+                    })}
                   </Text>
                 </Stack>
               ) : (
                 <Text size="sm" c="dimmed">
-                  Not evaluated yet — run the SkillHub skill in Claude Code to score it.
+                  {t("detail.notEvaluated")}
                 </Text>
               )}
             </Card>
 
             <Card withBorder radius="md" padding="md" mt="md">
               <Text fw={600} mb="sm">
-                Similar skills
+                {t("detail.similar")}
               </Text>
               {skill.similar.length === 0 ? (
                 <Text size="sm" c="dimmed">
-                  No neighbours found.
+                  {t("detail.noNeighbours")}
                 </Text>
               ) : (
                 <Stack gap="xs">

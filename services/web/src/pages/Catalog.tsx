@@ -18,8 +18,11 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, SkillSummary } from "../api";
 import { ScoreBadge } from "../components/Score";
+import { useI18n } from "../i18n";
+import type { TFunc } from "../i18n";
 
 function SkillCard({ skill, similarity }: { skill: SkillSummary; similarity?: number | null }) {
+  const { t } = useI18n();
   return (
     <Card withBorder padding="md" radius="md" component={Link} to={`/skills/${skill.id}`}>
       <Group justify="space-between" wrap="nowrap" mb="xs">
@@ -29,11 +32,11 @@ function SkillCard({ skill, similarity }: { skill: SkillSummary; similarity?: nu
         <ScoreBadge value={skill.overall_score} size="sm" />
       </Group>
       <Text size="xs" c="dimmed" mb="xs">
-        by {skill.author ?? "unknown"}
-        {similarity != null && ` · ${(similarity * 100).toFixed(0)}% match`}
+        {t("catalog.by", { author: skill.author ?? t("catalog.unknownAuthor") })}
+        {similarity != null && ` · ${t("catalog.match", { pct: (similarity * 100).toFixed(0) })}`}
       </Text>
       <Text size="sm" lineClamp={3} mb="sm">
-        {skill.description || "No description."}
+        {skill.description || t("catalog.noDescription")}
       </Text>
       <Group gap={4}>
         {skill.categories.slice(0, 3).map((c) => (
@@ -59,16 +62,16 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-function StatsBar() {
+function StatsBar({ t }: { t: TFunc }) {
   const { data } = useQuery({ queryKey: ["stats"], queryFn: api.stats });
   if (!data) return null;
   const pct = data.total ? Math.round((data.evaluated / data.total) * 100) : 0;
   return (
     <Group gap="sm" align="center">
-      <StatTile label="Skills" value={String(data.total)} />
-      <StatTile label="Evaluated" value={`${data.evaluated} (${pct}%)`} />
+      <StatTile label={t("stats.skills")} value={String(data.total)} />
+      <StatTile label={t("stats.evaluated")} value={`${data.evaluated} (${pct}%)`} />
       <StatTile
-        label="Avg score"
+        label={t("stats.avgScore")}
         value={data.avg_overall != null ? data.avg_overall.toFixed(1) : "—"}
       />
       <Group gap={4}>
@@ -83,6 +86,7 @@ function StatsBar() {
 }
 
 export default function Catalog() {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [debounced] = useDebouncedValue(search, 300);
   const [category, setCategory] = useState<string | null>(null);
@@ -107,7 +111,7 @@ export default function Catalog() {
     : (listQuery.data ?? []).map((s) => ({ skill: s }));
 
   const categoryOptions = [
-    { value: "", label: "All categories" },
+    { value: "", label: t("catalog.allCategories") },
     ...(categoriesQuery.data ?? []).map((c) => ({
       value: c.key,
       label: `${c.label} (${c.skill_count})`,
@@ -119,19 +123,19 @@ export default function Catalog() {
       <Stack gap="md">
         <Group justify="space-between" align="flex-end">
           <div>
-            <Title order={2}>Skill catalog</Title>
+            <Title order={2}>{t("catalog.title")}</Title>
             <Text c="dimmed" size="sm">
-              {searching ? "Semantic search results" : `${items.length} skill(s)`}
+              {searching ? t("catalog.searchResults") : t("catalog.count", { count: items.length })}
             </Text>
           </div>
         </Group>
 
-        <StatsBar />
+        <StatsBar t={t} />
 
         <Group>
           <TextInput
             flex={1}
-            placeholder="Search by meaning (e.g. 'run SQL against production safely')"
+            placeholder={t("catalog.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.currentTarget.value)}
           />
@@ -151,7 +155,7 @@ export default function Catalog() {
           </Group>
         ) : items.length === 0 ? (
           <Text c="dimmed" ta="center" mt="xl">
-            No skills yet — import some via Claude Code (the SkillHub skill) or the seed command.
+            {t("catalog.empty")}
           </Text>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">

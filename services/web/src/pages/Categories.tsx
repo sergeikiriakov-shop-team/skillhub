@@ -4,13 +4,16 @@ import { Link } from "react-router-dom";
 import { api, SkillSummary } from "../api";
 import PageLoader from "../components/PageLoader";
 import { ScoreBadge } from "../components/Score";
+import { useI18n } from "../i18n";
+import type { TFunc } from "../i18n";
 
 function byScoreDesc(a: SkillSummary, b: SkillSummary): number {
   return (b.overall_score ?? -1) - (a.overall_score ?? -1);
 }
 
-function prettyGroup(key: string): string {
-  return key === "(ungrouped)" ? "ungrouped" : key.replace(/-/g, " ");
+// The slug itself is data; only the "(ungrouped)" bucket gets a translated label.
+function prettyGroup(key: string, t: TFunc): string {
+  return key === "(ungrouped)" ? t("group.ungrouped") : key.replace(/-/g, " ");
 }
 
 function RankTable({
@@ -22,14 +25,15 @@ function RankTable({
   bestId?: number;
   currentVersion?: string;
 }) {
+  const { t } = useI18n();
   return (
     <Table verticalSpacing="xs" horizontalSpacing="sm" highlightOnHover>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th w={36}>#</Table.Th>
-          <Table.Th>Skill</Table.Th>
-          <Table.Th>Author</Table.Th>
-          <Table.Th ta="right">Score</Table.Th>
+          <Table.Th w={36}>{t("table.rank")}</Table.Th>
+          <Table.Th>{t("table.skill")}</Table.Th>
+          <Table.Th>{t("table.author")}</Table.Th>
+          <Table.Th ta="right">{t("table.score")}</Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -47,12 +51,12 @@ function RankTable({
                   </Anchor>
                   {s.source_type === "synthesized" && (
                     <Badge size="xs" color="grape" variant="filled">
-                      ✦ synthesized
+                      {t("badge.synthesized")}
                     </Badge>
                   )}
                   {isBest && (
                     <Badge size="xs" color="yellow" variant="filled">
-                      ★ best
+                      {t("badge.best")}
                     </Badge>
                   )}
                 </Group>
@@ -65,8 +69,8 @@ function RankTable({
               <Table.Td ta="right">
                 <Group gap={6} justify="flex-end" wrap="nowrap">
                   {stale && (
-                    <Badge size="xs" color="gray" variant="outline" title="scored under an older rubric">
-                      stale v{s.rubric_version}
+                    <Badge size="xs" color="gray" variant="outline" title={t("badge.staleTitle")}>
+                      {t("badge.stale", { v: s.rubric_version ?? "" })}
                     </Badge>
                   )}
                   <ScoreBadge value={s.overall_score} size="sm" />
@@ -81,6 +85,7 @@ function RankTable({
 }
 
 export default function Categories() {
+  const { t } = useI18n();
   const skillsQuery = useQuery({ queryKey: ["skills", null], queryFn: () => api.listSkills() });
   const catsQuery = useQuery({ queryKey: ["categories"], queryFn: api.listCategories });
   const healthQuery = useQuery({ queryKey: ["health"], queryFn: api.health });
@@ -130,26 +135,22 @@ export default function Categories() {
     <Container size="lg">
       <Stack gap="lg">
         <div>
-          <Title order={2}>Categories &amp; ratings</Title>
+          <Title order={2}>{t("categories.title")}</Title>
           <Text c="dimmed" size="sm">
-            The output of the registry. Skills are grouped on two levels — a broad category, then
-            the narrow <b>task group</b> (their specific job). Within a task group with more than one
-            skill (a real "same job" competition) the ★ marks the top-rated one. Synthesized ideals
-            are listed separately and excluded from the competition and the averages.
+            {t("categories.intro")}
           </Text>
         </div>
 
         {synthesized.length > 0 && (
           <Card withBorder radius="md" padding="md" bg="var(--mantine-color-grape-light)">
             <Group gap="xs" mb={4} align="center">
-              <Title order={4}>✦ Synthesized ideals</Title>
+              <Title order={4}>{t("categories.synthTitle")}</Title>
               <Badge color="grape" variant="light">
                 {synthesized.length}
               </Badge>
             </Group>
             <Text size="sm" c="dimmed" mb="md">
-              Skills the registry generated itself — each merges the best of one task group via the
-              stored synthesis algorithm. The nested list shows the source skills it was built from.
+              {t("categories.synthIntro")}
             </Text>
             <Stack gap="sm">
               {synthesized.map((ideal) => {
@@ -162,7 +163,7 @@ export default function Categories() {
                           {ideal.name}
                         </Anchor>
                         <Badge size="xs" color="grape" variant="filled">
-                          ✦ synthesized
+                          {t("badge.synthesized")}
                         </Badge>
                         {ideal.task_group && (
                           <Badge
@@ -170,7 +171,7 @@ export default function Categories() {
                             variant="outline"
                             styles={{ label: { textTransform: "none" } }}
                           >
-                            {prettyGroup(ideal.task_group)}
+                            {prettyGroup(ideal.task_group, t)}
                           </Badge>
                         )}
                       </Group>
@@ -185,7 +186,7 @@ export default function Categories() {
                         }}
                       >
                         <Text size="xs" c="dimmed" mb={4}>
-                          merged from
+                          {t("categories.mergedFrom")}
                         </Text>
                         <Stack gap={4}>
                           {[...sources].sort(byScoreDesc).map((s) => (
@@ -214,11 +215,11 @@ export default function Categories() {
 
         <Card withBorder radius="md" padding="md">
           <Title order={4} mb="sm">
-            Overall leaderboard
+            {t("categories.leaderboard")}
           </Title>
           {leaderboard.length === 0 ? (
             <Text size="sm" c="dimmed">
-              No scored skills yet.
+              {t("categories.noScored")}
             </Text>
           ) : (
             <RankTable skills={leaderboard} bestId={leaderboard[0]?.id} currentVersion={currentVersion} />
@@ -249,10 +250,10 @@ export default function Categories() {
               <Group justify="space-between" align="center" mb={4} wrap="nowrap">
                 <Title order={4}>{cat.label}</Title>
                 <Group gap="xs">
-                  <Badge variant="light">{list.length} skill(s)</Badge>
+                  <Badge variant="light">{t("categories.count", { count: list.length })}</Badge>
                   {avg != null && (
                     <Badge variant="light" color="teal">
-                      avg {avg.toFixed(1)}
+                      {t("categories.avg", { v: avg.toFixed(1) })}
                     </Badge>
                   )}
                 </Group>
@@ -263,7 +264,7 @@ export default function Categories() {
 
               {list.length === 0 ? (
                 <Text size="sm" c="dimmed">
-                  No skills in this category yet.
+                  {t("categories.noneInCategory")}
                 </Text>
               ) : (
                 <Stack gap="md">
@@ -275,11 +276,11 @@ export default function Categories() {
                           size="sm"
                           styles={{ label: { textTransform: "none" } }}
                         >
-                          {prettyGroup(tg)}
+                          {prettyGroup(tg, t)}
                         </Badge>
                         {arr.length > 1 && (
                           <Text size="xs" c="dimmed">
-                            {arr.length} competing
+                            {t("categories.competing", { count: arr.length })}
                           </Text>
                         )}
                       </Group>

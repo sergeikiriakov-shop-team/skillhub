@@ -66,6 +66,8 @@ export interface SimilarSkill {
 export interface SkillDetail extends SkillSummary {
   trigger_text: string | null;
   body_md: string;
+  // Full canonical SKILL.md (frontmatter + body), ready to install into Claude Code.
+  skill_md: string;
   references: { path: string; content: string }[];
   section_headings: string[];
   version_no: number;

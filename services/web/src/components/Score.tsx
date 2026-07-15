@@ -1,4 +1,5 @@
 import { Badge, Group, Progress, Stack, Text } from "@mantine/core";
+import { useI18n } from "../i18n";
 
 export function scoreColor(value: number | null | undefined): string {
   if (value == null) return "gray";
@@ -9,10 +10,11 @@ export function scoreColor(value: number | null | undefined): string {
 }
 
 export function ScoreBadge({ value, size = "md" }: { value: number | null; size?: string }) {
+  const { t } = useI18n();
   if (value == null) {
     return (
       <Badge color="gray" variant="light" size={size}>
-        not scored
+        {t("score.notScored")}
       </Badge>
     );
   }
@@ -23,23 +25,25 @@ export function ScoreBadge({ value, size = "md" }: { value: number | null; size?
   );
 }
 
-const DIMENSION_LABELS: Record<string, string> = {
-  clarity: "Clarity",
-  trigger_quality: "Trigger quality",
-  completeness: "Completeness",
-  reusability: "Reusability",
-  safety: "Safety",
-  structure: "Structure",
-};
+// Fixed dimension order; the label for each comes from the i18n dictionary (`dim.<key>`).
+const DIMENSION_KEYS = [
+  "clarity",
+  "trigger_quality",
+  "completeness",
+  "reusability",
+  "safety",
+  "structure",
+];
 
 export function ScoreBreakdown({ scores }: { scores: Record<string, number> }) {
-  const keys = Object.keys(DIMENSION_LABELS).filter((k) => k in scores);
+  const { t } = useI18n();
+  const keys = DIMENSION_KEYS.filter((k) => k in scores);
   return (
     <Stack gap="xs">
       {keys.map((key) => (
         <div key={key}>
           <Group justify="space-between" mb={2}>
-            <Text size="sm">{DIMENSION_LABELS[key]}</Text>
+            <Text size="sm">{t(`dim.${key}`)}</Text>
             <Text size="sm" c="dimmed">
               {scores[key]}/10
             </Text>

@@ -62,7 +62,10 @@ def list_skills(search: str | None = None, category: str | None = None) -> Any:
 
 @mcp.tool()
 def get_skill(skill_id: int) -> Any:
-    """Get one skill with its content, latest evaluation and similar skills."""
+    """Get one skill with its content, latest evaluation and similar skills. To INSTALL the skill
+    into the user's Claude Code, use `skill_md` (the ready-to-write SKILL.md) and `references[]`
+    ({path, content}) and write them to `<skills-dir>/<name>/` with your own Write tool — this
+    MCP server runs in a container and cannot touch the user's disk."""
     return _call("GET", f"/api/skills/{skill_id}")
 
 

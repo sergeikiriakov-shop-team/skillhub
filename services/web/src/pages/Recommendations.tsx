@@ -13,6 +13,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { api, Recommendation } from "../api";
 import PageLoader from "../components/PageLoader";
+import { useI18n } from "../i18n";
 
 const KIND_COLOR: Record<string, string> = {
   synthesize: "grape",
@@ -33,6 +34,7 @@ const STATUS_COLOR: Record<string, string> = {
 const STATUS_ORDER: Record<string, number> = { proposed: 0, accepted: 1, done: 2, dismissed: 3 };
 
 function RecommendationCard({ r }: { r: Recommendation }) {
+  const { t } = useI18n();
   const resolved = r.status === "done" || r.status === "dismissed";
   return (
     <Card withBorder radius="md" padding="md" style={{ opacity: resolved ? 0.65 : 1 }}>
@@ -55,7 +57,7 @@ function RecommendationCard({ r }: { r: Recommendation }) {
       <Group gap="xs" mb="sm">
         {r.scope && (
           <Badge size="sm" variant="outline" styles={{ label: { textTransform: "none" } }}>
-            scope: {r.scope}
+            {t("rec.scope", { v: r.scope })}
           </Badge>
         )}
         {r.targets.map((t, i) => (
@@ -74,12 +76,12 @@ function RecommendationCard({ r }: { r: Recommendation }) {
         <>
           <Group justify="space-between" align="center" mb={4}>
             <Text size="xs" c="dimmed">
-              Run this (in your Claude Code):
+              {t("rec.runThis")}
             </Text>
             <CopyButton value={r.suggested_action}>
               {({ copied, copy }) => (
                 <Button size="compact-xs" variant="light" color={copied ? "teal" : "gray"} onClick={copy}>
-                  {copied ? "Copied" : "Copy"}
+                  {copied ? t("common.copied") : t("common.copy")}
                 </Button>
               )}
             </CopyButton>
@@ -94,6 +96,7 @@ function RecommendationCard({ r }: { r: Recommendation }) {
 }
 
 export default function Recommendations() {
+  const { t } = useI18n();
   const { data, isLoading } = useQuery({
     queryKey: ["recommendations"],
     queryFn: api.listRecommendations,
@@ -113,19 +116,17 @@ export default function Recommendations() {
       <Stack gap="lg">
         <div>
           <Group gap="sm" align="center">
-            <Title order={2}>Recommendations</Title>
-            <Badge variant="light">{open.length} open</Badge>
+            <Title order={2}>{t("rec.title")}</Title>
+            <Badge variant="light">{t("rec.open", { count: open.length })}</Badge>
           </Group>
           <Text c="dimmed" size="sm">
-            Proposed catalog changes the registry has surfaced — synthesize, split, merge, dedup or
-            delete. Each carries a ready-to-run action a developer can pick up and execute in their
-            own Claude Code; the service keeps them so nothing is lost between sessions.
+            {t("rec.intro")}
           </Text>
         </div>
 
         {recs.length === 0 ? (
           <Text c="dimmed" ta="center" mt="xl">
-            No recommendations yet.
+            {t("rec.empty")}
           </Text>
         ) : (
           <Stack gap="md">

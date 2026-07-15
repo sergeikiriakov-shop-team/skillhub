@@ -203,6 +203,11 @@ class SkillSummary(BaseModel):
 class SkillDetail(SkillSummary):
     trigger_text: str | None
     body_md: str
+    skill_md: str = Field(
+        default="",
+        description="The full canonical SKILL.md (name+description frontmatter + body), ready to "
+        "write to <skills-dir>/<name>/SKILL.md when installing the skill into Claude Code.",
+    )
     references: list[ReferenceIn]
     section_headings: list[str]
     version_no: int

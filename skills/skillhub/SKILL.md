@@ -72,6 +72,28 @@ curl -s -X POST "$SKILLHUB_URL/api/skills" -H "Content-Type: application/json" -
 Bulk import of a directory can also be done from the API container:
 `docker exec skillhub-api-1 python -m skillhub_core.seed --path /tmp/skills`.
 
+## Workflow: install a skill from SkillHub into this Claude Code
+When the user asks to **install / add a skill from SkillHub** to their Claude Code (e.g.
+"install the `beliani-db-schema` skill from SkillHub into my project"):
+
+1. **Resolve the skill id.** If given a name, find it: `curl -s "$SKILLHUB_URL/api/search?q=<name>"`
+   or `curl -s "$SKILLHUB_URL/api/skills?search=<name>"`, then confirm the match with the user if
+   ambiguous.
+2. **Fetch the skill.** `curl -s "$SKILLHUB_URL/api/skills/<id>"`. Use two fields:
+   - `skill_md` — the complete, ready-to-write `SKILL.md` (frontmatter + body). Write it verbatim.
+   - `references[]` — a list of `{path, content}` (paths are already relative, e.g.
+     `references/tools.md`).
+3. **Pick the target directory.** Ask the user (or default to the **project** scope):
+   - Project: `.claude/skills/<name>/` (only this repo) — the usual choice.
+   - Personal: `~/.claude/skills/<name>/` (all your projects).
+   Use the skill's `name` (frontmatter/`name` field) as `<name>`.
+4. **Write the files** with your own Write tool (do NOT try to have the service or MCP write to
+   disk — they run in a container with no access to your machine):
+   - `<dir>/SKILL.md`  ← the `skill_md` string, byte-for-byte.
+   - `<dir>/<ref.path>` ← each reference's `content` (creates `references/…` as needed).
+5. **Confirm** to the user where it was installed and remind them Claude Code picks up new skills
+   on its next start / skill refresh.
+
 ## Look things up
 - Search by meaning: `curl -s "$SKILLHUB_URL/api/search?q=<query>"`.
 - One skill (incl. its evaluation + similar skills): `curl -s "$SKILLHUB_URL/api/skills/<id>"`.

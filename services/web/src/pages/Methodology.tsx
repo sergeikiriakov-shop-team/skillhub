@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { api } from "../api";
 import PageLoader from "../components/PageLoader";
+import { useI18n } from "../i18n";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -16,6 +17,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export default function Methodology() {
+  const { t } = useI18n();
   const { data: r, isLoading } = useQuery({ queryKey: ["rubric"], queryFn: api.rubric });
 
   if (isLoading || !r) {
@@ -27,30 +29,27 @@ export default function Methodology() {
       <Stack gap="lg">
         <div>
           <Group gap="sm" align="center">
-            <Title order={2}>How skills are evaluated</Title>
+            <Title order={2}>{t("meth.title")}</Title>
             <Badge variant="light" size="lg">
-              rubric v{r.rubric_version}
+              {t("meth.rubricBadge", { v: r.rubric_version })}
             </Badge>
           </Group>
           <Text c="dimmed" size="sm">
-            The single, shared evaluation strategy — stored in the service and fetched by every
-            developer&apos;s Claude Code (<Code>GET /api/rubric</Code>) before it scores a skill, so
-            the algorithm is identical for everyone. The service itself runs no LLM; it stores this
-            strategy and the results.
+            {t("meth.intro")}
           </Text>
         </div>
 
-        <Section title="Reviewer instructions">
+        <Section title={t("meth.reviewerInstructions")}>
           <Text size="sm">{r.instructions}</Text>
         </Section>
 
-        <Section title="Scoring dimensions & weights">
+        <Section title={t("meth.dimensionsTitle")}>
           <Table verticalSpacing="xs" horizontalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Dimension</Table.Th>
-                <Table.Th>What it measures</Table.Th>
-                <Table.Th ta="right">Weight</Table.Th>
+                <Table.Th>{t("meth.dimension")}</Table.Th>
+                <Table.Th>{t("meth.measures")}</Table.Th>
+                <Table.Th ta="right">{t("meth.weight")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -75,18 +74,17 @@ export default function Methodology() {
             </Table.Tbody>
           </Table>
           <Text size="xs" c="dimmed" mt="xs">
-            <b>overall</b> is a holistic 0-10 judgement weighted by these factors — trigger quality
-            and completeness count roughly double.
+            {t("meth.overallNote")}
           </Text>
         </Section>
 
-        <Section title="Score calibration (0–10)">
+        <Section title={t("meth.calibrationTitle")}>
           <Table verticalSpacing="xs" horizontalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
-                <Table.Th w={64}>Band</Table.Th>
-                <Table.Th w={130}>Label</Table.Th>
-                <Table.Th>Meaning</Table.Th>
+                <Table.Th w={64}>{t("meth.band")}</Table.Th>
+                <Table.Th w={130}>{t("meth.label")}</Table.Th>
+                <Table.Th>{t("meth.meaning")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -109,12 +107,12 @@ export default function Methodology() {
           </Table>
         </Section>
 
-        <Section title="Categorization">
+        <Section title={t("meth.categorizationTitle")}>
           <Text size="sm" mb="md">
             {r.categorization_rules}
           </Text>
           <Title order={5} mb="xs">
-            Taxonomy
+            {t("meth.taxonomy")}
           </Title>
           <Stack gap="xs">
             {r.categories.map((c) => (
@@ -130,11 +128,11 @@ export default function Methodology() {
           </Stack>
         </Section>
 
-        <Section title="Choosing the best in a group">
+        <Section title={t("meth.selectionTitle")}>
           <Text size="sm">{r.selection_strategy}</Text>
         </Section>
 
-        <Section title="Synthesizing the ideal skill">
+        <Section title={t("meth.synthesisTitle")}>
           <Text size="sm" mb={r.synthesis_algorithm.length ? "md" : 0}>
             {r.synthesis_strategy}
           </Text>
@@ -153,7 +151,7 @@ export default function Methodology() {
           {r.synthesis_prompt && (
             <>
               <Text size="xs" c="dimmed" mb={4}>
-                Synthesis prompt (filled in per group and run by every developer&apos;s Claude Code):
+                {t("meth.synthesisPromptNote")}
               </Text>
               <Code block style={{ whiteSpace: "pre-wrap" }}>
                 {r.synthesis_prompt}
