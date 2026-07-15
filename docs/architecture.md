@@ -69,6 +69,14 @@ synthesize an "ideal" merged skill.
 `skills *─* categories` (via `skill_categories`, with confidence + source). A new version is
 created only when the content hash changes, so re-imports are idempotent.
 
+**Identity + authorship (team registry).** A skill is keyed by **name** (unique `uq_skills_name`);
+re-uploading a name adds a version rather than a duplicate row. Verified authorship: `skills` and
+`skill_versions` each carry `created_by_user_id → users.id` (the OAuth uploader); `Skill.author` is
+a display string only. On ingest (`pipeline.ingest`), an upload under a *new* name that is
+content-identical (exact or whitespace-normalized) to an existing skill is rejected
+(`DuplicateSkillError` → HTTP 409); a merely-similar one (cosine ≥ 0.90) is allowed with a
+`similar_warning`. Genuine variants therefore live under distinct names within a `task_group`.
+
 ## Quality rubric (v1)
 
 `clarity`, `trigger_quality`, `completeness`, `reusability`, `safety`, `structure` (0-10 each)

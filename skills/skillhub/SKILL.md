@@ -72,6 +72,14 @@ curl -s -X POST "$SKILLHUB_URL/api/skills" -H "Content-Type: application/json" -
 Bulk import of a directory can also be done from the API container:
 `docker exec skillhub-api-1 python -m skillhub_core.seed --path /tmp/skills`.
 
+De-duplication + authorship (team registry): skills are keyed by **name**, so re-posting an
+existing name adds a new **version** of the one canonical skill (not a copy). Authorship is taken
+from your authenticated token — the `author` field above is ignored when authenticated (used only
+for anonymous seed/import). Posting content **identical** to an existing skill under a **different**
+name returns **HTTP 409** (`detail.existing_name`) — update that skill instead, or change the
+content. A merely-similar (not identical) skill is accepted and the response includes a
+`similar_warning` `{skill_id, name, similarity}`; check it before treating it as genuinely new.
+
 ## Workflow: install a skill from SkillHub into this Claude Code
 When the user asks to **install / add a skill from SkillHub** to their Claude Code (e.g.
 "install the `beliani-db-schema` skill from SkillHub into my project"):

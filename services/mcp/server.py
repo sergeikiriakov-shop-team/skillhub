@@ -256,7 +256,13 @@ def upload_skill(
 ) -> Any:
     """Import a skill. `content` is the raw SKILL.md text (with YAML frontmatter). `references`
     is a list of {path, content}. `source_format`: claude_skill|cursor_mdc|codex_skill|generic_md.
-    Requires a contributor+ role (run `authenticate` first if needed)."""
+    Requires a contributor+ role (run `authenticate` first if needed).
+
+    De-duplication: skills are keyed by name — re-uploading an existing name adds a new VERSION of
+    that one skill (not a copy), attributed to you. Uploading content IDENTICAL to an existing skill
+    under a DIFFERENT name is rejected with HTTP 409 (`error: 409`, `detail.existing_name`) — update
+    that skill instead. A merely-similar (not identical) skill is accepted; the response then carries
+    a `similar_warning` {skill_id, name, similarity} so you can double-check it isn't a duplicate."""
     body = {
         "content": content,
         "author": author,

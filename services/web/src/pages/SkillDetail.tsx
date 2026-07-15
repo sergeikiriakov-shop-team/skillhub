@@ -231,6 +231,43 @@ export default function SkillDetail() {
                 </Stack>
               )}
             </Card>
+
+            <Card withBorder radius="md" padding="md" mt="md">
+              <Text fw={600} mb="sm">
+                {t("detail.versionHistory")}
+              </Text>
+              {skill.uploaded_by && (
+                <Text size="sm" c="dimmed" mb="xs">
+                  {t("detail.updatedBy", { who: skill.uploaded_by })}
+                </Text>
+              )}
+              {skill.contributors.length > 0 && (
+                <>
+                  <Text size="xs" c="dimmed" mb={4}>
+                    {t("detail.contributors")}
+                  </Text>
+                  <Group gap={4} mb="sm">
+                    {skill.contributors.map((c) => (
+                      <Badge key={c} variant="light" size="sm">
+                        {c}
+                      </Badge>
+                    ))}
+                  </Group>
+                </>
+              )}
+              <Stack gap={4}>
+                {skill.versions.map((v) => (
+                  <Group key={v.version_no} justify="space-between" wrap="nowrap">
+                    <Text size="sm">
+                      v{v.version_no} · {v.author ?? t("detail.unknownAuthor")}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {new Date(v.created_at).toLocaleDateString()}
+                    </Text>
+                  </Group>
+                ))}
+              </Stack>
+            </Card>
           </Grid.Col>
         </Grid>
       </Stack>

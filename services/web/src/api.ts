@@ -31,6 +31,7 @@ export interface SkillSummary {
   id: number;
   name: string;
   author: string | null;
+  uploaded_by: string | null;
   description: string;
   source_format: string;
   source_type: string;
@@ -39,6 +40,12 @@ export interface SkillSummary {
   categories: Category[];
   task_group: string | null;
   updated_at: string;
+}
+
+export interface SkillVersionInfo {
+  version_no: number;
+  author: string | null;
+  created_at: string;
 }
 
 export interface Recommendation {
@@ -71,8 +78,11 @@ export interface SkillDetail extends SkillSummary {
   references: { path: string; content: string }[];
   section_headings: string[];
   version_no: number;
+  contributors: string[];
+  versions: SkillVersionInfo[];
   latest_evaluation: Evaluation | null;
   similar: SimilarSkill[];
+  similar_warning: { skill_id: number; name: string; similarity: number } | null;
 }
 
 export interface SearchHit {

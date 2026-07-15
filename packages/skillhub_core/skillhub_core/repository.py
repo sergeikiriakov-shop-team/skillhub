@@ -16,6 +16,7 @@ from .models import (
     SkillCategory,
     SkillEmbedding,
     SkillVersion,
+    User,
 )
 from .parsing import compute_hash
 from .schemas import (
@@ -23,6 +24,20 @@ from .schemas import (
     EvaluationResult,
     ParsedSkill,
 )
+
+
+class DuplicateSkillError(Exception):
+    """Raised when an upload under a NEW name is essentially identical to an existing skill."""
+
+    def __init__(self, existing_id: int, existing_name: str):
+        self.existing_id = existing_id
+        self.existing_name = existing_name
+        super().__init__(f"Identical to existing skill '{existing_name}' (#{existing_id})")
+
+
+def normalize_content(text: str) -> str:
+    """Collapse all runs of whitespace so trivial reformatting counts as identical content."""
+    return " ".join((text or "").split())
 
 
 # ---------------------------------------------------------------------------
@@ -36,18 +51,24 @@ def upsert_skill(
     author: str | None = None,
     source_type: str = SOURCE_TYPE_UPLOAD,
     origin: str | None = None,
+    user: User | None = None,
 ) -> tuple[Skill, SkillVersion, bool]:
-    """Find-or-create the skill by (name, author, origin) and add a new version only when the
-    content changed. Returns ``(skill, version, is_new_version)``."""
-    skill = session.scalars(
-        select(Skill).where(
-            Skill.name == parsed.name,
-            Skill.author.is_(author) if author is None else Skill.author == author,
-            Skill.origin.is_(origin) if origin is None else Skill.origin == origin,
-        )
-    ).first()
+    """Find-or-create the skill **by name** (one canonical record per name) and add a new version
+    only when the content changed. Records verified authorship from ``user`` when present.
+    Returns ``(skill, version, is_new_version)``."""
+    # Verified display author: an authenticated uploader can't spoof it (a client-supplied string
+    # is only honoured for unauthenticated seed/import).
+    display_author = (user.name or user.email) if user is not None else author
+
+    skill = session.scalars(select(Skill).where(Skill.name == parsed.name)).first()
     if skill is None:
-        skill = Skill(name=parsed.name, author=author, source_type=source_type, origin=origin)
+        skill = Skill(
+            name=parsed.name,
+            author=display_author,
+            created_by_user_id=user.id if user is not None else None,
+            source_type=source_type,
+            origin=origin,
+        )
         session.add(skill)
         session.flush()
 
@@ -72,10 +93,45 @@ def upsert_skill(
         section_headings=parsed.section_headings,
         raw_content=parsed.raw_content,
         content_hash=content_hash,
+        created_by_user_id=user.id if user is not None else None,
     )
     session.add(version)
     session.flush()
     return skill, version, True
+
+
+def skill_with_name_exists(session: Session, name: str) -> bool:
+    return session.scalars(select(Skill.id).where(Skill.name == name)).first() is not None
+
+
+def find_exact_content_duplicate(
+    session: Session, content_hash: str, exclude_name: str
+) -> Skill | None:
+    """A skill under a DIFFERENT name whose any version has this exact content hash."""
+    return session.scalars(
+        select(Skill)
+        .join(SkillVersion, SkillVersion.skill_id == Skill.id)
+        .where(SkillVersion.content_hash == content_hash, Skill.name != exclude_name)
+        .limit(1)
+    ).first()
+
+
+def nearest_other_skills(
+    session: Session, query_vector: list[float], exclude_name: str, limit: int = 5
+) -> list[tuple[Skill, float]]:
+    """Cosine-similarity neighbours excluding the skill with ``exclude_name`` (so a same-name
+    update doesn't match itself). Returns ``(skill, similarity)`` best-first."""
+    distance = SkillEmbedding.embedding.cosine_distance(query_vector)
+    stmt = (
+        select(Skill, distance.label("distance"))
+        .join(SkillVersion, SkillVersion.skill_id == Skill.id)
+        .join(SkillEmbedding, SkillEmbedding.skill_version_id == SkillVersion.id)
+        .where(Skill.name != exclude_name)
+        .order_by(distance)
+        .limit(limit * 3)
+        .options(selectinload(Skill.versions))
+    )
+    return _dedupe_by_skill(session.execute(stmt).all(), limit)
 
 
 def save_evaluation(
@@ -241,6 +297,7 @@ def set_recommendation_status(session: Session, rec_id: int, status: str) -> Rec
 def _loaded_skill_query():
     return select(Skill).options(
         selectinload(Skill.versions).selectinload(SkillVersion.evaluations),
+        selectinload(Skill.versions).selectinload(SkillVersion.creator),
         selectinload(Skill.categories).selectinload(SkillCategory.category),
     )
 

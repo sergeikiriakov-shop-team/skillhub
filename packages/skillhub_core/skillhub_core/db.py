@@ -67,6 +67,12 @@ def _apply_column_migrations() -> None:
         "INSERT INTO auth_tokens (user_id, token_hash, kind, created_at) "
         "SELECT id, token_hash, 'device', now() FROM users WHERE token_hash IS NOT NULL "
         "ON CONFLICT (token_hash) DO NOTHING",
+        # Team registry: verified authorship + one canonical skill per name. Existing data is
+        # clean (all names unique), so switching the identity to name alone is safe.
+        "ALTER TABLE skills ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES users(id)",
+        "ALTER TABLE skill_versions ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES users(id)",
+        "ALTER TABLE skills DROP CONSTRAINT IF EXISTS uq_skill_identity",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_skills_name ON skills (name)",
     ]
     with engine.begin() as conn:
         for stmt in statements:

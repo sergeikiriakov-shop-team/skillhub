@@ -150,6 +150,12 @@ const en: Dict = {
   "device.approved":
     "Your device is authorized. Return to your terminal — it will pick up access automatically.",
   "device.error": "Invalid or expired code.",
+
+  // authorship / versions
+  "detail.updatedBy": "Updated by {who}",
+  "detail.contributors": "Contributors",
+  "detail.versionHistory": "Version history",
+  "detail.unknownAuthor": "unknown",
 };
 
 const ru: Dict = {
@@ -291,6 +297,12 @@ const ru: Dict = {
   "device.approved":
     "Устройство авторизовано. Вернитесь в терминал — доступ подхватится автоматически.",
   "device.error": "Неверный или просроченный код.",
+
+  // authorship / versions
+  "detail.updatedBy": "Обновил {who}",
+  "detail.contributors": "Участники",
+  "detail.versionHistory": "История версий",
+  "detail.unknownAuthor": "неизвестен",
 };
 
 const DICTS: Record<Lang, Dict> = { en, ru };

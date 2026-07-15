@@ -65,14 +65,20 @@ class Base(DeclarativeBase):
 
 
 class Skill(Base):
-    """A logical skill. Multiple authors may register their own variant of the same name —
-    that overlap is a first-class signal, not an error (see duplicate detection, Phase 2)."""
+    """A logical skill — one canonical record per ``name`` (uniqueness enforced by the
+    ``uq_skills_name`` index, created in ``db._apply_column_migrations``). Re-uploading the same
+    name adds a new :class:`SkillVersion` rather than a duplicate row; genuinely different variants
+    live under different names within a shared ``task_group``. ``author`` is a display string;
+    ``created_by_user_id`` is the verified original uploader (from OAuth)."""
 
     __tablename__ = "skills"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(200), index=True)
     author: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
     source_type: Mapped[str] = mapped_column(String(20), default=SOURCE_TYPE_UPLOAD)
     origin: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Narrow "what specific job it does" grouping key (a slug), finer than the broad category.
@@ -89,8 +95,7 @@ class Skill(Base):
     categories: Mapped[list["SkillCategory"]] = relationship(
         back_populates="skill", cascade="all, delete-orphan"
     )
-
-    __table_args__ = (UniqueConstraint("name", "author", "origin", name="uq_skill_identity"),)
+    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by_user_id])
 
     @property
     def latest_version(self) -> "SkillVersion | None":
@@ -113,6 +118,7 @@ class SkillVersion(Base):
     section_headings: Mapped[list] = mapped_column(JSONB, default=list)
     raw_content: Mapped[str] = mapped_column(Text, default="")
     content_hash: Mapped[str] = mapped_column(String(64), index=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     skill: Mapped["Skill"] = relationship(back_populates="versions")
@@ -122,6 +128,7 @@ class SkillVersion(Base):
     embedding: Mapped["SkillEmbedding | None"] = relationship(
         back_populates="skill_version", cascade="all, delete-orphan", uselist=False
     )
+    creator: Mapped["User | None"] = relationship("User", foreign_keys=[created_by_user_id])
 
     @property
     def description(self) -> str:

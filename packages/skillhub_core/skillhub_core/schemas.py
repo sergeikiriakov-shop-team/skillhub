@@ -189,7 +189,8 @@ class EvaluationOut(BaseModel):
 class SkillSummary(BaseModel):
     id: int
     name: str
-    author: str | None
+    author: str | None  # display author (verified uploader of the first version, or import label)
+    uploaded_by: str | None = None  # verified identity of the latest version's uploader
     description: str
     source_format: str
     source_type: str = "upload"
@@ -198,6 +199,14 @@ class SkillSummary(BaseModel):
     categories: list[CategoryOut]
     task_group: str | None = None
     updated_at: datetime
+
+
+class SkillVersionInfo(BaseModel):
+    """One entry in a skill's version history."""
+
+    version_no: int
+    author: str | None
+    created_at: datetime
 
 
 class SkillDetail(SkillSummary):
@@ -211,8 +220,11 @@ class SkillDetail(SkillSummary):
     references: list[ReferenceIn]
     section_headings: list[str]
     version_no: int
+    contributors: list[str] = Field(default_factory=list)  # distinct verified authors across versions
+    versions: list[SkillVersionInfo] = Field(default_factory=list)
     latest_evaluation: EvaluationOut | None
     similar: list["SimilarSkill"] = Field(default_factory=list)
+    similar_warning: dict | None = None  # set only on upload when a similar skill exists
 
 
 class SimilarSkill(BaseModel):

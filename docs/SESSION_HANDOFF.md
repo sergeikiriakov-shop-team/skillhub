@@ -30,6 +30,15 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   canonical SKILL.md); each skill page shows an "Install into Claude Code" phrase to paste. The
   actual install is done by the user's own Claude Code (via the `skillhub` skill / MCP `get_skill`):
   it writes `skill_md` + `references[]` into `.claude/skills/<name>/` with its own Write tool.
+- **One canonical skill per name + verified authorship (team registry).** Skills are keyed by
+  `name` (unique index `uq_skills_name`; old `(name,author,origin)` identity dropped). Re-uploading
+  a name adds a **version**, not a copy; each version records `created_by_user_id` (the verified
+  OAuth uploader), and `Skill.author`/`created_by_user_id` is the original author. An upload under a
+  **new** name that is content-identical (exact or whitespace-normalized) to an existing skill is
+  **rejected 409**; a merely-similar one (cosine ≥ 0.90) is accepted with a `similar_warning`. The
+  client-supplied `author` is ignored while authenticated. Detail API exposes `uploaded_by`,
+  `contributors`, `versions`. Dedup logic: `pipeline.ingest` + `repository` (`upsert_skill` by name,
+  `find_exact_content_duplicate`, `nearest_other_skills`, `normalize_content`).
 - **No LLM in the service, no LangChain.** Embeddings are local (`sentence-transformers`,
   pgvector) for search / duplicate detection. The dormant `skillhub_core/llm/` package and the
   stale `services/airflow/` DAG have been **removed**. Orchestration (scheduled headless

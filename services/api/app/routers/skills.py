@@ -37,18 +37,33 @@ def create_skill(
     user: User = Depends(require_upload),
 ) -> SkillDetail:
     references = [Reference(path=r.path, content=r.content) for r in payload.references]
-    result = pipeline.ingest_raw(
-        session,
-        content=payload.content,
-        author=payload.author or user.name,  # default attribution to the uploader
-        references=references,
-        source_format=payload.source_format,
-    )
+    try:
+        result = pipeline.ingest_raw(
+            session,
+            content=payload.content,
+            author=payload.author,  # ignored while authenticated; authorship comes from the user
+            references=references,
+            source_format=payload.source_format,
+            user=user,
+        )
+    except repository.DuplicateSkillError as exc:
+        # Identical prompt already exists under another name → don't create a duplicate.
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": f"Identical to existing skill '{exc.existing_name}'. "
+                "Update that skill (upload under its name) or change the content.",
+                "existing_skill_id": exc.existing_id,
+                "existing_name": exc.existing_name,
+            },
+        ) from exc
     skill = repository.get_skill(session, result.skill_id)
     if skill is None:  # pragma: no cover - just created
         raise HTTPException(status_code=500, detail="Skill was not persisted")
     similar = repository.find_similar(session, skill)
-    return serializers.skill_to_detail(skill, similar)
+    detail = serializers.skill_to_detail(skill, similar)
+    detail.similar_warning = result.similar_warning
+    return detail
 
 
 @router.get("/skills/{skill_id}", response_model=SkillDetail)
