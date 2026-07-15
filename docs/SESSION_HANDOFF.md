@@ -10,15 +10,17 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
 - **Claude Code = the evaluator.** Each developer, from their own Claude Code, imports skills
   and (if allowed) evaluates them, submitting results back over the REST API. The `skillhub`
   Claude Code skill (`skills/skillhub/SKILL.md`) drives this.
-- **Auth = Google OAuth (humans) + device flow (MCP); SkillHub is its own auth server.** Reads are
-  **open**. Humans sign in with Google in the browser (`GET /api/auth/login` → callback → opaque
+- **Auth = GitHub OAuth (humans) + device flow (MCP); SkillHub is its own auth server.** Reads are
+  **open**. Humans sign in with GitHub in the browser (`GET /api/auth/login` → callback → opaque
   session cookie `skillhub_session`). The MCP authorizes via the RFC 8628 device grant and caches a
   SkillHub-minted token. All credentials live in `auth_tokens` (kind `session|device|pat`, SHA-256
   only) and resolve through one `get_user_by_token`; `current_user_optional` reads **bearer OR
-  cookie**. Roles (ascending) `viewer → contributor → evaluator → admin`; any Google account starts
-  `viewer`; emails in `SKILLHUB_BOOTSTRAP_ADMINS` become admin on first login. `SKILLHUB_ADMIN_TOKEN`
-  is a deprecated break-glass. Google keys via `GOOGLE_CLIENT_ID/SECRET` + `SKILLHUB_PUBLIC_URL`;
-  without them the stack runs but browser login is disabled.
+  cookie**. Roles (ascending) `viewer → contributor → evaluator → admin`; any GitHub account starts
+  `viewer`; emails in `SKILLHUB_BOOTSTRAP_ADMINS` become admin on first login. Identity is stored
+  provider-agnostically (`users.auth_provider` + `provider_sub`), so the provider is easy to swap —
+  only `routers/auth.py` `/login`+`/callback` and `config.py` are provider-specific.
+  `SKILLHUB_ADMIN_TOKEN` is a deprecated break-glass. GitHub keys via `GITHUB_CLIENT_ID/SECRET` +
+  `SKILLHUB_PUBLIC_URL`; without them the stack runs but browser login is disabled.
 - **Frontend = read-only dashboard** (catalog + semantic search + per-skill detail + a stats
   strip). No upload/evaluate/delete UI — those happen via Claude Code / the API. It is fully
   **bilingual (RU/EN)** via a lightweight home-grown i18n (`services/web/src/i18n.tsx`, toggle in

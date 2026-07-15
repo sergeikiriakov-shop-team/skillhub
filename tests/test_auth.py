@@ -1,7 +1,7 @@
 """Unit tests for the auth helpers that need no database.
 
 Covers config parsing and the pure token/user-code helpers. The DB-backed pieces (token table,
-device-flow state machine, Google upsert, gating matrix) are exercised against a live API in the
+device-flow state machine, OAuth upsert, gating matrix) are exercised against a live API in the
 verification smoke, since the ORM engine binds to Postgres at import time."""
 
 from __future__ import annotations
@@ -56,15 +56,15 @@ def test_effective_redirect_uri_derived_from_public_url():
 def test_effective_redirect_uri_explicit_override_wins():
     s = _settings(
         skillhub_public_url="https://hub.example.com",
-        google_redirect_uri="https://other.example.com/cb",
+        oauth_redirect_uri="https://other.example.com/cb",
     )
     assert s.effective_redirect_uri == "https://other.example.com/cb"
 
 
-def test_google_enabled_requires_both_id_and_secret():
-    assert _settings(google_client_id="", google_client_secret="").google_enabled is False
-    assert _settings(google_client_id="id", google_client_secret="").google_enabled is False
-    assert _settings(google_client_id="id", google_client_secret="sec").google_enabled is True
+def test_oauth_enabled_requires_both_id_and_secret():
+    assert _settings(github_client_id="", github_client_secret="").oauth_enabled is False
+    assert _settings(github_client_id="id", github_client_secret="").oauth_enabled is False
+    assert _settings(github_client_id="id", github_client_secret="sec").oauth_enabled is True
 
 
 def test_cors_origins_split():

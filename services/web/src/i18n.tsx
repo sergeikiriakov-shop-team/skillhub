@@ -133,14 +133,14 @@ const en: Dict = {
     "Claude Code fetches it and writes SKILL.md (+ references) into .claude/skills/{name}/.",
 
   // auth
-  "auth.signIn": "Sign in with Google",
+  "auth.signIn": "Sign in with GitHub",
   "auth.signOut": "Sign out",
 
   // device flow
   "device.title": "Connect a device",
   "device.intro":
     "Approve the code shown by your Claude Code / MCP to grant it access to SkillHub.",
-  "device.needLogin": "Sign in with Google first, then approve the code.",
+  "device.needLogin": "Sign in with GitHub first, then approve the code.",
   "device.warningTitle": "Only approve a code you started yourself",
   "device.warning":
     "Approve only if you just started this on your own machine. Never enter a code someone sent you.",
@@ -274,14 +274,14 @@ const ru: Dict = {
     "Claude Code скачает его и запишет SKILL.md (+ references) в .claude/skills/{name}/.",
 
   // auth
-  "auth.signIn": "Войти через Google",
+  "auth.signIn": "Войти через GitHub",
   "auth.signOut": "Выйти",
 
   // device flow
   "device.title": "Подключение устройства",
   "device.intro":
     "Подтвердите код, показанный вашим Claude Code / MCP, чтобы дать ему доступ к SkillHub.",
-  "device.needLogin": "Сначала войдите через Google, затем подтвердите код.",
+  "device.needLogin": "Сначала войдите через GitHub, затем подтвердите код.",
   "device.warningTitle": "Подтверждайте только код, который запустили сами",
   "device.warning":
     "Подтверждайте, только если вы только что запустили это на своём компьютере. Никогда не вводите код, который вам кто-то прислал.",

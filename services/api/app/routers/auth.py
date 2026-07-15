@@ -1,6 +1,6 @@
-"""Auth endpoints: Google OAuth login (browser), the device grant (MCP/CLI), session & tokens.
+"""Auth endpoints: GitHub OAuth login (browser), the device grant (MCP/CLI), session & tokens.
 
-SkillHub is its own authorization server; Google is only the browser identity provider. Reads
+SkillHub is its own authorization server; GitHub is only the browser identity provider. Reads
 stay open — everything here is either public (login/callback/me/device code+token) or requires a
 session/token (logout, device approve, token management)."""
 
@@ -18,9 +18,11 @@ from sqlalchemy.orm import Session
 
 from skillhub_core import auth as core_auth
 from skillhub_core.config import (
-    GOOGLE_AUTHORIZE_URL,
-    GOOGLE_TOKEN_URL,
-    GOOGLE_USERINFO_URL,
+    AUTH_PROVIDER,
+    GITHUB_AUTHORIZE_URL,
+    GITHUB_EMAILS_URL,
+    GITHUB_TOKEN_URL,
+    GITHUB_USER_URL,
     get_settings,
 )
 from skillhub_core.db import get_session
@@ -38,8 +40,8 @@ _STATE_TTL = 600
 
 
 def _cookie_kwargs(max_age: int, path: str = "/") -> dict:
-    # SameSite=Lax (never Strict): Google's redirect back to /callback is a cross-site top-level
-    # GET, and Strict would drop the state cookie. Secure is env-gated (off on http://localhost).
+    # SameSite=Lax (never Strict): the provider's redirect back to /callback is a cross-site
+    # top-level GET, and Strict would drop the state cookie. Secure is env-gated (off on localhost).
     return {
         "httponly": True,
         "secure": settings.skillhub_cookie_secure,
@@ -57,24 +59,22 @@ def _safe_next(target: str | None) -> str:
     return "/"
 
 
-# --- browser login (Google OAuth authorization-code flow) --------------------------------------
+# --- browser login (GitHub OAuth authorization-code flow) --------------------------------------
 
 
 @router.get("/login")
 def login(next: str = Query("/")):
-    if not settings.google_enabled:
-        raise HTTPException(status_code=503, detail="Google OAuth is not configured on this server")
+    if not settings.oauth_enabled:
+        raise HTTPException(status_code=503, detail="GitHub OAuth is not configured on this server")
     state = core_auth.generate_token()
     params = {
-        "client_id": settings.google_client_id,
+        "client_id": settings.github_client_id,
         "redirect_uri": settings.effective_redirect_uri,
-        "response_type": "code",
-        "scope": "openid email profile",
+        "scope": "read:user user:email",
         "state": state,
-        "access_type": "online",
-        "prompt": "select_account",
+        "allow_signup": "false",
     }
-    resp = RedirectResponse(f"{GOOGLE_AUTHORIZE_URL}?{urlencode(params)}", status_code=302)
+    resp = RedirectResponse(f"{GITHUB_AUTHORIZE_URL}?{urlencode(params)}", status_code=302)
     resp.set_cookie(STATE_COOKIE, state, **_cookie_kwargs(_STATE_TTL, path="/api/auth"))
     resp.set_cookie(NEXT_COOKIE, _safe_next(next), **_cookie_kwargs(_STATE_TTL, path="/api/auth"))
     return resp
@@ -88,45 +88,61 @@ def callback(
     next_cookie: str | None = Cookie(default=None, alias=NEXT_COOKIE),
     session: Session = Depends(get_session),
 ):
-    if not settings.google_enabled:
-        raise HTTPException(status_code=503, detail="Google OAuth is not configured on this server")
+    if not settings.oauth_enabled:
+        raise HTTPException(status_code=503, detail="GitHub OAuth is not configured on this server")
     if not state_cookie or state != state_cookie:
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
 
+    ua = {"User-Agent": "SkillHub", "Accept": "application/vnd.github+json"}
     try:
         with httpx.Client(timeout=15) as client:
             token_resp = client.post(
-                GOOGLE_TOKEN_URL,
+                GITHUB_TOKEN_URL,
                 data={
+                    "client_id": settings.github_client_id,
+                    "client_secret": settings.github_client_secret,
                     "code": code,
-                    "client_id": settings.google_client_id,
-                    "client_secret": settings.google_client_secret,
                     "redirect_uri": settings.effective_redirect_uri,
-                    "grant_type": "authorization_code",
                 },
+                headers={"Accept": "application/json", "User-Agent": "SkillHub"},
             )
             token_resp.raise_for_status()
+            # GitHub returns 200 with {"error": ...} on a bad code, so check the field, not status.
             access_token = token_resp.json().get("access_token")
             if not access_token:
-                raise HTTPException(status_code=502, detail="Google returned no access token")
-            info_resp = client.get(
-                GOOGLE_USERINFO_URL, headers={"Authorization": f"Bearer {access_token}"}
-            )
-            info_resp.raise_for_status()
-            info = info_resp.json()
+                raise HTTPException(status_code=502, detail="GitHub returned no access token")
+            auth_h = {**ua, "Authorization": f"Bearer {access_token}"}
+            user_resp = client.get(GITHUB_USER_URL, headers=auth_h)
+            user_resp.raise_for_status()
+            gh = user_resp.json()
+            emails_resp = client.get(GITHUB_EMAILS_URL, headers=auth_h)
+            emails = emails_resp.json() if emails_resp.status_code == 200 else []
     except httpx.HTTPError as exc:
-        logger.warning("Google token/userinfo exchange failed: %s", type(exc).__name__)
-        raise HTTPException(status_code=502, detail="Google authentication failed") from exc
+        logger.warning("GitHub OAuth exchange failed: %s", type(exc).__name__)
+        raise HTTPException(status_code=502, detail="GitHub authentication failed") from exc
 
-    sub = info.get("sub")
+    sub = gh.get("id")
     if not sub:
-        raise HTTPException(status_code=502, detail="Google returned no subject")
-    user = core_auth.upsert_google_user(
+        raise HTTPException(status_code=502, detail="GitHub returned no user id")
+    # Prefer the verified primary email (needs the user:email scope); fall back to profile email.
+    email: str | None = None
+    email_verified = False
+    if isinstance(emails, list):
+        chosen = next((e for e in emails if e.get("primary") and e.get("verified")), None) or next(
+            (e for e in emails if e.get("verified")), None
+        )
+        if chosen:
+            email, email_verified = chosen.get("email"), True
+    if email is None:
+        email = gh.get("email")  # unverified profile email, if any
+
+    user = core_auth.upsert_oauth_user(
         session,
-        sub=sub,
-        email=info.get("email"),
-        name=info.get("name"),
-        email_verified=bool(info.get("email_verified")),
+        provider=AUTH_PROVIDER,
+        sub=str(sub),
+        email=email,
+        name=gh.get("name") or gh.get("login"),
+        email_verified=email_verified,
     )
     _, token = core_auth.create_auth_token(
         session, user, kind=TOKEN_SESSION, ttl_seconds=settings.skillhub_session_ttl

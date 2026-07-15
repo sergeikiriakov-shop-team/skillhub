@@ -3,7 +3,7 @@
 Reads are public and need no token. For writes (upload, submit assessment, recommendations) the
 server obtains a SkillHub token via the OAuth 2.0 Device Authorization Grant: it asks the API for
 a code, surfaces a verification URL + user code to you, you approve it in the browser (signing in
-with Google), and the server caches the minted token to a mounted volume so later sessions reuse
+with GitHub), and the server caches the minted token to a mounted volume so later sessions reuse
 it. A `SKILLHUB_TOKEN` env var still overrides everything (back-compat / CI).
 
 Env:
@@ -154,7 +154,7 @@ def _acquire_token(max_wait: int = _DEVICE_MAX_WAIT) -> tuple[str | None, str]:
 
     msg = (
         f"Authorization required. Open {pending['url']} and approve code "
-        f"{pending['user_code']} (sign in with Google), then re-run the command."
+        f"{pending['user_code']} (sign in with GitHub), then re-run the command."
     )
     return None, msg
 
@@ -236,7 +236,7 @@ def list_recommendations(status: str | None = None) -> Any:
 @mcp.tool()
 def authenticate() -> Any:
     """Authorize this MCP for writes via the device flow. Returns a verification URL + code to open
-    in a browser (sign in with Google, approve), and waits briefly for approval. Safe to call again
+    in a browser (sign in with GitHub, approve), and waits briefly for approval. Safe to call again
     to resume; the token is cached so you normally only do this once per machine."""
     token, message = _acquire_token()
     if token is not None:

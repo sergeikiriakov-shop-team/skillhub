@@ -46,13 +46,23 @@ def _apply_column_migrations() -> None:
     statements = [
         "ALTER TABLE skills ADD COLUMN IF NOT EXISTS task_group VARCHAR(80)",
         "CREATE INDEX IF NOT EXISTS ix_skills_task_group ON skills (task_group)",
-        # OAuth rework: identity columns on the pre-existing users table + drop the legacy
-        # single-token NOT NULL. Uniqueness lives in these named indexes (partial: NULLs allowed).
+        # OAuth rework: provider-agnostic identity columns on the pre-existing users table + drop
+        # the legacy single-token NOT NULL. Uniqueness lives in named indexes (partial: NULLs ok).
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(320)",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(20)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_sub VARCHAR(255)",
         "ALTER TABLE users ALTER COLUMN token_hash DROP NOT NULL",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email ON users (email)",
-        "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_sub ON users (google_sub)",
+        # Migrate any earlier google_sub column into the generic pair, then retire it. Guarded so
+        # it is a no-op on a fresh DB that never had google_sub.
+        "DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns "
+        "WHERE table_name='users' AND column_name='google_sub') THEN "
+        "UPDATE users SET auth_provider='google', provider_sub=google_sub "
+        "WHERE provider_sub IS NULL AND google_sub IS NOT NULL; END IF; END $$",
+        "DROP INDEX IF EXISTS uq_users_google_sub",
+        "ALTER TABLE users DROP COLUMN IF EXISTS google_sub",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_provider_identity "
+        "ON users (auth_provider, provider_sub)",
         # Carry any legacy per-user tokens over to auth_tokens so existing MCP tokens keep working.
         "INSERT INTO auth_tokens (user_id, token_hash, kind, created_at) "
         "SELECT id, token_hash, 'device', now() FROM users WHERE token_hash IS NOT NULL "

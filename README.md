@@ -38,7 +38,7 @@ installable package `packages/skillhub_core` and is imported by the API.
 
 ```bash
 cp .env.example .env
-# reads are open; to enable browser login set GOOGLE_CLIENT_ID/SECRET + SKILLHUB_BOOTSTRAP_ADMINS
+# reads are open; to enable browser login set GITHUB_CLIENT_ID/SECRET + SKILLHUB_BOOTSTRAP_ADMINS
 # (see "Authentication" below). Everything else works without it.
 
 # Base stack: database + API + web portal
@@ -73,18 +73,20 @@ drive this. Storing the strategy server-side means every developer runs the one 
 
 Built for a shared, remotely-hosted instance. **Reads are public.** Writes require auth:
 
-- **Humans** sign in with **Google** in the browser (button in the header → `/api/auth/login`).
-  Any Google account works and starts as `viewer`; roles ascend `viewer → contributor → evaluator
+- **Humans** sign in with **GitHub** in the browser (button in the header → `/api/auth/login`).
+  Any GitHub account works and starts as `viewer`; roles ascend `viewer → contributor → evaluator
   → admin`. Emails in `SKILLHUB_BOOTSTRAP_ADMINS` become admin on first login; an admin then
-  promotes others. SkillHub is its own authorization server — Google only provides identity.
+  promotes others. SkillHub is its own authorization server — GitHub only provides identity, so
+  the provider is easy to swap (only `/login` and `/callback` are provider-specific).
 - **Claude Code / MCP** authorizes via the **OAuth device flow**: on the first write it shows a
-  verification URL + code; you approve it at `/device` (signed in with Google) and the minted
+  verification URL + code; you approve it at `/device` (signed in with GitHub) and the minted
   SkillHub token is cached to a docker volume. See `services/mcp/README.md`.
 
-Setup: register a Google "Web application" OAuth client (redirect URI = `SKILLHUB_PUBLIC_URL` +
-`/api/auth/callback`), then set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SKILLHUB_PUBLIC_URL`,
-`SKILLHUB_BOOTSTRAP_ADMINS`, and `SKILLHUB_COOKIE_SECURE=true` (prod/HTTPS) in `.env`. Without
-Google creds the stack still runs; only browser login is disabled.
+Setup: register an OAuth App under your GitHub account (Settings → Developer settings → OAuth Apps;
+"Authorization callback URL" = `SKILLHUB_PUBLIC_URL` + `/api/auth/callback`), then set
+`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SKILLHUB_PUBLIC_URL`, `SKILLHUB_BOOTSTRAP_ADMINS`, and
+`SKILLHUB_COOKIE_SECURE=true` (prod/HTTPS) in `.env`. Without GitHub creds the stack still runs;
+only browser login is disabled.
 
 ## Local development
 
@@ -137,7 +139,7 @@ docker run --rm node:20-slim npm pack react-dom              # larger: hangs on 
   skill versioning history.
 - **Phase 3:** synthesize an "ideal" skill from a cluster, export back to `SKILL.md` / per-client
   adapters, prepare a PR.
-- **Phase 4:** auth (**done** — Google OAuth login + device-flow tokens for the MCP), usage
+- **Phase 4:** auth (**done** — GitHub OAuth login + device-flow tokens for the MCP), usage
   telemetry, feedback loop, leaderboards.
 - **Later/optional:** scheduled re-evaluation (headless `claude -p` on a scheduler).
 

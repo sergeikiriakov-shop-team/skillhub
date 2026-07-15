@@ -45,12 +45,13 @@ synthesize an "ideal" merged skill.
 - **Local embeddings.** `sentence-transformers/all-MiniLM-L6-v2` (384-dim) avoids an extra API
   key and works offline after the first model download. Fail-soft: no model → no vector, the
   rest still works.
-- **SkillHub is its own authorization server; Google is only identity.** Reads are public. Humans
-  log in with Google (auth-code flow → opaque `skillhub_session` cookie); the headless MCP uses the
-  RFC 8628 device grant and gets a SkillHub-minted token. Both surfaces share one `auth_tokens`
-  table and `get_user_by_token`; `current_user_optional` accepts bearer or cookie. Roles
-  (`viewer→contributor→evaluator→admin`) are a SkillHub concept — Google never carries them. This
-  avoids validating Google tokens per-request or handling refresh tokens in the MCP.
+- **SkillHub is its own authorization server; the OAuth provider is only identity.** Reads are
+  public. Humans log in with **GitHub** (auth-code flow → opaque `skillhub_session` cookie); the
+  headless MCP uses the RFC 8628 device grant and gets a SkillHub-minted token. Both surfaces share
+  one `auth_tokens` table and `get_user_by_token`; `current_user_optional` accepts bearer or cookie.
+  Roles (`viewer→contributor→evaluator→admin`) are a SkillHub concept the provider never carries.
+  The provider is deliberately isolated to `/login` + `/callback` and the `(auth_provider,
+  provider_sub)` identity columns, so swapping it (GitHub↔Google↔…) is a localized change.
 
 ## Ingest pipeline (`skillhub_core/pipeline.py`)
 

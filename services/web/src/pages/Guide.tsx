@@ -64,8 +64,8 @@ const en: GuideContent = {
       blocks: [
         {
           kind: "p",
-          text: "Reading is open to everyone — no sign-in. To write, sign in with Google (top-right). " +
-            "Any Google account works; you start as a viewer. Roles, ascending:",
+          text: "Reading is open to everyone — no sign-in. To write, sign in with GitHub (top-right). " +
+            "Any GitHub account works; you start as a viewer. Roles, ascending:",
         },
         {
           kind: "list",
@@ -97,7 +97,7 @@ const en: GuideContent = {
           kind: "p",
           text: "Reads need nothing. The first time you use a write tool (or run the `authenticate` " +
             "tool), the server prints a verification link + code: open it, approve at /device (signing " +
-            "in with Google), and the token is cached to the volume. Then just talk to Claude Code.",
+            "in with GitHub), and the token is cached to the volume. Then just talk to Claude Code.",
         },
       ],
     },
@@ -177,8 +177,8 @@ const ru: GuideContent = {
       blocks: [
         {
           kind: "p",
-          text: "Чтение открыто всем — без входа. Чтобы писать, войдите через Google (справа вверху). " +
-            "Подойдёт любой Google-аккаунт; вы начинаете как viewer. Роли по возрастанию прав:",
+          text: "Чтение открыто всем — без входа. Чтобы писать, войдите через GitHub (справа вверху). " +
+            "Подойдёт любой GitHub-аккаунт; вы начинаете как viewer. Роли по возрастанию прав:",
         },
         {
           kind: "list",
@@ -210,7 +210,7 @@ const ru: GuideContent = {
           kind: "p",
           text: "Для чтения ничего не нужно. При первом вызове пишущего инструмента (или запустив " +
             "инструмент `authenticate`) сервер выдаст ссылку и код: откройте её, подтвердите на /device " +
-            "(войдя через Google) — токен закэшируется в том. Дальше просто общайтесь с Claude Code.",
+            "(войдя через GitHub) — токен закэшируется в том. Дальше просто общайтесь с Claude Code.",
         },
       ],
     },

@@ -36,7 +36,7 @@ Claude Code launches the server as a stdio subprocess via `docker run -i`. The c
 
 - **Authentication is automatic (device flow).** Reads are public and need nothing. The first time
   you use a **write** tool (upload/assess/recommend), the server starts the OAuth device flow and
-  returns a verification URL + short code. Open it, sign in with Google, approve, and the minted
+  returns a verification URL + short code. Open it, sign in with GitHub, approve, and the minted
   SkillHub token is cached to the `skillhub-mcp-token` docker volume (`/data/token`) so you only do
   this once per machine. You can also run the `authenticate` tool proactively. Writes still require
   a role — a fresh account is a `viewer`; ask an admin to promote you to `contributor`/`evaluator`.

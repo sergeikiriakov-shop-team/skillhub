@@ -182,13 +182,15 @@ class SkillCategory(Base):
 
 
 class User(Base):
-    """A team member. Identity comes from Google OAuth (``google_sub``/``email``); access to the
-    API is carried by rows in ``auth_tokens``. Reads are open; uploads/evaluations require a role.
+    """A team member. Identity comes from an OAuth provider (``auth_provider`` + ``provider_sub``,
+    e.g. github + the numeric user id) plus ``email``; access to the API is carried by rows in
+    ``auth_tokens``. Reads are open; uploads/evaluations require a role.
 
     ``token_hash`` is the legacy single-token column, kept nullable for back-compat; new code
-    issues tokens via :class:`AuthToken`. Uniqueness of ``email``/``google_sub`` is enforced by
-    named indexes created in ``db._apply_column_migrations`` (not by ``unique=`` here) so fresh
-    and migrated databases converge on the same schema."""
+    issues tokens via :class:`AuthToken`. Uniqueness of ``email`` and of the
+    ``(auth_provider, provider_sub)`` pair is enforced by named indexes created in
+    ``db._apply_column_migrations`` (not by ``unique=`` here) so fresh and migrated databases
+    converge on the same schema."""
 
     __tablename__ = "users"
 
@@ -196,7 +198,8 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(200))
     role: Mapped[str] = mapped_column(String(20), default=ROLE_CONTRIBUTOR)
     email: Mapped[str | None] = mapped_column(String(320), nullable=True)
-    google_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    auth_provider: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    provider_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
     token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

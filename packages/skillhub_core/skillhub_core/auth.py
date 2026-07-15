@@ -1,9 +1,9 @@
-"""Auth helpers: opaque access tokens, Google identity upsert and the device-flow state machine.
+"""Auth helpers: opaque access tokens, OAuth identity upsert and the device-flow state machine.
 
 Tokens are high-entropy random strings; we store only their SHA-256 (in ``auth_tokens``). Reads
 are open. Uploads require ``can_upload``; submitting evaluations requires ``can_evaluate``; user
-management requires ``admin``. Google (browser login) only provides identity; roles are assigned
-inside SkillHub. The device grant (RFC 8628) lets the headless MCP obtain a SkillHub token."""
+management requires ``admin``. The OAuth provider (browser login) only provides identity; roles
+are assigned inside SkillHub. The device grant (RFC 8628) lets the headless MCP obtain a token."""
 
 from __future__ import annotations
 
@@ -115,21 +115,36 @@ def _default_role() -> str:
     return role if role in ROLES else ROLE_VIEWER
 
 
-def upsert_google_user(
-    session: Session, sub: str, email: str | None, name: str | None, email_verified: bool
+def upsert_oauth_user(
+    session: Session,
+    provider: str,
+    sub: str,
+    email: str | None,
+    name: str | None,
+    email_verified: bool,
 ) -> User:
-    """Find-or-create the user behind a Google identity. Keyed on the stable ``sub``; ``email`` is
-    used only (when verified) to link a pre-existing row and to match the bootstrap-admin list."""
+    """Find-or-create the user behind an OAuth identity. Keyed on the stable
+    ``(provider, sub)`` pair; ``email`` is used only (when verified) to link a pre-existing row
+    and to match the bootstrap-admin list."""
     settings = get_settings()
     email_l = (email or "").strip().lower() or None
 
-    user = session.scalars(select(User).where(User.google_sub == sub)).first()
+    user = session.scalars(
+        select(User).where(User.auth_provider == provider, User.provider_sub == sub)
+    ).first()
     if user is None and email_verified and email_l:
         user = session.scalars(select(User).where(User.email == email_l)).first()
         if user is not None:
-            user.google_sub = sub
+            user.auth_provider = provider
+            user.provider_sub = sub
     if user is None:
-        user = User(name=name or email_l or "user", role=_default_role(), email=email_l, google_sub=sub)
+        user = User(
+            name=name or email_l or "user",
+            role=_default_role(),
+            email=email_l,
+            auth_provider=provider,
+            provider_sub=sub,
+        )
         session.add(user)
 
     if name:

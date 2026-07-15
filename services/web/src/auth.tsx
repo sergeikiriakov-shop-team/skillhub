@@ -1,5 +1,5 @@
 // Auth state for the SPA: reads /api/auth/me (cookie session), exposes login/logout.
-// Login is a full-page navigation (a fetch can't follow the cross-origin 302 to Google);
+// Login is a full-page navigation (a fetch can't follow the cross-origin 302 to the provider);
 // logout is a POST that revokes the session, then we refetch /me.
 
 import { createContext, useCallback, useContext, useMemo } from "react";
