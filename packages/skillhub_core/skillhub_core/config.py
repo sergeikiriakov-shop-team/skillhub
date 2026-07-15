@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     oauth_redirect_uri: str = ""
 
     # --- Auth: sessions / roles ---
+    # When False, even reads (catalog/search/stats/…) require a logged-in user; only health and the
+    # auth endpoints stay open. True keeps the catalog world-readable (default; dev convenience).
+    skillhub_public_reads: bool = True
     # Session cookie lifetime (seconds); default 14 days.
     skillhub_session_ttl: int = 14 * 24 * 3600
     # Role assigned to a brand-new user (validated against ROLES at use site).

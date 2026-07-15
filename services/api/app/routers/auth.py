@@ -158,10 +158,12 @@ def callback(
 
 @router.get("/me")
 def me(user: User | None = Depends(current_user_optional)):
+    reads_require_auth = not settings.skillhub_public_reads
     if user is None:
-        return {"authenticated": False}
+        return {"authenticated": False, "reads_require_auth": reads_require_auth}
     return {
         "authenticated": True,
+        "reads_require_auth": reads_require_auth,
         "id": user.id,
         "name": user.name,
         "email": user.email,

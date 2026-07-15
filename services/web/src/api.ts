@@ -112,6 +112,7 @@ export interface Health {
 
 export interface Me {
   authenticated: boolean;
+  reads_require_auth?: boolean;
   id?: number;
   name?: string;
   email?: string | null;

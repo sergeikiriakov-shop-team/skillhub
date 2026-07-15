@@ -8,13 +8,14 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from skillhub_core.config import get_settings
 from skillhub_core.db import init_db
 from skillhub_core.rubric import RUBRIC_VERSION
 
+from .auth import require_read_access
 from .routers import (
     admin,
     auth,
@@ -52,16 +53,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Auth + health stay open. All data routers go through require_read_access, which is a no-op when
+# SKILLHUB_PUBLIC_READS=true and requires a logged-in user otherwise (writes keep their own role gates).
+_gated = [Depends(require_read_access)]
 app.include_router(auth.router, prefix="/api")
-app.include_router(skills.router, prefix="/api")
-app.include_router(categories.router, prefix="/api")
-app.include_router(task_groups.router, prefix="/api")
-app.include_router(recommendations.router, prefix="/api")
-app.include_router(search.router, prefix="/api")
-app.include_router(evaluations.router, prefix="/api")
-app.include_router(rubric.router, prefix="/api")
-app.include_router(stats.router, prefix="/api")
-app.include_router(admin.router, prefix="/api")
+app.include_router(skills.router, prefix="/api", dependencies=_gated)
+app.include_router(categories.router, prefix="/api", dependencies=_gated)
+app.include_router(task_groups.router, prefix="/api", dependencies=_gated)
+app.include_router(recommendations.router, prefix="/api", dependencies=_gated)
+app.include_router(search.router, prefix="/api", dependencies=_gated)
+app.include_router(evaluations.router, prefix="/api", dependencies=_gated)
+app.include_router(rubric.router, prefix="/api", dependencies=_gated)
+app.include_router(stats.router, prefix="/api", dependencies=_gated)
+app.include_router(admin.router, prefix="/api", dependencies=_gated)
 
 
 @app.get("/api/health")

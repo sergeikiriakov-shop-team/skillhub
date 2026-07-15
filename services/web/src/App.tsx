@@ -4,13 +4,16 @@ import {
   Avatar,
   Badge,
   Button,
+  Card,
+  Container,
   Group,
   Menu,
   SegmentedControl,
+  Stack,
   Text,
   Title,
 } from "@mantine/core";
-import { Link, NavLink, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import Catalog from "./pages/Catalog";
 import Categories from "./pages/Categories";
 import DeviceApprove from "./pages/DeviceApprove";
@@ -18,6 +21,7 @@ import Guide from "./pages/Guide";
 import Methodology from "./pages/Methodology";
 import Recommendations from "./pages/Recommendations";
 import SkillDetail from "./pages/SkillDetail";
+import PageLoader from "./components/PageLoader";
 import { useI18n } from "./i18n";
 import type { Lang } from "./i18n";
 import { useAuth } from "./auth";
@@ -93,8 +97,32 @@ function AuthControl() {
   );
 }
 
+function LoginGate() {
+  const { t } = useI18n();
+  const { login } = useAuth();
+  return (
+    <Container size="xs" mt={80}>
+      <Card withBorder radius="md" padding="xl">
+        <Stack align="center" gap="md">
+          <Title order={3}>{t("auth.gateTitle")}</Title>
+          <Text c="dimmed" ta="center" size="sm">
+            {t("auth.gateText")}
+          </Text>
+          <Button onClick={() => login()}>{t("auth.signIn")}</Button>
+        </Stack>
+      </Card>
+    </Container>
+  );
+}
+
 export default function App() {
   const { t } = useI18n();
+  const { isAuthenticated, isLoading, readsRequireAuth } = useAuth();
+  const location = useLocation();
+  // Gate everything behind login when the server closes reads — except the device-approval page,
+  // which handles its own sign-in and must stay reachable for the MCP flow.
+  const gated = readsRequireAuth && !isAuthenticated && location.pathname !== "/device";
+
   return (
     <AppShell header={{ height: 60 }} padding="md">
       <AppShell.Header>
@@ -108,13 +136,15 @@ export default function App() {
             </Text>
           </Group>
           <Group gap="lg" wrap="nowrap">
-            <Group gap="lg" wrap="nowrap">
-              <NavItem to="/" label={t("nav.catalog")} />
-              <NavItem to="/categories" label={t("nav.categories")} />
-              <NavItem to="/recommendations" label={t("nav.recommendations")} />
-              <NavItem to="/methodology" label={t("nav.methodology")} />
-              <NavItem to="/guide" label={t("nav.guide")} />
-            </Group>
+            {!gated && (
+              <Group gap="lg" wrap="nowrap">
+                <NavItem to="/" label={t("nav.catalog")} />
+                <NavItem to="/categories" label={t("nav.categories")} />
+                <NavItem to="/recommendations" label={t("nav.recommendations")} />
+                <NavItem to="/methodology" label={t("nav.methodology")} />
+                <NavItem to="/guide" label={t("nav.guide")} />
+              </Group>
+            )}
             <LanguageToggle />
             <AuthControl />
           </Group>
@@ -122,15 +152,21 @@ export default function App() {
       </AppShell.Header>
 
       <AppShell.Main>
-        <Routes>
-          <Route path="/" element={<Catalog />} />
-          <Route path="/categories" element={<Categories />} />
-          <Route path="/recommendations" element={<Recommendations />} />
-          <Route path="/methodology" element={<Methodology />} />
-          <Route path="/guide" element={<Guide />} />
-          <Route path="/device" element={<DeviceApprove />} />
-          <Route path="/skills/:id" element={<SkillDetail />} />
-        </Routes>
+        {isLoading ? (
+          <PageLoader />
+        ) : gated ? (
+          <LoginGate />
+        ) : (
+          <Routes>
+            <Route path="/" element={<Catalog />} />
+            <Route path="/categories" element={<Categories />} />
+            <Route path="/recommendations" element={<Recommendations />} />
+            <Route path="/methodology" element={<Methodology />} />
+            <Route path="/guide" element={<Guide />} />
+            <Route path="/device" element={<DeviceApprove />} />
+            <Route path="/skills/:id" element={<SkillDetail />} />
+          </Routes>
+        )}
       </AppShell.Main>
     </AppShell>
   );

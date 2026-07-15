@@ -12,6 +12,7 @@ interface AuthContextValue {
   me: Me | undefined;
   isLoading: boolean;
   isAuthenticated: boolean;
+  readsRequireAuth: boolean;
   login: (next?: string) => void;
   logout: () => Promise<void>;
 }
@@ -37,7 +38,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [qc]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ me, isLoading, isAuthenticated: !!me?.authenticated, login, logout }),
+    () => ({
+      me,
+      isLoading,
+      isAuthenticated: !!me?.authenticated,
+      readsRequireAuth: !!me?.reads_require_auth,
+      login,
+      logout,
+    }),
     [me, isLoading, login, logout],
   );
 

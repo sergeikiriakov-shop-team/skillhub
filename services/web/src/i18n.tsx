@@ -135,6 +135,8 @@ const en: Dict = {
   // auth
   "auth.signIn": "Sign in with GitHub",
   "auth.signOut": "Sign out",
+  "auth.gateTitle": "Sign in to SkillHub",
+  "auth.gateText": "This SkillHub instance requires sign-in to view the catalog and everything else.",
 
   // device flow
   "device.title": "Connect a device",
@@ -282,6 +284,8 @@ const ru: Dict = {
   // auth
   "auth.signIn": "Войти через GitHub",
   "auth.signOut": "Выйти",
+  "auth.gateTitle": "Вход в SkillHub",
+  "auth.gateText": "Этот экземпляр SkillHub требует входа для просмотра каталога и всего остального.",
 
   // device flow
   "device.title": "Подключение устройства",

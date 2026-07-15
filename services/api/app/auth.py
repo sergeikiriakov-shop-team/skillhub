@@ -9,6 +9,7 @@ from fastapi import Cookie, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from skillhub_core import auth as core_auth
+from skillhub_core.config import get_settings
 from skillhub_core.db import get_session
 from skillhub_core.models import User
 
@@ -36,6 +37,16 @@ def current_user_optional(
 def require_user(user: User | None = Depends(current_user_optional)) -> User:
     if user is None:
         raise HTTPException(status_code=401, detail="Authentication required (bearer token)")
+    return user
+
+
+def require_read_access(user: User | None = Depends(current_user_optional)) -> User | None:
+    """Gate for read endpoints. Open when ``skillhub_public_reads`` is True; otherwise requires a
+    logged-in user (session cookie or bearer token)."""
+    if get_settings().skillhub_public_reads:
+        return user
+    if user is None:
+        raise HTTPException(status_code=401, detail="Authentication required")
     return user
 
 
