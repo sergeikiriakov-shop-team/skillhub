@@ -61,10 +61,8 @@ services:
       dockerfile: services/web/Dockerfile
     depends_on:
       - api
-    ports:
-      # Plain-http fallback; the primary public entry is Caddy (https) below.
-      - "${WEB_PORT:-8080}:80"
     restart: unless-stopped
+    # No published port — reached only via the caddy reverse proxy (https) on the internal network.
 
   # TLS terminator / reverse proxy. Set SKILLHUB_DOMAIN (e.g. <ip>.sslip.io) to enable it.
   # Auto-obtains a Let's Encrypt cert; needs ports 80 + 443 reachable.
