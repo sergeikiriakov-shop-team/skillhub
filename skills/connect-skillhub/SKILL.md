@@ -12,7 +12,8 @@ description: >
 # Connect to SkillHub (register its MCP)
 
 Register the SkillHub MCP server in this Claude Code so the user can browse/search/upload/evaluate
-skills against their SkillHub instance. Reads are public; writes authorize later via the device flow.
+skills against their SkillHub instance. Depending on the instance, reads are either public or also
+require sign-in; writes always do. Authorization happens via the device flow on the first call that needs it.
 
 ## Inputs
 - **Server URL** — the SkillHub base URL the user gives you, e.g. `https://166.1.29.218.sslip.io`

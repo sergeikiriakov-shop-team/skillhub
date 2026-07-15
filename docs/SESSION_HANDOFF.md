@@ -11,7 +11,10 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   and (if allowed) evaluates them, submitting results back over the REST API. The `skillhub`
   Claude Code skill (`skills/skillhub/SKILL.md`) drives this.
 - **Auth = GitHub OAuth (humans) + device flow (MCP); SkillHub is its own auth server.** Reads are
-  **open**. Humans sign in with GitHub in the browser (`GET /api/auth/login` → callback → opaque
+  **open by default** but can be closed with `SKILLHUB_PUBLIC_READS=false` (prod is closed — then
+  only `/api/health` + `/api/auth/*` stay open, everything else needs a logged-in user via
+  `require_read_access`; the SPA shows a login gate and the MCP auto-runs the device flow on the
+  first gated read). Humans sign in with GitHub in the browser (`GET /api/auth/login` → callback → opaque
   session cookie `skillhub_session`). The MCP authorizes via the RFC 8628 device grant and caches a
   SkillHub-minted token. All credentials live in `auth_tokens` (kind `session|device|pat`, SHA-256
   only) and resolve through one `get_user_by_token`; `current_user_optional` reads **bearer OR
@@ -45,9 +48,9 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   `claude -p` re-evaluation) is deferred to a later phase.
 
 ## Key API endpoints
-- Open reads: `GET /api/health`, `/api/stats`, `/api/skills`, `/api/skills?evaluated=false`
-  (work queue), `/api/skills/{id}`, `/api/search?q=`, `/api/categories`, `/api/rubric`,
-  `/api/skills/{id}/evaluations`.
+- Reads (open when `SKILLHUB_PUBLIC_READS=true`, else require a logged-in user): `GET /api/stats`,
+  `/api/skills`, `/api/skills?evaluated=false` (work queue), `/api/skills/{id}`, `/api/search?q=`,
+  `/api/categories`, `/api/rubric`, `/api/skills/{id}/evaluations`. `GET /api/health` is always open.
 - Token/cookie writes: `POST /api/skills` (contributor+), `POST /api/skills/{id}/assessment`
   (evaluator), `DELETE /api/skills/{id}` (admin).
 - Auth: `GET /api/auth/login|callback`, `GET /api/auth/me`, `POST /api/auth/logout`,

@@ -41,7 +41,8 @@ ssh skillhub 'cd /opt/skillhub && docker compose -f docker-compose.prod.yml up -
   the public URL: callback = `https://166.1.29.218.sslip.io/api/auth/callback`. Put
   `GITHUB_CLIENT_ID/SECRET` in the server `.env`.
 - First login by an email in `SKILLHUB_BOOTSTRAP_ADMINS` becomes `admin`; that admin promotes others
-  (`viewer → contributor → evaluator`). Reads are public.
+  (`viewer → contributor → evaluator`). This instance sets `SKILLHUB_PUBLIC_READS=false`, so even
+  reads require sign-in (only `/api/health` + `/api/auth/*` stay open).
 
 ## MCP for developers
 - Publish the MCP image once (maintainer): `docker build -t skillhub-mcp services/mcp`, tag/push to

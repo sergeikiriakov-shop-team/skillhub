@@ -166,20 +166,32 @@ def _authed_call(method: str, path: str, **kwargs: Any) -> Any:
     return _call(method, path, token=token, **kwargs)
 
 
-# --- read tools (public) -----------------------------------------------------------------------
+def _read_call(method: str, path: str, **kwargs: Any) -> Any:
+    """Read from the API. Tries with any cached token; if the instance gates reads (401), it runs
+    the device flow and retries. Works whether the server is public-read or login-only."""
+    r = _call(method, path, token=_cached_token(), **kwargs)
+    if isinstance(r, dict) and r.get("error") == 401:
+        token, message = _acquire_token()
+        if token is None:
+            return {"action_required": message}
+        r = _call(method, path, token=token, **kwargs)
+    return r
+
+
+# --- read tools (public unless the instance gates reads) ---------------------------------------
 
 
 @mcp.tool()
 def list_unevaluated() -> Any:
     """List skills with no evaluation yet — the work queue to score."""
-    return _call("GET", "/api/skills", params={"evaluated": "false"})
+    return _read_call("GET", "/api/skills", params={"evaluated": "false"})
 
 
 @mcp.tool()
 def list_skills(search: str | None = None, category: str | None = None) -> Any:
     """List skills, optionally filtered by a name/author substring or a category key."""
     params = {k: v for k, v in {"search": search, "category": category}.items() if v}
-    return _call("GET", "/api/skills", params=params or None)
+    return _read_call("GET", "/api/skills", params=params or None)
 
 
 @mcp.tool()
@@ -188,13 +200,13 @@ def get_skill(skill_id: int) -> Any:
     into the user's Claude Code, use `skill_md` (the ready-to-write SKILL.md) and `references[]`
     ({path, content}) and write them to `<skills-dir>/<name>/` with your own Write tool — this
     MCP server runs in a container and cannot touch the user's disk."""
-    return _call("GET", f"/api/skills/{skill_id}")
+    return _read_call("GET", f"/api/skills/{skill_id}")
 
 
 @mcp.tool()
 def search(query: str) -> Any:
     """Semantic search over skills (by meaning)."""
-    return _call("GET", "/api/search", params={"q": query})
+    return _read_call("GET", "/api/search", params={"q": query})
 
 
 @mcp.tool()
@@ -205,7 +217,7 @@ def get_rubric() -> Any:
     `selection_strategy` (how to pick the best in a group) and the synthesis spec
     (`synthesis_strategy`, `synthesis_algorithm`, `synthesis_prompt`). Fetch this before scoring,
     categorizing, selecting a best-of-group, or synthesizing an ideal skill."""
-    return _call("GET", "/api/rubric")
+    return _read_call("GET", "/api/rubric")
 
 
 @mcp.tool()
@@ -214,20 +226,20 @@ def list_task_groups(status: str | None = None) -> Any:
     with each group's skill count and average score. Call this BEFORE assigning a `task_group` on
     an assessment and REUSE a matching slug, so skills that do the same job cluster together
     instead of fragmenting across near-duplicate slugs."""
-    return _call("GET", "/api/task-groups")
+    return _read_call("GET", "/api/task-groups")
 
 
 @mcp.tool()
 def get_stats() -> Any:
     """Aggregate dashboard stats (totals, evaluated count, average score, per-category)."""
-    return _call("GET", "/api/stats")
+    return _read_call("GET", "/api/stats")
 
 
 @mcp.tool()
 def list_recommendations(status: str | None = None) -> Any:
     """List curator recommendations (proposed catalog changes: synthesize/split/merge/dedup/delete).
     Optionally filter by status: proposed|accepted|done|dismissed."""
-    return _call("GET", "/api/recommendations", params={"status": status} if status else None)
+    return _read_call("GET", "/api/recommendations", params={"status": status} if status else None)
 
 
 # --- auth ---------------------------------------------------------------------------------------

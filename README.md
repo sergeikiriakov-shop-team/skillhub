@@ -71,7 +71,9 @@ drive this. Storing the strategy server-side means every developer runs the one 
 
 ## Authentication
 
-Built for a shared, remotely-hosted instance. **Reads are public.** Writes require auth:
+Built for a shared, remotely-hosted instance. **Reads are public by default** (set
+`SKILLHUB_PUBLIC_READS=false` to require sign-in for reads too — only `/api/health` and the auth
+endpoints stay open). Writes always require auth:
 
 - **Humans** sign in with **GitHub** in the browser (button in the header → `/api/auth/login`).
   Any GitHub account works and starts as `viewer`; roles ascend `viewer → contributor → evaluator

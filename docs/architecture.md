@@ -46,7 +46,9 @@ synthesize an "ideal" merged skill.
   key and works offline after the first model download. Fail-soft: no model → no vector, the
   rest still works.
 - **SkillHub is its own authorization server; the OAuth provider is only identity.** Reads are
-  public. Humans log in with **GitHub** (auth-code flow → opaque `skillhub_session` cookie); the
+  public by default, or gated behind login via `SKILLHUB_PUBLIC_READS=false` (a `require_read_access`
+  dependency on the data routers; `/api/health` + `/api/auth/*` stay open). Humans log in with
+  **GitHub** (auth-code flow → opaque `skillhub_session` cookie); the
   headless MCP uses the RFC 8628 device grant and gets a SkillHub-minted token. Both surfaces share
   one `auth_tokens` table and `get_user_by_token`; `current_user_optional` accepts bearer or cookie.
   Roles (`viewer→contributor→evaluator→admin`) are a SkillHub concept the provider never carries.

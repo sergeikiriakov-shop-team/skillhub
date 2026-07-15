@@ -57,8 +57,8 @@ const en: GuideContent = {
       blocks: [
         {
           kind: "p",
-          text: "Reading is open to everyone — no sign-in. To write, sign in with GitHub (top-right). " +
-            "Any GitHub account works; you start as a viewer. Roles, ascending:",
+          text: "Sign in with GitHub (top-right) to use SkillHub — this instance requires sign-in to " +
+            "view anything. Any GitHub account works; you start as a viewer. Roles, ascending:",
         },
         {
           kind: "list",
@@ -174,8 +174,9 @@ const ru: GuideContent = {
       blocks: [
         {
           kind: "p",
-          text: "Чтение открыто всем — без входа. Чтобы писать, войдите через GitHub (справа вверху). " +
-            "Подойдёт любой GitHub-аккаунт; вы начинаете как viewer. Роли по возрастанию прав:",
+          text: "Войдите через GitHub (справа вверху), чтобы пользоваться SkillHub — на этом экземпляре " +
+            "вход нужен, чтобы что-либо видеть. Подойдёт любой GitHub-аккаунт; вы начинаете как viewer. " +
+            "Роли по возрастанию прав:",
         },
         {
           kind: "list",
