@@ -35,7 +35,14 @@ export interface SkillSummary {
   source_format: string;
   overall_score: number | null;
   categories: Category[];
+  task_group: string | null;
   updated_at: string;
+}
+
+export interface TaskGroup {
+  key: string;
+  count: number;
+  avg_overall: number | null;
 }
 
 export interface SimilarSkill {
@@ -81,6 +88,25 @@ export interface Health {
   rubric_version?: string;
 }
 
+export interface RubricCategory {
+  key: string;
+  label: string;
+  description: string;
+}
+
+export interface Rubric {
+  rubric_version: string;
+  instructions: string;
+  dimensions: { key: string; description: string }[];
+  evaluation_schema: Record<string, unknown>;
+  categories: RubricCategory[];
+  weights: Record<string, number>;
+  calibration: { band: string; label: string; meaning: string }[];
+  categorization_rules: string;
+  selection_strategy: string;
+  synthesis_strategy: string;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -108,6 +134,8 @@ export const api = {
     request<SkillDetail>("/skills", { method: "POST", body: JSON.stringify(payload) }),
   deleteSkill: (id: number) => request<void>(`/skills/${id}`, { method: "DELETE" }),
   listCategories: () => request<CategoryInfo[]>("/categories"),
+  listTaskGroups: () => request<TaskGroup[]>("/task-groups"),
   search: (q: string) => request<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`),
   stats: () => request<Stats>("/stats"),
+  rubric: () => request<Rubric>("/rubric"),
 };

@@ -104,6 +104,11 @@ def save_categorization(
     session: Session, skill: Skill, result: CategorizationResult
 ) -> None:
     """Replace the LLM-sourced category assignments for a skill (manual ones are preserved)."""
+    # Narrow "specific job" grouping key (finer than the broad category). Only overwrite when a
+    # non-empty value is supplied, so a re-categorization without one keeps the previous group.
+    if result.task_group is not None:
+        skill.task_group = result.task_group.strip() or None
+
     by_key = {c.key: c for c in session.scalars(select(Category)).all()}
 
     # Drop previous llm assignments; keep manual ones.
@@ -161,6 +166,30 @@ def get_taxonomy(session: Session) -> list[dict]:
         {"key": c.key, "label": c.label, "description": c.description}
         for c in session.scalars(select(Category).order_by(Category.id)).all()
     ]
+
+
+def task_groups(session: Session) -> list[dict]:
+    """Distinct narrow task-groups with their skill count and average score — so evaluators can
+    reuse an existing group slug and the dashboard can cluster competing skills."""
+    skills = list_skills(session)
+    agg: dict[str, dict] = {}
+    for s in skills:
+        key = s.task_group
+        if not key:
+            continue
+        version = s.latest_version
+        evaluation = version.latest_evaluation if version else None
+        entry = agg.setdefault(key, {"key": key, "count": 0, "_scores": []})
+        entry["count"] += 1
+        if evaluation is not None:
+            entry["_scores"].append(float(evaluation.overall_score))
+    out = []
+    for entry in agg.values():
+        scores = entry.pop("_scores")
+        entry["avg_overall"] = round(sum(scores) / len(scores), 2) if scores else None
+        out.append(entry)
+    out.sort(key=lambda d: -d["count"])
+    return out
 
 
 def _loaded_skill_query():

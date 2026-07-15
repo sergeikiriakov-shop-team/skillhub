@@ -54,6 +54,7 @@ def skill_to_summary(skill: Skill) -> SkillSummary:
         source_format=version.source_format if version else "claude_skill",
         overall_score=_overall_score(skill),
         categories=_categories(skill),
+        task_group=skill.task_group,
         updated_at=skill.updated_at,
     )
 
@@ -69,6 +70,7 @@ def skill_to_detail(skill: Skill, similar: list[tuple[Skill, float]] | None = No
         source_format=version.source_format if version else "claude_skill",
         overall_score=_overall_score(skill),
         categories=_categories(skill),
+        task_group=skill.task_group,
         updated_at=skill.updated_at,
         trigger_text=version.trigger_text if version else None,
         body_md=version.body_md if version else "",

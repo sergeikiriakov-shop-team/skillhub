@@ -15,7 +15,16 @@ from skillhub_core.config import get_settings
 from skillhub_core.db import init_db
 from skillhub_core.rubric import RUBRIC_VERSION
 
-from .routers import admin, categories, evaluations, rubric, search, skills, stats
+from .routers import (
+    admin,
+    categories,
+    evaluations,
+    rubric,
+    search,
+    skills,
+    stats,
+    task_groups,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("skillhub.api")
@@ -43,6 +52,7 @@ app.add_middleware(
 
 app.include_router(skills.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
+app.include_router(task_groups.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(evaluations.router, prefix="/api")
 app.include_router(rubric.router, prefix="/api")

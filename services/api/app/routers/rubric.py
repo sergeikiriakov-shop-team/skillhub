@@ -7,7 +7,16 @@ from sqlalchemy.orm import Session
 
 from skillhub_core import repository
 from skillhub_core.db import get_session
-from skillhub_core.rubric import RUBRIC_DIMENSIONS, RUBRIC_INSTRUCTIONS, RUBRIC_VERSION
+from skillhub_core.rubric import (
+    CATEGORIZATION_RULES,
+    RUBRIC_CALIBRATION,
+    RUBRIC_DIMENSIONS,
+    RUBRIC_INSTRUCTIONS,
+    RUBRIC_VERSION,
+    RUBRIC_WEIGHTS,
+    SELECTION_STRATEGY,
+    SYNTHESIS_STRATEGY,
+)
 from skillhub_core.schemas import EvaluationResult, RubricOut
 
 router = APIRouter(tags=["rubric"])
@@ -21,4 +30,9 @@ def get_rubric(session: Session = Depends(get_session)) -> RubricOut:
         dimensions=RUBRIC_DIMENSIONS,
         evaluation_schema=EvaluationResult.model_json_schema(),
         categories=repository.get_taxonomy(session),
+        weights=RUBRIC_WEIGHTS,
+        calibration=RUBRIC_CALIBRATION,
+        categorization_rules=CATEGORIZATION_RULES,
+        selection_strategy=SELECTION_STRATEGY,
+        synthesis_strategy=SYNTHESIS_STRATEGY,
     )

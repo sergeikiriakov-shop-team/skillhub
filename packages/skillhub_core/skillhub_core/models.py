@@ -61,6 +61,9 @@ class Skill(Base):
     author: Mapped[str | None] = mapped_column(String(200), nullable=True)
     source_type: Mapped[str] = mapped_column(String(20), default=SOURCE_TYPE_UPLOAD)
     origin: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Narrow "what specific job it does" grouping key (a slug), finer than the broad category.
+    # Skills that do the SAME job share a task_group, so competing variants cluster together.
+    task_group: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

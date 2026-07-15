@@ -76,6 +76,13 @@ class CategorizationResult(BaseModel):
     categories: list[CategoryAssignment] = Field(
         default_factory=list, description="All applicable categories with confidences."
     )
+    task_group: str | None = Field(
+        default=None,
+        description="Narrow slug for the skill's SPECIFIC job (e.g. 'single-task-driver', "
+        "'sql-data-read'), finer than the broad category. Skills doing the same job MUST share "
+        "the same slug so competing variants cluster together. Reuse an existing slug when one "
+        "fits (see GET /api/task-groups); only invent a new one for a genuinely new job.",
+    )
     tags: list[str] = Field(default_factory=list, description="Free-form lowercase tags.")
     summary: str = Field(default="", description="One-sentence summary of what the skill does.")
 
@@ -112,13 +119,21 @@ class AssessmentIn(BaseModel):
 
 
 class RubricOut(BaseModel):
-    """Everything the evaluator needs to score a skill consistently."""
+    """Everything the evaluator needs to score, categorize and rank a skill consistently.
+
+    Served to every developer's Claude Code (GET /api/rubric) and rendered on the dashboard's
+    Methodology page, so the strategy lives in one place instead of in each reviewer's head."""
 
     rubric_version: str
     instructions: str
     dimensions: list[dict]
     evaluation_schema: dict
     categories: list[dict]
+    weights: dict = Field(default_factory=dict)
+    calibration: list[dict] = Field(default_factory=list)
+    categorization_rules: str = ""
+    selection_strategy: str = ""
+    synthesis_strategy: str = ""
 
 
 # --- Users / admin ---
@@ -177,6 +192,7 @@ class SkillSummary(BaseModel):
     source_format: str
     overall_score: float | None
     categories: list[CategoryOut]
+    task_group: str | None = None
     updated_at: datetime
 
 
