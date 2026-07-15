@@ -28,7 +28,7 @@ synthesize an "ideal" merged skill.
                                            │ db: Postgres 16 + pgvector   │
                                            └──────────────────────────────┘
 
-  airflow (optional, own dep set) ── HTTP /api ─▶ api    # orchestrates, never imports core
+  Claude Code (each dev)  ── HTTP /api ─▶ api    # evaluates skills, submits results back
 ```
 
 ## Key decisions
@@ -38,23 +38,23 @@ synthesize an "ideal" merged skill.
   `parsing.py` and export functions in `adapters.py`. `SkillVersion.source_format` records origin.
 - **One shared library.** `skillhub_core` holds all business logic; `api` and (future) batch
   jobs import it. No logic is duplicated.
-- **Airflow orchestrates over HTTP, never imports the core.** Airflow 2.x pins SQLAlchemy 1.4
-  while the core needs 2.0, so the DAGs call the API instead. This also keeps the pipeline
-  callable identically from anywhere.
+- **Claude Code is the evaluator, not the service.** The service stores skills + the shared
+  rubric (`/api/rubric`) and never calls an LLM. Each developer's Claude Code fetches the rubric,
+  scores skills, and POSTs results back (`/api/skills/{id}/assessment`), so everyone runs the one
+  identical algorithm. (No LangChain / Anthropic API key in the service.)
 - **Local embeddings.** `sentence-transformers/all-MiniLM-L6-v2` (384-dim) avoids an extra API
   key and works offline after the first model download. Fail-soft: no model → no vector, the
   rest still works.
-- **Fail-soft LLM.** No `ANTHROPIC_API_KEY` → import/browse/search still work; evaluation and
-  categorization are simply skipped.
 
 ## Ingest pipeline (`skillhub_core/pipeline.py`)
 
-`parse → embed → evaluate → categorize → persist`
+`parse → embed → persist`
 
-- On upload, the API runs `parse + upsert + embed` inline (fast) and schedules
-  `evaluate + categorize` as a background task (slow, needs Claude).
-- `reprocess()` re-runs embed/evaluate/categorize on a skill's latest version in place — used by
-  the `batch_reevaluate` Airflow DAG and the per-skill "Re-evaluate" button.
+- On upload (and on seed import) the API parses the skill, upserts a version (a new version is
+  created only when the content hash changes), and embeds it. The service does **not** evaluate
+  or categorize — those never touch an LLM here.
+- Evaluation, categorization and synthesis are produced by Claude Code and submitted back via
+  `POST /api/skills/{id}/assessment`.
 
 ## Data model
 
@@ -70,8 +70,8 @@ skills can be re-scored and compared when the rubric evolves.
 
 ## Roadmap
 
-- **Phase 2:** recommendation (retrieval + Claude rerank), duplicate/overlap clustering, move
-  heavy processing into Airflow, version history UI.
+- **Phase 2:** recommendation (retrieval + Claude rerank), duplicate/overlap clustering,
+  version history UI.
 - **Phase 3:** synthesize an "ideal" skill from a cluster (`llm/synthesize.py`), export to
   `SKILL.md` / per-client adapters, prepare a PR.
 - **Phase 4:** auth, usage telemetry, feedback loop, leaderboards.

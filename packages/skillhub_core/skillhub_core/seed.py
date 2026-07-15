@@ -1,9 +1,10 @@
 """Import skills from a directory tree into the registry.
 
 A skill is any immediate subdirectory containing a ``SKILL.md`` (the canonical layout used by
-Prologistics' ``ai.readme/skills``). Run with ``--no-llm`` for an offline smoke test.
+Prologistics' ``ai.readme/skills``). This only parses + embeds + persists — the service never
+evaluates (that is done by Claude Code and submitted back via the API).
 
-    python -m skillhub_core.seed --path /seed/skills --no-llm
+    python -m skillhub_core.seed --path /seed/skills
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ def discover_skill_dirs(root: Path) -> list[Path]:
     )
 
 
-def run(path: str, author: str, run_llm: bool) -> int:
+def run(path: str, author: str) -> int:
     root = Path(path)
     if not root.is_dir():
         logger.error("Path %s is not a directory", root)
@@ -52,16 +53,13 @@ def run(path: str, author: str, run_llm: bool) -> int:
                 author=author,
                 source_type=SOURCE_TYPE_IMPORT,
                 origin=str(skill_dir),
-                run_llm=run_llm,
             )
         logger.info(
-            "imported %-28s (v%s new=%s embedded=%s evaluated=%s categorized=%s) %s",
+            "imported %-28s (v%s new=%s embedded=%s) %s",
             parsed.name,
             result.version_id,
             result.is_new_version,
             result.embedded,
-            result.evaluated,
-            result.categorized,
             "; ".join(result.notes),
         )
     logger.info("Seed complete.")
@@ -72,9 +70,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Import Claude Code skills into SkillHub.")
     parser.add_argument("--path", required=True, help="Directory containing skill subfolders.")
     parser.add_argument("--author", default="prologistics", help="Author to attribute imports to.")
-    parser.add_argument("--no-llm", action="store_true", help="Skip LLM evaluation/categorization.")
     args = parser.parse_args(argv)
-    return run(args.path, args.author, run_llm=not args.no_llm)
+    return run(args.path, args.author)
 
 
 if __name__ == "__main__":

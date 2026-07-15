@@ -11,4 +11,3 @@ hf_cache
 **/.pytest_cache
 **/.ruff_cache
 .env
-services/airflow/logs

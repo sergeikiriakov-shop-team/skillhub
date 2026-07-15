@@ -12,12 +12,6 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # --- LLM ---
-    anthropic_api_key: str = ""
-    skillhub_llm_model: str = "claude-sonnet-5"
-    skillhub_llm_temperature: float = 0.0
-    skillhub_llm_max_tokens: int = 4096
-
     # --- Embeddings ---
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dim: int = 384
@@ -47,10 +41,6 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip() for o in self.skillhub_cors_origins.split(",") if o.strip()]
-
-    @property
-    def llm_enabled(self) -> bool:
-        return bool(self.anthropic_api_key)
 
 
 @lru_cache

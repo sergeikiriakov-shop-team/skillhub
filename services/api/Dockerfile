@@ -18,7 +18,7 @@ RUN pip install --upgrade pip
 # — critical on slow / VPN networks. skillhub_core then finds torch already satisfied.
 RUN pip install --index-url https://download.pytorch.org/whl/cpu torch
 
-# Install the shared core (brings SQLAlchemy, pgvector, langchain, sentence-transformers, ...).
+# Install the shared core (brings SQLAlchemy, pgvector, sentence-transformers, ...).
 COPY packages/skillhub_core /tmp/skillhub_core
 RUN pip install /tmp/skillhub_core
 

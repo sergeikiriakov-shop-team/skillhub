@@ -26,7 +26,3 @@ hf_cache/
 Thumbs.db
 .idea/
 .vscode/
-
-# Airflow local
-services/airflow/logs/
-airflow.cfg

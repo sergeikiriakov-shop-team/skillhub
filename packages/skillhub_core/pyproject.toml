@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "skillhub-core"
 version = "0.1.0"
-description = "Shared core for SkillHub: parsing, models, LLM chains, embeddings, pipeline."
+description = "Shared core for SkillHub: parsing, models, embeddings, repository, ingest pipeline."
 requires-python = ">=3.11"
 dependencies = [
     "SQLAlchemy>=2.0,<2.1",

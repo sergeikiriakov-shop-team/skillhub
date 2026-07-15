@@ -25,9 +25,6 @@ class IngestResult(BaseModel):
     version_id: int
     is_new_version: bool
     embedded: bool = False
-    # kept for backwards-compatible logging; the service never evaluates/categorizes itself.
-    evaluated: bool = False
-    categorized: bool = False
     notes: list[str] = []
 
 
@@ -37,7 +34,6 @@ def ingest(
     author: str | None = None,
     source_type: str = SOURCE_TYPE_UPLOAD,
     origin: str | None = None,
-    run_llm: bool = False,  # accepted for compatibility; ignored (evaluation lives in Claude Code)
 ) -> IngestResult:
     """Parse-provided skill -> upsert version -> embed. Commits."""
     settings = get_settings()
@@ -63,7 +59,6 @@ def ingest_raw(
     source_format: str = "claude_skill",
     source_type: str = SOURCE_TYPE_UPLOAD,
     origin: str | None = None,
-    run_llm: bool = False,
 ) -> IngestResult:
     """Parse raw skill content and run the pipeline."""
     parsed = parse(content, source_format=source_format, references=references)

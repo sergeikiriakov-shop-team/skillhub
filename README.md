@@ -26,20 +26,19 @@ skill from a group of similar ones.
 | Layer          | Choice                                                        |
 | -------------- | ------------------------------------------------------------- |
 | API            | Python 3.12 + FastAPI                                         |
-| LLM            | Claude via LangChain (`langchain-anthropic`)                  |
+| Evaluation     | Claude Code (each developer's agent) — the service runs no LLM |
 | Embeddings     | `sentence-transformers/all-MiniLM-L6-v2` (local, 384-dim)     |
 | Database       | PostgreSQL 16 + pgvector                                      |
-| Orchestration  | Apache Airflow (LocalExecutor, optional compose profile)      |
 | Frontend       | React + Vite + TypeScript + Mantine + TanStack Query          |
 
-Shared business logic lives in the installable package `packages/skillhub_core` and is used
-by both the API and the Airflow DAGs.
+Shared business logic (parsing, embeddings, repository, ingest pipeline) lives in the
+installable package `packages/skillhub_core` and is imported by the API.
 
 ## Quick start
 
 ```bash
 cp .env.example .env
-# (optional) put your ANTHROPIC_API_KEY in .env to enable evaluation/categorization
+# set SKILLHUB_ADMIN_TOKEN to bootstrap the first admin (uploads/evaluations need a token; reads are open)
 
 # Base stack: database + API + web portal
 docker compose up -d --build db api web
@@ -52,25 +51,22 @@ docker compose up -d --build db api web
 ### Seed with the real Prologistics skills
 
 ```bash
-# Offline (no LLM), just import + parse the 8 real skills:
-docker compose exec api python -m skillhub_core.seed --path /seed/skills --no-llm
-
-# Full run (needs ANTHROPIC_API_KEY): import + evaluate + categorize
+# Import + parse + embed the real skills (the service never evaluates — that's Claude Code's job):
 docker compose exec api python -m skillhub_core.seed --path /seed/skills
 ```
 
 The `prologistics/ai.readme/skills` directory is mounted into the API container at `/seed/skills`
 (see `docker-compose.override.example.yml` for how to point it at your local checkout), or pass
-any accessible path.
+any accessible path. Evaluation/categorization then happen from Claude Code (see below).
 
-### Orchestration (optional)
+### Evaluate from Claude Code
 
-```bash
-docker compose --profile airflow up -d --build
-```
-
-Airflow UI: http://localhost:8081 (default login `airflow` / `airflow`). Trigger the
-`batch_reevaluate` DAG to re-run evaluation/categorization over all skills.
+The service stores skills + the shared rubric but never calls an LLM. Evaluation,
+categorization and synthesis are done by each developer's **Claude Code**, which fetches the
+rubric (`GET /api/rubric`) and the unevaluated queue (`GET /api/skills?evaluated=false`), scores
+each skill against it, and submits results back (`POST /api/skills/{id}/assessment`). Install
+`skills/skillhub/SKILL.md` into Claude Code, or add the SkillHub MCP server (`services/mcp/`), to
+drive this. Storing the strategy server-side means every developer runs the one identical algorithm.
 
 ## Local development
 
@@ -118,11 +114,12 @@ docker run --rm node:20-slim npm pack react-dom              # larger: hangs on 
 
 ## Roadmap
 
-- **Phase 1 (this):** registry + LLM evaluation + categorization + web portal.
+- **Phase 1 (this):** registry + Claude-Code evaluation/categorization + read-only web portal.
 - **Phase 2:** recommendation ("which skill when"), duplicate/overlap detection via clustering,
-  move heavy processing into Airflow, skill versioning history.
+  skill versioning history.
 - **Phase 3:** synthesize an "ideal" skill from a cluster, export back to `SKILL.md` / per-client
   adapters, prepare a PR.
 - **Phase 4:** auth, usage telemetry, feedback loop, leaderboards.
+- **Later/optional:** scheduled re-evaluation (headless `claude -p` on a scheduler).
 
 See `docs/` and the approved plan for details.

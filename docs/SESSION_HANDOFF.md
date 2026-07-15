@@ -17,9 +17,10 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   admin. Local dev token in `.env`: `dev-admin-token-change-me`.
 - **Frontend = read-only dashboard** (catalog + semantic search + per-skill detail + a stats
   strip). No upload/evaluate/delete UI — those happen via Claude Code / the API.
-- **No LangChain.** Embeddings are local (`sentence-transformers`, pgvector) for search /
-  duplicate detection. Airflow is deferred to a later phase (automation = headless `claude -p`
-  on a scheduler; the DAG file under `services/airflow/dags` is a stale Phase-2 placeholder).
+- **No LLM in the service, no LangChain.** Embeddings are local (`sentence-transformers`,
+  pgvector) for search / duplicate detection. The dormant `skillhub_core/llm/` package and the
+  stale `services/airflow/` DAG have been **removed**. Orchestration (scheduled headless
+  `claude -p` re-evaluation) is deferred to a later phase.
 
 ## Key API endpoints
 - Open reads: `GET /api/health`, `/api/stats`, `/api/skills`, `/api/skills?evaluated=false`
@@ -37,7 +38,7 @@ locally.
 ```
 docker compose up -d db api web            # base stack (uses built images)
 # seed the 8 real prologistics skills (already copied into the api container at /tmp/skills):
-docker exec skillhub-api-1 python -m skillhub_core.seed --path /tmp/skills   # --no-llm not needed
+docker exec skillhub-api-1 python -m skillhub_core.seed --path /tmp/skills
 # rebuild after code changes:
 DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker compose build
 ```
@@ -68,11 +69,9 @@ Verified from a container against the running API.
 - **Trial upload via Claude Code** using the MCP (connect it, then upload a real SKILL.md and
   evaluate it). A trial `evaluator` user `dev-trial` was created for this.
 - Then: "optimal skills" (synthesis of an ideal skill from a cluster) display + richer stats.
-- Later/optional: Airflow to orchestrate scheduled headless `claude -p` re-evaluation.
+- Later/optional: a scheduler running headless `claude -p` re-evaluation.
 
 ## Notes / loose ends
 - `services/web/src/pages/Upload.tsx` is now orphaned (no route) — kept, not wired.
-- `packages/skillhub_core/skillhub_core/llm/` is dormant/legacy (nothing imports it; LangChain
-  removed from deps). Safe to delete later.
-- LLM auth options (if the service ever needs Claude directly) discussed earlier: api_key /
-  oauth / claude_agent_sdk. Not relevant while Claude Code is the evaluator.
+- The dormant `skillhub_core/llm/` package and the `services/airflow/` DAG were removed (the
+  service does not call an LLM; Claude Code is the evaluator).
