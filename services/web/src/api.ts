@@ -33,6 +33,7 @@ export interface SkillSummary {
   author: string | null;
   description: string;
   source_format: string;
+  source_type: string;
   overall_score: number | null;
   categories: Category[];
   task_group: string | null;

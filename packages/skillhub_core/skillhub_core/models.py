@@ -33,7 +33,9 @@ from .constants import (  # noqa: F401
     FORMAT_CURSOR_MDC,
     FORMAT_GENERIC_MD,
     SOURCE_TYPE_IMPORT,
+    SOURCE_TYPE_SYNTHESIZED,
     SOURCE_TYPE_UPLOAD,
+    SYNTHESIZED_AUTHOR,
 )
 
 EMBEDDING_DIM = get_settings().embedding_dim

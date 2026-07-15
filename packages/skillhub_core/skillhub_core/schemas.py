@@ -192,6 +192,7 @@ class SkillSummary(BaseModel):
     author: str | None
     description: str
     source_format: str
+    source_type: str = "upload"
     overall_score: float | None
     categories: list[CategoryOut]
     task_group: str | None = None

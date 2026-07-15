@@ -6,7 +6,9 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from .models import (
+    SOURCE_TYPE_SYNTHESIZED,
     SOURCE_TYPE_UPLOAD,
+    SYNTHESIZED_AUTHOR,
     Category,
     Evaluation,
     Skill,
@@ -47,6 +49,11 @@ def upsert_skill(
         skill = Skill(name=parsed.name, author=author, source_type=source_type, origin=origin)
         session.add(skill)
         session.flush()
+
+    # A skill authored by the synthesis sentinel is a service-produced "ideal" — tag it so the UI
+    # and API can single it out, regardless of the caller-supplied source_type.
+    if author == SYNTHESIZED_AUTHOR:
+        skill.source_type = SOURCE_TYPE_SYNTHESIZED
 
     content_hash = compute_hash(parsed.raw_content, parsed.references)
     latest = skill.latest_version

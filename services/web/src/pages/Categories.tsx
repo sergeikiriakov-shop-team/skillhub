@@ -5,6 +5,7 @@ import {
   Container,
   Group,
   Loader,
+  Paper,
   Stack,
   Table,
   Text,
@@ -45,6 +46,11 @@ function RankTable({ skills, bestId }: { skills: SkillSummary[]; bestId?: number
                   <Anchor component={Link} to={`/skills/${s.id}`} fw={isBest ? 700 : 500}>
                     {s.name}
                   </Anchor>
+                  {s.source_type === "synthesized" && (
+                    <Badge size="xs" color="grape" variant="filled">
+                      ✦ synthesized
+                    </Badge>
+                  )}
                   {isBest && (
                     <Badge size="xs" color="yellow" variant="filled">
                       ★ best
@@ -112,6 +118,11 @@ export default function Categories() {
 
   const leaderboard = [...skills].filter((s) => s.overall_score != null).sort(byScoreDesc).slice(0, 5);
 
+  // Service-generated "ideal" skills, each merged from the other members of its task group.
+  const synthesized = skills
+    .filter((s) => s.source_type === "synthesized")
+    .sort(byScoreDesc);
+
   return (
     <Container size="lg">
       <Stack gap="lg">
@@ -123,6 +134,81 @@ export default function Categories() {
             skill (a real "same job" competition) the ★ marks the top-rated one.
           </Text>
         </div>
+
+        {synthesized.length > 0 && (
+          <Card withBorder radius="md" padding="md" bg="var(--mantine-color-grape-light)">
+            <Group gap="xs" mb={4} align="center">
+              <Title order={4}>✦ Synthesized ideals</Title>
+              <Badge color="grape" variant="light">
+                {synthesized.length}
+              </Badge>
+            </Group>
+            <Text size="sm" c="dimmed" mb="md">
+              Skills the registry generated itself — each merges the best of one task group via the
+              stored synthesis algorithm. The nested list shows the source skills it was built from.
+            </Text>
+            <Stack gap="sm">
+              {synthesized.map((ideal) => {
+                const sources = (byTaskGroup.get(ideal.task_group ?? "") ?? []).filter(
+                  (s) => s.id !== ideal.id,
+                );
+                return (
+                  <Paper withBorder radius="md" p="sm" key={ideal.id}>
+                    <Group justify="space-between" wrap="nowrap">
+                      <Group gap={8} wrap="nowrap">
+                        <Anchor component={Link} to={`/skills/${ideal.id}`} fw={700}>
+                          {ideal.name}
+                        </Anchor>
+                        <Badge size="xs" color="grape" variant="filled">
+                          ✦ synthesized
+                        </Badge>
+                        {ideal.task_group && (
+                          <Badge
+                            size="xs"
+                            variant="outline"
+                            styles={{ label: { textTransform: "none" } }}
+                          >
+                            {prettyGroup(ideal.task_group)}
+                          </Badge>
+                        )}
+                      </Group>
+                      <ScoreBadge value={ideal.overall_score} size="sm" />
+                    </Group>
+                    {sources.length > 0 && (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          paddingLeft: 12,
+                          borderLeft: "2px solid var(--mantine-color-grape-outline)",
+                        }}
+                      >
+                        <Text size="xs" c="dimmed" mb={4}>
+                          merged from
+                        </Text>
+                        <Stack gap={4}>
+                          {sources.map((s) => (
+                            <Group key={s.id} justify="space-between" wrap="nowrap">
+                              <Text size="sm">
+                                <Anchor component={Link} to={`/skills/${s.id}`}>
+                                  {s.name}
+                                </Anchor>
+                                <Text span c="dimmed" size="xs">
+                                  {" "}
+                                  · {s.author ?? "—"}
+                                </Text>
+                              </Text>
+                              <ScoreBadge value={s.overall_score} size="xs" />
+                            </Group>
+                          ))}
+                        </Stack>
+                      </div>
+                    )}
+                  </Paper>
+                );
+              })}
+            </Stack>
+          </Card>
+        )}
 
         <Card withBorder radius="md" padding="md">
           <Title order={4} mb="sm">
