@@ -21,20 +21,13 @@ interface GuideContent {
   sections: Section[];
 }
 
-const MCP_JSON = `{
-  "mcpServers": {
-    "skillhub": {
-      "command": "docker",
-      "args": [
-        "run", "--rm", "-i",
-        "-e", "SKILLHUB_URL=https://<your-server>",
-        "-e", "SKILLHUB_TOKEN_FILE=/data/token",
-        "-v", "skillhub-mcp-token:/data",
-        "skillhub-mcp"
-      ]
-    }
-  }
-}`;
+// __ORIGIN__ is replaced at render time with the URL you're viewing the portal at.
+const MCP_ADD_CMD = `claude mcp add --scope user skillhub -- \\
+  docker run --rm -i \\
+  -e SKILLHUB_URL=__ORIGIN__ \\
+  -e SKILLHUB_TOKEN_FILE=/data/token \\
+  -v skillhub-mcp-token:/data \\
+  ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest`;
 
 const en: GuideContent = {
   title: "Developer guide",
@@ -85,19 +78,23 @@ const en: GuideContent = {
     {
       heading: "3. Connect SkillHub to your Claude Code (MCP)",
       blocks: [
-        { kind: "p", text: "Build the MCP image once:" },
-        { kind: "code", text: "DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp" },
         {
           kind: "p",
-          text: "Add this to your .mcp.json (set SKILLHUB_URL to the server). The volume caches your " +
-            "token so you authorize only once per machine:",
+          text: "No build needed — the MCP image is published. Easiest: ask your Claude Code in plain " +
+            "language (with the connect-skillhub skill): “install the SkillHub MCP for __ORIGIN__”. " +
+            "It runs this one command for you — or run it yourself:",
         },
-        { kind: "code", text: MCP_JSON },
+        { kind: "code", text: MCP_ADD_CMD },
+        {
+          kind: "p",
+          text: "--scope user registers it for all your projects. Restart Claude Code, then check with " +
+            "`claude mcp list`.",
+        },
         {
           kind: "p",
           text: "Reads need nothing. The first time you use a write tool (or run the `authenticate` " +
             "tool), the server prints a verification link + code: open it, approve at /device (signing " +
-            "in with GitHub), and the token is cached to the volume. Then just talk to Claude Code.",
+            "in with GitHub), and the token is cached so you only authorize once per machine.",
         },
       ],
     },
@@ -198,19 +195,23 @@ const ru: GuideContent = {
     {
       heading: "3. Подключение SkillHub к вашему Claude Code (MCP)",
       blocks: [
-        { kind: "p", text: "Один раз соберите образ MCP:" },
-        { kind: "code", text: "DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp" },
         {
           kind: "p",
-          text: "Добавьте это в свой .mcp.json (укажите SKILLHUB_URL сервера). Том кэширует токен, " +
-            "чтобы авторизоваться только один раз на машине:",
+          text: "Собирать ничего не нужно — образ MCP опубликован. Проще всего попросить свой Claude " +
+            "Code обычным текстом (со скиллом connect-skillhub): «установи SkillHub MCP для " +
+            "__ORIGIN__». Он выполнит одну команду за вас — или выполните её сами:",
         },
-        { kind: "code", text: MCP_JSON },
+        { kind: "code", text: MCP_ADD_CMD },
         {
           kind: "p",
-          text: "Для чтения ничего не нужно. При первом вызове пишущего инструмента (или запустив " +
-            "инструмент `authenticate`) сервер выдаст ссылку и код: откройте её, подтвердите на /device " +
-            "(войдя через GitHub) — токен закэшируется в том. Дальше просто общайтесь с Claude Code.",
+          text: "--scope user регистрирует MCP для всех ваших проектов. Перезапустите Claude Code, " +
+            "затем проверьте `claude mcp list`.",
+        },
+        {
+          kind: "p",
+          text: "Для чтения ничего не нужно. При первом вызове пишущего инструмента (или инструмента " +
+            "`authenticate`) сервер выдаст ссылку и код: откройте её, подтвердите на /device (войдя " +
+            "через GitHub) — токен закэшируется, авторизация один раз на машине.",
         },
       ],
     },
@@ -261,11 +262,12 @@ const ru: GuideContent = {
 
 const CONTENT: Record<Lang, GuideContent> = { en, ru };
 
-function renderBlock(block: Block, i: number) {
+function renderBlock(block: Block, i: number, origin: string) {
+  const sub = (s: string) => s.split("__ORIGIN__").join(origin);
   if (block.kind === "p") {
     return (
       <Text key={i} size="sm">
-        {block.text}
+        {sub(block.text)}
       </Text>
     );
   }
@@ -273,14 +275,14 @@ function renderBlock(block: Block, i: number) {
     return (
       <List key={i} size="sm" spacing="xs">
         {block.items.map((item, j) => (
-          <List.Item key={j}>{item}</List.Item>
+          <List.Item key={j}>{sub(item)}</List.Item>
         ))}
       </List>
     );
   }
   return (
     <Code key={i} block style={{ whiteSpace: "pre-wrap" }}>
-      {block.text}
+      {sub(block.text)}
     </Code>
   );
 }
@@ -288,6 +290,8 @@ function renderBlock(block: Block, i: number) {
 export default function Guide() {
   const { lang } = useI18n();
   const content = CONTENT[lang];
+  // Show commands/URLs for the exact host the developer is viewing the portal at.
+  const origin = typeof window !== "undefined" ? window.location.origin : "http://<your-server>";
 
   return (
     <Container size="md">
@@ -304,7 +308,7 @@ export default function Guide() {
             <Title order={4} mb="sm">
               {section.heading}
             </Title>
-            <Stack gap="sm">{section.blocks.map(renderBlock)}</Stack>
+            <Stack gap="sm">{section.blocks.map((b, i) => renderBlock(b, i, origin))}</Stack>
           </Card>
         ))}
       </Stack>

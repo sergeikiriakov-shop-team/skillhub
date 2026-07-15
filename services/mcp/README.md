@@ -7,14 +7,42 @@ Tools: `list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `
 `list_task_groups`, `list_recommendations`, `upload_skill` (contributor+),
 `submit_assessment` (evaluator), `add_recommendation`/`set_recommendation_status` (contributor+).
 
-## Build (once)
+## Install (developer — no build)
+
+The image is published, so developers **don't build anything**. The easiest path is to ask your
+Claude Code in plain language (with the `connect-skillhub` skill installed):
+
+> "install the SkillHub MCP for `http://166.1.29.218:8080`"
+
+…and it runs the command below for you. Or run it directly (substitute your server URL):
+
 ```bash
-DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp
+claude mcp add --scope user skillhub -- \
+  docker run --rm -i \
+  -e SKILLHUB_URL=http://166.1.29.218:8080 \
+  -e SKILLHUB_TOKEN_FILE=/data/token \
+  -v skillhub-mcp-token:/data \
+  ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest
 ```
 
-## Configure in Claude Code (`.mcp.json`)
-Claude Code launches the server as a stdio subprocess via `docker run -i`. The committed
-`.mcp.json` (repo root) already contains this:
+`--scope user` registers it for all your projects (use `--scope project` to commit it to a repo's
+`.mcp.json` for the whole team). Restart Claude Code; verify with `claude mcp list`.
+
+## Publish the image (maintainer — once per release)
+
+```bash
+DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp
+docker tag skillhub-mcp ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest
+echo "$GHCR_TOKEN" | docker login ghcr.io -u <your-github-user> --password-stdin   # PAT with write:packages
+docker push ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest
+```
+
+Make the GHCR package **public** (GitHub → the package → Package settings → Change visibility) so
+developers can pull without `docker login`. The image is a thin API proxy — it contains no secrets.
+
+## Local development (`.mcp.json`)
+For working on SkillHub itself, the committed repo-root `.mcp.json` runs the locally-built image
+against a local API:
 
 ```json
 {
