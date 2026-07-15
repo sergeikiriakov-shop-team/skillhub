@@ -1,13 +1,26 @@
-import { AppShell, Group, SegmentedControl, Text, Title, Anchor } from "@mantine/core";
+import {
+  Anchor,
+  AppShell,
+  Avatar,
+  Badge,
+  Button,
+  Group,
+  Menu,
+  SegmentedControl,
+  Text,
+  Title,
+} from "@mantine/core";
 import { Link, NavLink, Route, Routes } from "react-router-dom";
 import Catalog from "./pages/Catalog";
 import Categories from "./pages/Categories";
+import DeviceApprove from "./pages/DeviceApprove";
 import Guide from "./pages/Guide";
 import Methodology from "./pages/Methodology";
 import Recommendations from "./pages/Recommendations";
 import SkillDetail from "./pages/SkillDetail";
 import { useI18n } from "./i18n";
 import type { Lang } from "./i18n";
+import { useAuth } from "./auth";
 
 function NavItem({ to, label }: { to: string; label: string }) {
   return (
@@ -41,6 +54,45 @@ function LanguageToggle() {
   );
 }
 
+function AuthControl() {
+  const { t } = useI18n();
+  const { me, isAuthenticated, isLoading, login, logout } = useAuth();
+  if (isLoading) {
+    return null;
+  }
+  if (!isAuthenticated) {
+    return (
+      <Button size="xs" variant="light" onClick={() => login()}>
+        {t("auth.signIn")}
+      </Button>
+    );
+  }
+  const label = me?.name || me?.email || "user";
+  return (
+    <Menu shadow="md" width={220} position="bottom-end">
+      <Menu.Target>
+        <Button size="xs" variant="subtle" leftSection={<Avatar size={20} radius="xl" color="blue" />}>
+          {label}
+        </Button>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Label>
+          <Group justify="space-between" gap="xs" wrap="nowrap">
+            <Text size="xs" truncate>
+              {me?.email}
+            </Text>
+            <Badge size="xs" variant="light">
+              {me?.role}
+            </Badge>
+          </Group>
+        </Menu.Label>
+        <Menu.Divider />
+        <Menu.Item onClick={() => void logout()}>{t("auth.signOut")}</Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
+
 export default function App() {
   const { t } = useI18n();
   return (
@@ -64,6 +116,7 @@ export default function App() {
               <NavItem to="/guide" label={t("nav.guide")} />
             </Group>
             <LanguageToggle />
+            <AuthControl />
           </Group>
         </Group>
       </AppShell.Header>
@@ -75,6 +128,7 @@ export default function App() {
           <Route path="/recommendations" element={<Recommendations />} />
           <Route path="/methodology" element={<Methodology />} />
           <Route path="/guide" element={<Guide />} />
+          <Route path="/device" element={<DeviceApprove />} />
           <Route path="/skills/:id" element={<SkillDetail />} />
         </Routes>
       </AppShell.Main>

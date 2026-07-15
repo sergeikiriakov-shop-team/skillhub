@@ -1,13 +1,18 @@
-"""FastAPI auth dependencies. Reads are open; writes require a bearer token + role."""
+"""FastAPI auth dependencies. Reads are open; writes require auth (a role).
+
+Two credential surfaces resolve to the same user: a ``Bearer`` token (MCP / CLI / explicit) and
+the ``skillhub_session`` cookie (browser login). Bearer wins when both are present."""
 
 from __future__ import annotations
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Cookie, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from skillhub_core import auth as core_auth
 from skillhub_core.db import get_session
 from skillhub_core.models import User
+
+SESSION_COOKIE = "skillhub_session"
 
 
 def _extract_token(authorization: str | None) -> str | None:
@@ -21,9 +26,11 @@ def _extract_token(authorization: str | None) -> str | None:
 
 def current_user_optional(
     authorization: str | None = Header(default=None),
+    session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE),
     session: Session = Depends(get_session),
 ) -> User | None:
-    return core_auth.get_user_by_token(session, _extract_token(authorization) or "")
+    token = _extract_token(authorization) or session_cookie or ""
+    return core_auth.get_user_by_token(session, token)
 
 
 def require_user(user: User | None = Depends(current_user_optional)) -> User:

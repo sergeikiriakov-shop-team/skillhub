@@ -17,6 +17,7 @@ from skillhub_core.rubric import RUBRIC_VERSION
 
 from .routers import (
     admin,
+    auth,
     categories,
     evaluations,
     recommendations,
@@ -51,6 +52,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api")
 app.include_router(skills.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
 app.include_router(task_groups.router, prefix="/api")

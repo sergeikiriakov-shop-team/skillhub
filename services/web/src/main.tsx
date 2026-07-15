@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { I18nProvider } from "./i18n";
+import { AuthProvider } from "./auth";
 
 import "@mantine/core/styles.css";
 
@@ -17,9 +18,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <MantineProvider defaultColorScheme="auto">
       <I18nProvider>
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <AuthProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </AuthProvider>
         </QueryClientProvider>
       </I18nProvider>
     </MantineProvider>

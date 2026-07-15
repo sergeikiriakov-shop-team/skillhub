@@ -14,8 +14,7 @@ DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp
 
 ## Configure in Claude Code (`.mcp.json`)
 Claude Code launches the server as a stdio subprocess via `docker run -i`. The committed
-`.mcp.json` (repo root) already contains this — the token is read from your **environment**, so no
-secret is committed and no `.env` file is required to start:
+`.mcp.json` (repo root) already contains this:
 
 ```json
 {
@@ -26,6 +25,8 @@ secret is committed and no `.env` file is required to start:
         "run", "--rm", "-i",
         "-e", "SKILLHUB_URL=http://host.docker.internal:8000",
         "-e", "SKILLHUB_TOKEN=${SKILLHUB_TOKEN:-}",
+        "-e", "SKILLHUB_TOKEN_FILE=/data/token",
+        "-v", "skillhub-mcp-token:/data",
         "skillhub-mcp"
       ]
     }
@@ -33,17 +34,18 @@ secret is committed and no `.env` file is required to start:
 }
 ```
 
-- **Your token.** `${SKILLHUB_TOKEN:-}` expands from the environment Claude Code was started with.
-  Set `SKILLHUB_TOKEN` (from an admin) as a user/OS environment variable — e.g. on Windows
-  `setx SKILLHUB_TOKEN <your-token>` (reopen the terminal), on macOS/Linux export it in your shell
-  profile. Leave it unset to run read-only. Only `SKILLHUB_URL` and `SKILLHUB_TOKEN` are passed to
-  the container — no DB password or admin token is injected (unlike a blanket `--env-file .env`).
-- `SKILLHUB_URL` defaults to `http://host.docker.internal:8000` (Docker Desktop reaches the
-  host-published API port). If you run the MCP on the compose network instead, use
-  `--network skillhub_default` and `SKILLHUB_URL=http://api:8000`.
-- Reads work without a token; `upload_skill` needs a contributor+ token; `submit_assessment`
-  needs an evaluator token. Ask an admin to create your user
-  (`POST /api/admin/users`) and, for evaluation, set your role to `evaluator`.
+- **Authentication is automatic (device flow).** Reads are public and need nothing. The first time
+  you use a **write** tool (upload/assess/recommend), the server starts the OAuth device flow and
+  returns a verification URL + short code. Open it, sign in with Google, approve, and the minted
+  SkillHub token is cached to the `skillhub-mcp-token` docker volume (`/data/token`) so you only do
+  this once per machine. You can also run the `authenticate` tool proactively. Writes still require
+  a role — a fresh account is a `viewer`; ask an admin to promote you to `contributor`/`evaluator`.
+- **`SKILLHUB_TOKEN` (optional override).** If set, it skips the device flow entirely (useful for
+  CI or a break-glass admin token). Leave it unset for the normal flow.
+- `SKILLHUB_URL` points at the server. Default `http://host.docker.internal:8000` reaches a locally
+  published API; for a remote deployment set it to your public URL (e.g. `https://skillhub.example.com`).
+  If you run the MCP on the compose network instead, use `--network skillhub_default` and
+  `SKILLHUB_URL=http://api:8000`.
 
 ## Use
 Once connected, ask Claude Code things like:

@@ -33,6 +33,15 @@ services:
       POSTGRES_PORT: 5432
       SKILLHUB_CORS_ORIGINS: ${SKILLHUB_CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
       SKILLHUB_ADMIN_TOKEN: ${SKILLHUB_ADMIN_TOKEN:-}
+      # --- Auth: Google OAuth + sessions (see .env.example) ---
+      SKILLHUB_PUBLIC_URL: ${SKILLHUB_PUBLIC_URL:-http://localhost:5173}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      SKILLHUB_SESSION_TTL: ${SKILLHUB_SESSION_TTL:-1209600}
+      SKILLHUB_DEFAULT_ROLE: ${SKILLHUB_DEFAULT_ROLE:-viewer}
+      SKILLHUB_BOOTSTRAP_ADMINS: ${SKILLHUB_BOOTSTRAP_ADMINS:-}
+      SKILLHUB_COOKIE_SECURE: ${SKILLHUB_COOKIE_SECURE:-false}
     depends_on:
       db:
         condition: service_healthy

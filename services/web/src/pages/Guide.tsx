@@ -27,8 +27,9 @@ const MCP_JSON = `{
       "command": "docker",
       "args": [
         "run", "--rm", "-i",
-        "-e", "SKILLHUB_URL=http://host.docker.internal:8000",
-        "-e", "SKILLHUB_TOKEN=\${SKILLHUB_TOKEN:-}",
+        "-e", "SKILLHUB_URL=https://<your-server>",
+        "-e", "SKILLHUB_TOKEN_FILE=/data/token",
+        "-v", "skillhub-mcp-token:/data",
         "skillhub-mcp"
       ]
     }
@@ -59,24 +60,26 @@ const en: GuideContent = {
       ],
     },
     {
-      heading: "2. Access & roles",
+      heading: "2. Sign in & roles",
       blocks: [
-        { kind: "p", text: "Reading is open to everyone. Writing needs a bearer token. Roles, ascending:" },
+        {
+          kind: "p",
+          text: "Reading is open to everyone — no sign-in. To write, sign in with Google (top-right). " +
+            "Any Google account works; you start as a viewer. Roles, ascending:",
+        },
         {
           kind: "list",
           items: [
-            "viewer — read only.",
+            "viewer — read only (same as signed-out).",
             "contributor — may upload/import skills.",
-            "evaluator — may submit evaluations (an admin grants this).",
-            "admin — manages users.",
+            "evaluator — may submit evaluations.",
+            "admin — manages users and roles.",
           ],
         },
         {
           kind: "p",
-          text: "Ask an admin to create your user and hand you a token. Store it as an environment " +
-            "variable so the MCP server can pick it up:",
+          text: "An admin promotes you from viewer to contributor/evaluator once you've signed in.",
         },
-        { kind: "code", text: "# Windows (reopen the terminal afterwards)\nsetx SKILLHUB_TOKEN <your-token>\n\n# macOS / Linux (add to your shell profile)\nexport SKILLHUB_TOKEN=<your-token>" },
       ],
     },
     {
@@ -86,13 +89,15 @@ const en: GuideContent = {
         { kind: "code", text: "DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp" },
         {
           kind: "p",
-          text: "The repo already ships a .mcp.json with the entry below. The token is read from your " +
-            "environment, so no secret is committed. Leave SKILLHUB_TOKEN unset to work read-only.",
+          text: "Add this to your .mcp.json (set SKILLHUB_URL to the server). The volume caches your " +
+            "token so you authorize only once per machine:",
         },
         { kind: "code", text: MCP_JSON },
         {
           kind: "p",
-          text: "Once connected, you drive everything below by talking to Claude Code in plain language.",
+          text: "Reads need nothing. The first time you use a write tool (or run the `authenticate` " +
+            "tool), the server prints a verification link + code: open it, approve at /device (signing " +
+            "in with Google), and the token is cached to the volume. Then just talk to Claude Code.",
         },
       ],
     },
@@ -168,27 +173,26 @@ const ru: GuideContent = {
       ],
     },
     {
-      heading: "2. Доступ и роли",
+      heading: "2. Вход и роли",
       blocks: [
         {
           kind: "p",
-          text: "Чтение открыто всем. Для записи нужен bearer-токен. Роли по возрастанию прав:",
+          text: "Чтение открыто всем — без входа. Чтобы писать, войдите через Google (справа вверху). " +
+            "Подойдёт любой Google-аккаунт; вы начинаете как viewer. Роли по возрастанию прав:",
         },
         {
           kind: "list",
           items: [
-            "viewer — только чтение.",
+            "viewer — только чтение (как без входа).",
             "contributor — может загружать/импортировать скиллы.",
-            "evaluator — может отправлять оценки (право выдаёт админ).",
-            "admin — управляет пользователями.",
+            "evaluator — может отправлять оценки.",
+            "admin — управляет пользователями и ролями.",
           ],
         },
         {
           kind: "p",
-          text: "Попросите админа создать вам пользователя и выдать токен. Сохраните его в переменную " +
-            "окружения, чтобы его подхватил MCP-сервер:",
+          text: "Админ повышает вас с viewer до contributor/evaluator после того, как вы вошли.",
         },
-        { kind: "code", text: "# Windows (после этого переоткройте терминал)\nsetx SKILLHUB_TOKEN <ваш-токен>\n\n# macOS / Linux (добавьте в профиль оболочки)\nexport SKILLHUB_TOKEN=<ваш-токен>" },
       ],
     },
     {
@@ -198,14 +202,15 @@ const ru: GuideContent = {
         { kind: "code", text: "DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp" },
         {
           kind: "p",
-          text: "В репозитории уже есть .mcp.json с записью ниже. Токен читается из вашего окружения, " +
-            "поэтому секрет не коммитится. Оставьте SKILLHUB_TOKEN пустым для работы только на чтение.",
+          text: "Добавьте это в свой .mcp.json (укажите SKILLHUB_URL сервера). Том кэширует токен, " +
+            "чтобы авторизоваться только один раз на машине:",
         },
         { kind: "code", text: MCP_JSON },
         {
           kind: "p",
-          text: "После подключения всё, что ниже, вы делаете, просто разговаривая с Claude Code на " +
-            "обычном языке.",
+          text: "Для чтения ничего не нужно. При первом вызове пишущего инструмента (или запустив " +
+            "инструмент `authenticate`) сервер выдаст ссылку и код: откройте её, подтвердите на /device " +
+            "(войдя через Google) — токен закэшируется в том. Дальше просто общайтесь с Claude Code.",
         },
       ],
     },

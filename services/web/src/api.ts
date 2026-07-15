@@ -100,6 +100,17 @@ export interface Health {
   rubric_version?: string;
 }
 
+export interface Me {
+  authenticated: boolean;
+  id?: number;
+  name?: string;
+  email?: string | null;
+  role?: string;
+  can_upload?: boolean;
+  can_evaluate?: boolean;
+  is_admin?: boolean;
+}
+
 export interface RubricCategory {
   key: string;
   label: string;
@@ -124,6 +135,8 @@ export interface Rubric {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
+    // Send the session cookie so logged-in writes/identity work (same-origin in dev & prod).
+    credentials: "include",
     ...init,
   });
   if (!res.ok) {
@@ -152,4 +165,12 @@ export const api = {
   search: (q: string) => request<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`),
   stats: () => request<Stats>("/stats"),
   rubric: () => request<Rubric>("/rubric"),
+  // --- auth ---
+  me: () => request<Me>("/auth/me"),
+  logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+  deviceApprove: (userCode: string) =>
+    request<{ ok: boolean; client_label: string | null }>("/auth/device/approve", {
+      method: "POST",
+      body: JSON.stringify({ user_code: userCode }),
+    }),
 };

@@ -38,7 +38,8 @@ installable package `packages/skillhub_core` and is imported by the API.
 
 ```bash
 cp .env.example .env
-# set SKILLHUB_ADMIN_TOKEN to bootstrap the first admin (uploads/evaluations need a token; reads are open)
+# reads are open; to enable browser login set GOOGLE_CLIENT_ID/SECRET + SKILLHUB_BOOTSTRAP_ADMINS
+# (see "Authentication" below). Everything else works without it.
 
 # Base stack: database + API + web portal
 docker compose up -d --build db api web
@@ -67,6 +68,23 @@ rubric (`GET /api/rubric`) and the unevaluated queue (`GET /api/skills?evaluated
 each skill against it, and submits results back (`POST /api/skills/{id}/assessment`). Install
 `skills/skillhub/SKILL.md` into Claude Code, or add the SkillHub MCP server (`services/mcp/`), to
 drive this. Storing the strategy server-side means every developer runs the one identical algorithm.
+
+## Authentication
+
+Built for a shared, remotely-hosted instance. **Reads are public.** Writes require auth:
+
+- **Humans** sign in with **Google** in the browser (button in the header → `/api/auth/login`).
+  Any Google account works and starts as `viewer`; roles ascend `viewer → contributor → evaluator
+  → admin`. Emails in `SKILLHUB_BOOTSTRAP_ADMINS` become admin on first login; an admin then
+  promotes others. SkillHub is its own authorization server — Google only provides identity.
+- **Claude Code / MCP** authorizes via the **OAuth device flow**: on the first write it shows a
+  verification URL + code; you approve it at `/device` (signed in with Google) and the minted
+  SkillHub token is cached to a docker volume. See `services/mcp/README.md`.
+
+Setup: register a Google "Web application" OAuth client (redirect URI = `SKILLHUB_PUBLIC_URL` +
+`/api/auth/callback`), then set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SKILLHUB_PUBLIC_URL`,
+`SKILLHUB_BOOTSTRAP_ADMINS`, and `SKILLHUB_COOKIE_SECURE=true` (prod/HTTPS) in `.env`. Without
+Google creds the stack still runs; only browser login is disabled.
 
 ## Local development
 
@@ -119,7 +137,8 @@ docker run --rm node:20-slim npm pack react-dom              # larger: hangs on 
   skill versioning history.
 - **Phase 3:** synthesize an "ideal" skill from a cluster, export back to `SKILL.md` / per-client
   adapters, prepare a PR.
-- **Phase 4:** auth, usage telemetry, feedback loop, leaderboards.
+- **Phase 4:** auth (**done** — Google OAuth login + device-flow tokens for the MCP), usage
+  telemetry, feedback loop, leaderboards.
 - **Later/optional:** scheduled re-evaluation (headless `claude -p` on a scheduler).
 
 See `docs/` and the approved plan for details.

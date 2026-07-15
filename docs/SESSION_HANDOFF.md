@@ -10,11 +10,15 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
 - **Claude Code = the evaluator.** Each developer, from their own Claude Code, imports skills
   and (if allowed) evaluates them, submitting results back over the REST API. The `skillhub`
   Claude Code skill (`skills/skillhub/SKILL.md`) drives this.
-- **Multi-user auth.** Reads are **open**; writes need a bearer token. Roles (ascending):
-  `viewer` → `contributor` (may upload) → `evaluator` (may submit evaluations — marked by an
-  admin) → `admin` (manages users). Tokens are random; only their SHA-256 is stored.
-  Bootstrap admin: on first boot with an empty users table, `SKILLHUB_ADMIN_TOKEN` becomes the
-  admin. Local dev token in `.env`: `dev-admin-token-change-me`.
+- **Auth = Google OAuth (humans) + device flow (MCP); SkillHub is its own auth server.** Reads are
+  **open**. Humans sign in with Google in the browser (`GET /api/auth/login` → callback → opaque
+  session cookie `skillhub_session`). The MCP authorizes via the RFC 8628 device grant and caches a
+  SkillHub-minted token. All credentials live in `auth_tokens` (kind `session|device|pat`, SHA-256
+  only) and resolve through one `get_user_by_token`; `current_user_optional` reads **bearer OR
+  cookie**. Roles (ascending) `viewer → contributor → evaluator → admin`; any Google account starts
+  `viewer`; emails in `SKILLHUB_BOOTSTRAP_ADMINS` become admin on first login. `SKILLHUB_ADMIN_TOKEN`
+  is a deprecated break-glass. Google keys via `GOOGLE_CLIENT_ID/SECRET` + `SKILLHUB_PUBLIC_URL`;
+  without them the stack runs but browser login is disabled.
 - **Frontend = read-only dashboard** (catalog + semantic search + per-skill detail + a stats
   strip). No upload/evaluate/delete UI — those happen via Claude Code / the API. It is fully
   **bilingual (RU/EN)** via a lightweight home-grown i18n (`services/web/src/i18n.tsx`, toggle in
@@ -33,10 +37,12 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
 - Open reads: `GET /api/health`, `/api/stats`, `/api/skills`, `/api/skills?evaluated=false`
   (work queue), `/api/skills/{id}`, `/api/search?q=`, `/api/categories`, `/api/rubric`,
   `/api/skills/{id}/evaluations`.
-- Token writes: `POST /api/skills` (contributor+), `POST /api/skills/{id}/assessment`
+- Token/cookie writes: `POST /api/skills` (contributor+), `POST /api/skills/{id}/assessment`
   (evaluator), `DELETE /api/skills/{id}` (admin).
+- Auth: `GET /api/auth/login|callback`, `GET /api/auth/me`, `POST /api/auth/logout`,
+  `POST /api/auth/device/{code,token,approve}`, `GET/POST/DELETE /api/auth/tokens` (self-service).
 - Admin: `GET/POST /api/admin/users`, `POST /api/admin/users/{id}/role` (mark evaluator).
-- Auth header: `Authorization: Bearer <token>`.
+- Auth: `Authorization: Bearer <token>` (MCP/CLI) or the `skillhub_session` cookie (browser).
 
 ## Run it (behind the VPN)
 Build must use the legacy builder (BuildKit ignores the daemon MTU); see README →

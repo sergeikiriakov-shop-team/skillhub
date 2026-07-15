@@ -6,6 +6,8 @@
         "run", "--rm", "-i",
         "-e", "SKILLHUB_URL=http://host.docker.internal:8000",
         "-e", "SKILLHUB_TOKEN=${SKILLHUB_TOKEN:-}",
+        "-e", "SKILLHUB_TOKEN_FILE=/data/token",
+        "-v", "skillhub-mcp-token:/data",
         "skillhub-mcp"
       ]
     }

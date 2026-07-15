@@ -131,6 +131,25 @@ const en: Dict = {
   "detail.installPhrase": 'Install the "{name}" skill from SkillHub into my project',
   "detail.installNote":
     "Claude Code fetches it and writes SKILL.md (+ references) into .claude/skills/{name}/.",
+
+  // auth
+  "auth.signIn": "Sign in with Google",
+  "auth.signOut": "Sign out",
+
+  // device flow
+  "device.title": "Connect a device",
+  "device.intro":
+    "Approve the code shown by your Claude Code / MCP to grant it access to SkillHub.",
+  "device.needLogin": "Sign in with Google first, then approve the code.",
+  "device.warningTitle": "Only approve a code you started yourself",
+  "device.warning":
+    "Approve only if you just started this on your own machine. Never enter a code someone sent you.",
+  "device.codeLabel": "Device code",
+  "device.approveBtn": "Approve",
+  "device.approvedTitle": "Device connected",
+  "device.approved":
+    "Your device is authorized. Return to your terminal — it will pick up access automatically.",
+  "device.error": "Invalid or expired code.",
 };
 
 const ru: Dict = {
@@ -253,6 +272,25 @@ const ru: Dict = {
   "detail.installPhrase": "Установи скилл «{name}» из SkillHub в мой проект",
   "detail.installNote":
     "Claude Code скачает его и запишет SKILL.md (+ references) в .claude/skills/{name}/.",
+
+  // auth
+  "auth.signIn": "Войти через Google",
+  "auth.signOut": "Выйти",
+
+  // device flow
+  "device.title": "Подключение устройства",
+  "device.intro":
+    "Подтвердите код, показанный вашим Claude Code / MCP, чтобы дать ему доступ к SkillHub.",
+  "device.needLogin": "Сначала войдите через Google, затем подтвердите код.",
+  "device.warningTitle": "Подтверждайте только код, который запустили сами",
+  "device.warning":
+    "Подтверждайте, только если вы только что запустили это на своём компьютере. Никогда не вводите код, который вам кто-то прислал.",
+  "device.codeLabel": "Код устройства",
+  "device.approveBtn": "Подтвердить",
+  "device.approvedTitle": "Устройство подключено",
+  "device.approved":
+    "Устройство авторизовано. Вернитесь в терминал — доступ подхватится автоматически.",
+  "device.error": "Неверный или просроченный код.",
 };
 
 const DICTS: Record<Lang, Dict> = { en, ru };

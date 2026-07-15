@@ -46,6 +46,17 @@ def _apply_column_migrations() -> None:
     statements = [
         "ALTER TABLE skills ADD COLUMN IF NOT EXISTS task_group VARCHAR(80)",
         "CREATE INDEX IF NOT EXISTS ix_skills_task_group ON skills (task_group)",
+        # OAuth rework: identity columns on the pre-existing users table + drop the legacy
+        # single-token NOT NULL. Uniqueness lives in these named indexes (partial: NULLs allowed).
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(320)",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255)",
+        "ALTER TABLE users ALTER COLUMN token_hash DROP NOT NULL",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_email ON users (email)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_sub ON users (google_sub)",
+        # Carry any legacy per-user tokens over to auth_tokens so existing MCP tokens keep working.
+        "INSERT INTO auth_tokens (user_id, token_hash, kind, created_at) "
+        "SELECT id, token_hash, 'device', now() FROM users WHERE token_hash IS NOT NULL "
+        "ON CONFLICT (token_hash) DO NOTHING",
     ]
     with engine.begin() as conn:
         for stmt in statements:
