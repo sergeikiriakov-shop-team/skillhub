@@ -15,8 +15,8 @@ Register the SkillHub MCP server in this Claude Code so the user can browse/sear
 skills against their SkillHub instance. Reads are public; writes authorize later via the device flow.
 
 ## Inputs
-- **Server URL** — the SkillHub base URL the user gives you, e.g. `http://166.1.29.218:8080` or
-  `https://skillhub.example.com`. If the user didn't include a URL, ask for it before proceeding.
+- **Server URL** — the SkillHub base URL the user gives you, e.g. `https://166.1.29.218.sslip.io`
+  or `https://skillhub.example.com`. If the user didn't include a URL, ask for it before proceeding.
   Strip any trailing slash.
 
 ## Steps

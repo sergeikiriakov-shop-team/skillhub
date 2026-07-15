@@ -62,9 +62,29 @@ services:
     depends_on:
       - api
     ports:
+      # Plain-http fallback; the primary public entry is Caddy (https) below.
       - "${WEB_PORT:-8080}:80"
+    restart: unless-stopped
+
+  # TLS terminator / reverse proxy. Set SKILLHUB_DOMAIN (e.g. <ip>.sslip.io) to enable it.
+  # Auto-obtains a Let's Encrypt cert; needs ports 80 + 443 reachable.
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - web
+    environment:
+      SKILLHUB_DOMAIN: ${SKILLHUB_DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     restart: unless-stopped
 
 volumes:
   pgdata:
   hf_cache:
+  caddy_data:
+  caddy_config:

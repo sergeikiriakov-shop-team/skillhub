@@ -12,14 +12,14 @@ Tools: `list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `
 The image is published, so developers **don't build anything**. The easiest path is to ask your
 Claude Code in plain language (with the `connect-skillhub` skill installed):
 
-> "install the SkillHub MCP for `http://166.1.29.218:8080`"
+> "install the SkillHub MCP for `https://166.1.29.218.sslip.io`"
 
 …and it runs the command below for you. Or run it directly (substitute your server URL):
 
 ```bash
 claude mcp add --scope user skillhub -- \
   docker run --rm -i \
-  -e SKILLHUB_URL=http://166.1.29.218:8080 \
+  -e SKILLHUB_URL=https://166.1.29.218.sslip.io \
   -e SKILLHUB_TOKEN_FILE=/data/token \
   -v skillhub-mcp-token:/data \
   ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest

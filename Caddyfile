@@ -1,0 +1,6 @@
+# Reverse proxy with automatic HTTPS (Let's Encrypt). The domain comes from $SKILLHUB_DOMAIN
+# (e.g. an <ip>.sslip.io name, which resolves to the host with no domain purchase). Caddy obtains
+# and renews the certificate automatically and redirects http->https.
+{$SKILLHUB_DOMAIN} {
+	reverse_proxy web:80
+}
