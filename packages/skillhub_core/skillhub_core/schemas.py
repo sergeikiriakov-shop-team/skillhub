@@ -134,6 +134,8 @@ class RubricOut(BaseModel):
     categorization_rules: str = ""
     selection_strategy: str = ""
     synthesis_strategy: str = ""
+    synthesis_algorithm: list[dict] = Field(default_factory=list)
+    synthesis_prompt: str = ""
 
 
 # --- Users / admin ---

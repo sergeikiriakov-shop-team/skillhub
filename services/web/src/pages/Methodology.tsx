@@ -151,7 +151,31 @@ export default function Methodology() {
         </Section>
 
         <Section title="Synthesizing the ideal skill">
-          <Text size="sm">{r.synthesis_strategy}</Text>
+          <Text size="sm" mb={r.synthesis_algorithm.length ? "md" : 0}>
+            {r.synthesis_strategy}
+          </Text>
+          {r.synthesis_algorithm.length > 0 && (
+            <Stack gap="xs" mb="md">
+              {r.synthesis_algorithm.map((s) => (
+                <Group key={s.step} gap="sm" align="flex-start" wrap="nowrap">
+                  <Badge variant="light" color="grape" style={{ flexShrink: 0 }}>
+                    {s.step}
+                  </Badge>
+                  <Text size="sm">{s.detail}</Text>
+                </Group>
+              ))}
+            </Stack>
+          )}
+          {r.synthesis_prompt && (
+            <>
+              <Text size="xs" c="dimmed" mb={4}>
+                Synthesis prompt (filled in per group and run by every developer&apos;s Claude Code):
+              </Text>
+              <Code block style={{ whiteSpace: "pre-wrap" }}>
+                {r.synthesis_prompt}
+              </Code>
+            </>
+          )}
         </Section>
       </Stack>
     </Container>

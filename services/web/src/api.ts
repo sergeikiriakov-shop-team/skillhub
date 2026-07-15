@@ -105,6 +105,8 @@ export interface Rubric {
   categorization_rules: string;
   selection_strategy: string;
   synthesis_strategy: string;
+  synthesis_algorithm: { step: string; detail: string }[];
+  synthesis_prompt: string;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

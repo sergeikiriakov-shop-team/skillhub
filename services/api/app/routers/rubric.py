@@ -15,6 +15,8 @@ from skillhub_core.rubric import (
     RUBRIC_VERSION,
     RUBRIC_WEIGHTS,
     SELECTION_STRATEGY,
+    SYNTHESIS_ALGORITHM,
+    SYNTHESIS_PROMPT,
     SYNTHESIS_STRATEGY,
 )
 from skillhub_core.schemas import EvaluationResult, RubricOut
@@ -35,4 +37,6 @@ def get_rubric(session: Session = Depends(get_session)) -> RubricOut:
         categorization_rules=CATEGORIZATION_RULES,
         selection_strategy=SELECTION_STRATEGY,
         synthesis_strategy=SYNTHESIS_STRATEGY,
+        synthesis_algorithm=SYNTHESIS_ALGORITHM,
+        synthesis_prompt=SYNTHESIS_PROMPT,
     )

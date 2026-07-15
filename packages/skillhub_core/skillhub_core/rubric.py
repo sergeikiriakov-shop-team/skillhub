@@ -104,11 +104,62 @@ SELECTION_STRATEGY = (
 )
 
 # How to build the "ideal" skill for a competing group (the phase after selection).
+# The one-line summary; the full, reproducible procedure is SYNTHESIS_ALGORITHM + SYNTHESIS_PROMPT.
 SYNTHESIS_STRATEGY = (
-    "To synthesize the ideal skill for a competing group: start from the winner's structure and "
-    "trigger; graft in each runner-up's unique strengths (name the source of each grafted part); "
-    "keep the strongest single trigger, the most complete workflow, and the strictest safety "
-    "rails found anywhere in the group; drop duplication and one-off specifics. The result must be "
-    "attributable (which source each part came from) and score at least as high as the group "
-    "winner on every dimension."
+    "Synthesize the ideal skill for a competing task_group by starting from the winner's structure "
+    "and grafting every runner-up's unique strength (attributed), so the result scores at least as "
+    "high as the winner on every dimension. Follow the fixed algorithm and prompt below so every "
+    "developer's Claude Code produces the ideal the same way."
+)
+
+# The exact, ordered synthesis procedure — stored here so it is identical for everyone.
+SYNTHESIS_ALGORITHM: list[dict] = [
+    {
+        "step": "1. Identify the group",
+        "detail": "Take the set of skills sharing one `task_group` with 2+ members (a real 'same "
+        "job' competition). A single-member group has nothing to synthesize.",
+    },
+    {
+        "step": "2. Choose the base",
+        "detail": "Rank the group by `overall` (tie-break: safety → completeness → "
+        "trigger_quality). The winner's SKILL.md is the structural starting point.",
+    },
+    {
+        "step": "3. Extract graftable strengths",
+        "detail": "For each non-winner, list the concrete strengths (from its evaluation) that the "
+        "winner lacks. These are the graft candidates; discard one-off, environment-specific bits.",
+    },
+    {
+        "step": "4. Draft the ideal SKILL.md",
+        "detail": "Start from the base; keep the single strongest trigger, the most complete "
+        "workflow and the strictest safety rails found ANYWHERE in the group; integrate each graft "
+        "cleanly with no duplication.",
+    },
+    {
+        "step": "5. Enforce the output contract",
+        "detail": "The result must: be a valid SKILL.md (frontmatter name + description); carry a "
+        "'Synthesis provenance' note mapping each part to its source skill; keep one crisp trigger; "
+        "and be projected to score >= the base on EVERY rubric dimension.",
+    },
+    {
+        "step": "6. Upload & self-evaluate",
+        "detail": "Upload with author 'SkillHub (synthesized)' and the group's `task_group`, then "
+        "score it against this rubric. If any dimension scores below the base, revise and re-score.",
+    },
+]
+
+# The fill-in prompt a developer's Claude Code uses to run step 4 — one wording for everyone.
+SYNTHESIS_PROMPT = (
+    "You are synthesizing the single ideal Claude Code skill for the task_group `{task_group}`.\n"
+    "BASE (structural starting point): `{winner_name}` — overall {winner_overall}. Its SKILL.md is "
+    "provided below.\n"
+    "GRAFT these unique strengths from the runners-up, attributing each to its source:\n"
+    "{runner_up_strengths}\n\n"
+    "Produce ONE SKILL.md that: (a) keeps the single strongest trigger in the group; (b) merges the "
+    "most complete workflow; (c) adopts the strictest safety rails present anywhere in the group; "
+    "(d) integrates every graft with no duplication and no one-off specifics; (e) ends with a short "
+    "'Synthesis provenance' section mapping each part to its source skill. The result MUST be "
+    "projected to score at least as high as the base on every rubric dimension. Then categorize it "
+    "into the same `task_group` and submit it for evaluation via the standard assessment flow.\n\n"
+    "BASE SKILL.md:\n{winner_body}"
 )
