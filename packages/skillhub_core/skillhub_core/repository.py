@@ -113,9 +113,11 @@ def save_categorization(
 ) -> None:
     """Replace the LLM-sourced category assignments for a skill (manual ones are preserved)."""
     # Narrow "specific job" grouping key (finer than the broad category). Only overwrite when a
-    # non-empty value is supplied, so a re-categorization without one keeps the previous group.
-    if result.task_group is not None:
-        skill.task_group = result.task_group.strip() or None
+    # non-empty value is supplied, so a re-categorization without one (None OR "") keeps the
+    # previous group rather than silently clearing it.
+    task_group = (result.task_group or "").strip()
+    if task_group:
+        skill.task_group = task_group
 
     by_key = {c.key: c for c in session.scalars(select(Category)).all()}
 
@@ -179,7 +181,14 @@ def get_taxonomy(session: Session) -> list[dict]:
 def task_groups(session: Session) -> list[dict]:
     """Distinct narrow task-groups with their skill count and average score — so evaluators can
     reuse an existing group slug and the dashboard can cluster competing skills."""
-    skills = list_skills(session)
+    # Load only what the aggregation reads (task_group + latest evaluation score); unlike
+    # list_skills(), this does NOT selectinload categories, which are never touched here.
+    stmt = (
+        select(Skill)
+        .options(selectinload(Skill.versions).selectinload(SkillVersion.evaluations))
+        .where(Skill.task_group.is_not(None))
+    )
+    skills = list(session.scalars(stmt).all())
     agg: dict[str, dict] = {}
     for s in skills:
         key = s.task_group
@@ -213,10 +222,10 @@ def list_recommendations(session: Session, status: str | None = None) -> list[Re
 
 
 def create_recommendation(session: Session, data: dict, created_by: str | None = None) -> Recommendation:
+    # Flush (not commit) to match the rest of the layer: the router owns the transaction.
     rec = Recommendation(**data, created_by=created_by)
     session.add(rec)
-    session.commit()
-    session.refresh(rec)
+    session.flush()
     return rec
 
 
@@ -225,8 +234,7 @@ def set_recommendation_status(session: Session, rec_id: int, status: str) -> Rec
     if rec is None:
         return None
     rec.status = status
-    session.commit()
-    session.refresh(rec)
+    session.flush()
     return rec
 
 

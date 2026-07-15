@@ -6,13 +6,13 @@ import {
   Container,
   CopyButton,
   Group,
-  Loader,
   Stack,
   Text,
   Title,
 } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { api, Recommendation } from "../api";
+import PageLoader from "../components/PageLoader";
 
 const KIND_COLOR: Record<string, string> = {
   synthesize: "grape",
@@ -58,8 +58,13 @@ function RecommendationCard({ r }: { r: Recommendation }) {
             scope: {r.scope}
           </Badge>
         )}
-        {r.targets.map((t) => (
-          <Badge key={t} size="sm" variant="dot" styles={{ label: { textTransform: "none" } }}>
+        {r.targets.map((t, i) => (
+          <Badge
+            key={`${r.id}-${i}`}
+            size="sm"
+            variant="dot"
+            styles={{ label: { textTransform: "none" } }}
+          >
             {t}
           </Badge>
         ))}
@@ -95,13 +100,7 @@ export default function Recommendations() {
   });
 
   if (isLoading) {
-    return (
-      <Container size="md">
-        <Group justify="center" mt="xl">
-          <Loader />
-        </Group>
-      </Container>
-    );
+    return <PageLoader />;
   }
 
   const recs = [...(data ?? [])].sort(

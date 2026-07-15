@@ -4,7 +4,8 @@ A thin **stdio** MCP server that exposes the SkillHub REST API as tools for Clau
 developer runs it with their own token; authorization is enforced by the API.
 
 Tools: `list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `get_stats`,
-`upload_skill` (contributor+), `submit_assessment` (evaluator).
+`list_task_groups`, `list_recommendations`, `upload_skill` (contributor+),
+`submit_assessment` (evaluator), `add_recommendation`/`set_recommendation_status` (contributor+).
 
 ## Build (once)
 ```bash
@@ -12,8 +13,9 @@ DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp
 ```
 
 ## Configure in Claude Code (`.mcp.json`)
-Claude Code launches the server as a stdio subprocess via `docker run -i`. Put this in your
-project (or user) `.mcp.json` — replace the token with yours (from an admin):
+Claude Code launches the server as a stdio subprocess via `docker run -i`. The committed
+`.mcp.json` (repo root) already contains this — the token is read from your **environment**, so no
+secret is committed and no `.env` file is required to start:
 
 ```json
 {
@@ -23,7 +25,7 @@ project (or user) `.mcp.json` — replace the token with yours (from an admin):
       "args": [
         "run", "--rm", "-i",
         "-e", "SKILLHUB_URL=http://host.docker.internal:8000",
-        "-e", "SKILLHUB_TOKEN=<your-token>",
+        "-e", "SKILLHUB_TOKEN=${SKILLHUB_TOKEN:-}",
         "skillhub-mcp"
       ]
     }
@@ -31,6 +33,11 @@ project (or user) `.mcp.json` — replace the token with yours (from an admin):
 }
 ```
 
+- **Your token.** `${SKILLHUB_TOKEN:-}` expands from the environment Claude Code was started with.
+  Set `SKILLHUB_TOKEN` (from an admin) as a user/OS environment variable — e.g. on Windows
+  `setx SKILLHUB_TOKEN <your-token>` (reopen the terminal), on macOS/Linux export it in your shell
+  profile. Leave it unset to run read-only. Only `SKILLHUB_URL` and `SKILLHUB_TOKEN` are passed to
+  the container — no DB password or admin token is injected (unlike a blanket `--env-file .env`).
 - `SKILLHUB_URL` defaults to `http://host.docker.internal:8000` (Docker Desktop reaches the
   host-published API port). If you run the MCP on the compose network instead, use
   `--network skillhub_default` and `SKILLHUB_URL=http://api:8000`.

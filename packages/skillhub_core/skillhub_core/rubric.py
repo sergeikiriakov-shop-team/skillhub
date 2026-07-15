@@ -5,8 +5,10 @@ The service does NOT run the LLM. Every developer's Claude Code fetches this str
 (POST /api/skills/{id}/assessment) — so the algorithm is identical for everyone. The
 read-only dashboard renders the same content on its Methodology page.
 
-Bump ``RUBRIC_VERSION`` whenever any part of the strategy changes so prior evaluations can be
-treated as stale and re-scored under the new version.
+Bump ``RUBRIC_VERSION`` whenever any part of the strategy changes. Each evaluation records the
+version that produced it; prior evaluations keep their old version and are surfaced as **stale**
+(the dashboard flags a score whose ``rubric_version`` differs from the current one). Re-scoring a
+stale evaluation under the new version is a manual curator step — it is not automatic.
 """
 
 from __future__ import annotations

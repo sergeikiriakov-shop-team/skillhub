@@ -34,8 +34,22 @@ def init_db() -> None:
     with engine.begin() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     Base.metadata.create_all(engine)
+    _apply_column_migrations()
     _seed_categories()
     _bootstrap_admin()
+
+
+def _apply_column_migrations() -> None:
+    """Add columns introduced after a table's first creation. ``create_all`` creates missing
+    tables but never ALTERs an existing one, so a column added to an already-provisioned table
+    (e.g. ``skills.task_group``) must be applied here. Idempotent via ``ADD COLUMN IF NOT EXISTS``."""
+    statements = [
+        "ALTER TABLE skills ADD COLUMN IF NOT EXISTS task_group VARCHAR(80)",
+        "CREATE INDEX IF NOT EXISTS ix_skills_task_group ON skills (task_group)",
+    ]
+    with engine.begin() as conn:
+        for stmt in statements:
+            conn.execute(text(stmt))
 
 
 def _bootstrap_admin() -> None:

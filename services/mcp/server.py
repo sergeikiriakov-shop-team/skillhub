@@ -74,9 +74,22 @@ def search(query: str) -> Any:
 
 @mcp.tool()
 def get_rubric() -> Any:
-    """Fetch the evaluation rubric: instructions, dimensions, the JSON schema the `evaluation`
-    object must match, and the allowed category keys."""
+    """Fetch the full evaluation + curation strategy (one shared algorithm for every developer):
+    `instructions`, `dimensions`, `weights`, `calibration` anchors, the `evaluation_schema`, the
+    `categories` taxonomy, `categorization_rules` (broad category + narrow task_group),
+    `selection_strategy` (how to pick the best in a group) and the synthesis spec
+    (`synthesis_strategy`, `synthesis_algorithm`, `synthesis_prompt`). Fetch this before scoring,
+    categorizing, selecting a best-of-group, or synthesizing an ideal skill."""
     return _call("GET", "/api/rubric")
+
+
+@mcp.tool()
+def list_task_groups(status: str | None = None) -> Any:
+    """List the existing narrow task-groups (the specific-job layer below the broad categories),
+    with each group's skill count and average score. Call this BEFORE assigning a `task_group` on
+    an assessment and REUSE a matching slug, so skills that do the same job cluster together
+    instead of fragmenting across near-duplicate slugs."""
+    return _call("GET", "/api/task-groups")
 
 
 @mcp.tool()
@@ -114,7 +127,8 @@ def submit_assessment(
     """Submit a completed assessment. `evaluation` must match the rubric schema
     (clarity, trigger_quality, completeness, reusability, safety, structure as 0-10 ints, plus
     overall 0-10, strengths[], weaknesses[], rationale). `categorization` is optional
-    {primary_category, categories:[{key,confidence}], tags[], summary}. Requires an evaluator token."""
+    {primary_category, categories:[{key,confidence}], task_group (a narrow specific-job slug —
+    reuse an existing one from list_task_groups), tags[], summary}. Requires an evaluator token."""
     body: dict[str, Any] = {"evaluation": evaluation, "model": model}
     if categorization is not None:
         body["categorization"] = categorization

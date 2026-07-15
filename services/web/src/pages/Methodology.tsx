@@ -1,18 +1,8 @@
-import {
-  Badge,
-  Card,
-  Code,
-  Container,
-  Group,
-  Loader,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Badge, Card, Code, Container, Group, Stack, Table, Text, Title } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { api } from "../api";
+import PageLoader from "../components/PageLoader";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -29,13 +19,7 @@ export default function Methodology() {
   const { data: r, isLoading } = useQuery({ queryKey: ["rubric"], queryFn: api.rubric });
 
   if (isLoading || !r) {
-    return (
-      <Container size="md">
-        <Group justify="center" mt="xl">
-          <Loader />
-        </Group>
-      </Container>
-    );
+    return <PageLoader />;
   }
 
   return (

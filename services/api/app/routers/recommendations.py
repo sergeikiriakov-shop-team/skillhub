@@ -35,6 +35,7 @@ def create_recommendation(
     if payload.kind not in REC_KINDS:
         raise HTTPException(status_code=400, detail=f"kind must be one of {REC_KINDS}")
     rec = repository.create_recommendation(session, payload.model_dump(), created_by=user.name)
+    session.commit()
     return RecommendationOut.model_validate(rec, from_attributes=True)
 
 
@@ -50,4 +51,5 @@ def set_status(
     rec = repository.set_recommendation_status(session, rec_id, payload.status)
     if rec is None:
         raise HTTPException(status_code=404, detail="Recommendation not found")
+    session.commit()
     return RecommendationOut.model_validate(rec, from_attributes=True)

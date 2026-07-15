@@ -1,19 +1,8 @@
-import {
-  Anchor,
-  Badge,
-  Card,
-  Container,
-  Group,
-  Loader,
-  Paper,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from "@mantine/core";
+import { Anchor, Badge, Card, Container, Group, Paper, Stack, Table, Text, Title } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api, SkillSummary } from "../api";
+import PageLoader from "../components/PageLoader";
 import { ScoreBadge } from "../components/Score";
 
 function byScoreDesc(a: SkillSummary, b: SkillSummary): number {
@@ -24,7 +13,15 @@ function prettyGroup(key: string): string {
   return key === "(ungrouped)" ? "ungrouped" : key.replace(/-/g, " ");
 }
 
-function RankTable({ skills, bestId }: { skills: SkillSummary[]; bestId?: number }) {
+function RankTable({
+  skills,
+  bestId,
+  currentVersion,
+}: {
+  skills: SkillSummary[];
+  bestId?: number;
+  currentVersion?: string;
+}) {
   return (
     <Table verticalSpacing="xs" horizontalSpacing="sm" highlightOnHover>
       <Table.Thead>
@@ -38,6 +35,8 @@ function RankTable({ skills, bestId }: { skills: SkillSummary[]; bestId?: number
       <Table.Tbody>
         {skills.map((s, i) => {
           const isBest = s.id === bestId;
+          const stale =
+            currentVersion != null && s.rubric_version != null && s.rubric_version !== currentVersion;
           return (
             <Table.Tr key={s.id}>
               <Table.Td c="dimmed">{i + 1}</Table.Td>
@@ -64,7 +63,14 @@ function RankTable({ skills, bestId }: { skills: SkillSummary[]; bestId?: number
                 </Text>
               </Table.Td>
               <Table.Td ta="right">
-                <ScoreBadge value={s.overall_score} size="sm" />
+                <Group gap={6} justify="flex-end" wrap="nowrap">
+                  {stale && (
+                    <Badge size="xs" color="gray" variant="outline" title="scored under an older rubric">
+                      stale v{s.rubric_version}
+                    </Badge>
+                  )}
+                  <ScoreBadge value={s.overall_score} size="sm" />
+                </Group>
               </Table.Td>
             </Table.Tr>
           );
@@ -77,24 +83,26 @@ function RankTable({ skills, bestId }: { skills: SkillSummary[]; bestId?: number
 export default function Categories() {
   const skillsQuery = useQuery({ queryKey: ["skills", null], queryFn: () => api.listSkills() });
   const catsQuery = useQuery({ queryKey: ["categories"], queryFn: api.listCategories });
+  const healthQuery = useQuery({ queryKey: ["health"], queryFn: api.health });
 
   if (skillsQuery.isLoading || catsQuery.isLoading) {
-    return (
-      <Container size="lg">
-        <Group justify="center" mt="xl">
-          <Loader />
-        </Group>
-      </Container>
-    );
+    return <PageLoader size="lg" />;
   }
 
   const skills = skillsQuery.data ?? [];
   const cats = catsQuery.data ?? [];
+  const currentVersion = healthQuery.data?.rubric_version;
 
-  // Global narrow-group ranking: which skill is the best within each task_group (only meaningful
-  // when the group has more than one skill — that is the real "same job" competition).
+  // Synthesized "ideals" are the registry's own output and get their own section below; they are
+  // excluded from the competitive rankings, the leaderboard and the category averages so they
+  // don't steal the ★ best badge from a human skill or inflate aggregates.
+  const humanSkills = skills.filter((s) => s.source_type !== "synthesized");
+  const synthesized = skills.filter((s) => s.source_type === "synthesized").sort(byScoreDesc);
+
+  // Narrow-group ranking over human skills: the best within each task_group (only meaningful when
+  // the group has more than one skill — the real "same job" competition).
   const byTaskGroup = new Map<string, SkillSummary[]>();
-  for (const s of skills) {
+  for (const s of humanSkills) {
     if (!s.task_group) continue;
     const list = byTaskGroup.get(s.task_group) ?? [];
     list.push(s);
@@ -106,9 +114,9 @@ export default function Categories() {
     if (list.length > 1 && list[0].overall_score != null) bestInGroup.set(tg, list[0].id);
   }
 
-  // Broad grouping: skills per category (a skill can appear in several).
+  // Broad grouping over human skills (a skill can appear in several categories).
   const byCategory = new Map<string, SkillSummary[]>();
-  for (const s of skills) {
+  for (const s of humanSkills) {
     for (const c of s.categories) {
       const list = byCategory.get(c.key) ?? [];
       list.push(s);
@@ -116,12 +124,7 @@ export default function Categories() {
     }
   }
 
-  const leaderboard = [...skills].filter((s) => s.overall_score != null).sort(byScoreDesc).slice(0, 5);
-
-  // Service-generated "ideal" skills, each merged from the other members of its task group.
-  const synthesized = skills
-    .filter((s) => s.source_type === "synthesized")
-    .sort(byScoreDesc);
+  const leaderboard = humanSkills.filter((s) => s.overall_score != null).sort(byScoreDesc).slice(0, 5);
 
   return (
     <Container size="lg">
@@ -131,7 +134,8 @@ export default function Categories() {
           <Text c="dimmed" size="sm">
             The output of the registry. Skills are grouped on two levels — a broad category, then
             the narrow <b>task group</b> (their specific job). Within a task group with more than one
-            skill (a real "same job" competition) the ★ marks the top-rated one.
+            skill (a real "same job" competition) the ★ marks the top-rated one. Synthesized ideals
+            are listed separately and excluded from the competition and the averages.
           </Text>
         </div>
 
@@ -149,9 +153,7 @@ export default function Categories() {
             </Text>
             <Stack gap="sm">
               {synthesized.map((ideal) => {
-                const sources = (byTaskGroup.get(ideal.task_group ?? "") ?? []).filter(
-                  (s) => s.id !== ideal.id,
-                );
+                const sources = byTaskGroup.get(ideal.task_group ?? "") ?? [];
                 return (
                   <Paper withBorder radius="md" p="sm" key={ideal.id}>
                     <Group justify="space-between" wrap="nowrap">
@@ -186,7 +188,7 @@ export default function Categories() {
                           merged from
                         </Text>
                         <Stack gap={4}>
-                          {sources.map((s) => (
+                          {[...sources].sort(byScoreDesc).map((s) => (
                             <Group key={s.id} justify="space-between" wrap="nowrap">
                               <Text size="sm">
                                 <Anchor component={Link} to={`/skills/${s.id}`}>
@@ -219,7 +221,7 @@ export default function Categories() {
               No scored skills yet.
             </Text>
           ) : (
-            <RankTable skills={leaderboard} bestId={leaderboard[0]?.id} />
+            <RankTable skills={leaderboard} bestId={leaderboard[0]?.id} currentVersion={currentVersion} />
           )}
         </Card>
 
@@ -281,7 +283,7 @@ export default function Categories() {
                           </Text>
                         )}
                       </Group>
-                      <RankTable skills={arr} bestId={bestInGroup.get(tg)} />
+                      <RankTable skills={arr} bestId={bestInGroup.get(tg)} currentVersion={currentVersion} />
                     </div>
                   ))}
                 </Stack>

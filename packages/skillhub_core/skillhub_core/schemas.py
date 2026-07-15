@@ -194,6 +194,7 @@ class SkillSummary(BaseModel):
     source_format: str
     source_type: str = "upload"
     overall_score: float | None
+    rubric_version: str | None = None  # version of the latest evaluation; None if unscored
     categories: list[CategoryOut]
     task_group: str | None = None
     updated_at: datetime

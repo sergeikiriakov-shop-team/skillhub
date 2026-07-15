@@ -34,6 +34,12 @@ def _overall_score(skill: Skill) -> float | None:
     return evaluation.overall_score if evaluation else None
 
 
+def _latest_rubric_version(skill: Skill) -> str | None:
+    version = skill.latest_version
+    evaluation = version.latest_evaluation if version else None
+    return evaluation.rubric_version if evaluation else None
+
+
 def _categories(skill: Skill) -> list[CategoryOut]:
     out = [
         CategoryOut(key=sc.category.key, label=sc.category.label, confidence=sc.confidence)
@@ -54,6 +60,7 @@ def skill_to_summary(skill: Skill) -> SkillSummary:
         source_format=version.source_format if version else "claude_skill",
         source_type=skill.source_type,
         overall_score=_overall_score(skill),
+        rubric_version=_latest_rubric_version(skill),
         categories=_categories(skill),
         task_group=skill.task_group,
         updated_at=skill.updated_at,
@@ -71,6 +78,7 @@ def skill_to_detail(skill: Skill, similar: list[tuple[Skill, float]] | None = No
         source_format=version.source_format if version else "claude_skill",
         source_type=skill.source_type,
         overall_score=_overall_score(skill),
+        rubric_version=_latest_rubric_version(skill),
         categories=_categories(skill),
         task_group=skill.task_group,
         updated_at=skill.updated_at,

@@ -35,15 +35,10 @@ export interface SkillSummary {
   source_format: string;
   source_type: string;
   overall_score: number | null;
+  rubric_version: string | null;
   categories: Category[];
   task_group: string | null;
   updated_at: string;
-}
-
-export interface TaskGroup {
-  key: string;
-  count: number;
-  avg_overall: number | null;
 }
 
 export interface Recommendation {
@@ -151,7 +146,6 @@ export const api = {
     request<SkillDetail>("/skills", { method: "POST", body: JSON.stringify(payload) }),
   deleteSkill: (id: number) => request<void>(`/skills/${id}`, { method: "DELETE" }),
   listCategories: () => request<CategoryInfo[]>("/categories"),
-  listTaskGroups: () => request<TaskGroup[]>("/task-groups"),
   listRecommendations: () => request<Recommendation[]>("/recommendations"),
   search: (q: string) => request<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`),
   stats: () => request<Stats>("/stats"),
