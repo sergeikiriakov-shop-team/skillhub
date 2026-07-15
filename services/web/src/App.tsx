@@ -3,6 +3,7 @@ import { Link, NavLink, Route, Routes } from "react-router-dom";
 import Catalog from "./pages/Catalog";
 import Categories from "./pages/Categories";
 import Methodology from "./pages/Methodology";
+import Recommendations from "./pages/Recommendations";
 import SkillDetail from "./pages/SkillDetail";
 
 function NavItem({ to, label }: { to: string; label: string }) {
@@ -38,6 +39,7 @@ export default function App() {
           <Group gap="lg">
             <NavItem to="/" label="Catalog" />
             <NavItem to="/categories" label="Categories & ratings" />
+            <NavItem to="/recommendations" label="Recommendations" />
             <NavItem to="/methodology" label="Methodology" />
           </Group>
         </Group>
@@ -47,6 +49,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Catalog />} />
           <Route path="/categories" element={<Categories />} />
+          <Route path="/recommendations" element={<Recommendations />} />
           <Route path="/methodology" element={<Methodology />} />
           <Route path="/skills/:id" element={<SkillDetail />} />
         </Routes>

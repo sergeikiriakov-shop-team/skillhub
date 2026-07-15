@@ -19,6 +19,7 @@ from .routers import (
     admin,
     categories,
     evaluations,
+    recommendations,
     rubric,
     search,
     skills,
@@ -53,6 +54,7 @@ app.add_middleware(
 app.include_router(skills.router, prefix="/api")
 app.include_router(categories.router, prefix="/api")
 app.include_router(task_groups.router, prefix="/api")
+app.include_router(recommendations.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(evaluations.router, prefix="/api")
 app.include_router(rubric.router, prefix="/api")

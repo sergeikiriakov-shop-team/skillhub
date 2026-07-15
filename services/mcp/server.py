@@ -121,5 +121,41 @@ def submit_assessment(
     return _call("POST", f"/api/skills/{skill_id}/assessment", json=body)
 
 
+@mcp.tool()
+def list_recommendations(status: str | None = None) -> Any:
+    """List curator recommendations (proposed catalog changes: synthesize/split/merge/dedup/delete).
+    Optionally filter by status: proposed|accepted|done|dismissed."""
+    return _call("GET", "/api/recommendations", params={"status": status} if status else None)
+
+
+@mcp.tool()
+def add_recommendation(
+    kind: str,
+    title: str,
+    rationale: str = "",
+    scope: str | None = None,
+    targets: list[str] | None = None,
+    suggested_action: str = "",
+) -> Any:
+    """Propose a catalog change so it is stored and shown on the dashboard for a developer to run
+    later. `kind`: synthesize|split|merge|dedup|delete|other. `scope`: a category/task_group/skill.
+    `suggested_action`: a runnable instruction. Requires a contributor+ token."""
+    body = {
+        "kind": kind,
+        "title": title,
+        "rationale": rationale,
+        "scope": scope,
+        "targets": targets or [],
+        "suggested_action": suggested_action,
+    }
+    return _call("POST", "/api/recommendations", json=body)
+
+
+@mcp.tool()
+def set_recommendation_status(rec_id: int, status: str) -> Any:
+    """Update a recommendation's status: proposed|accepted|done|dismissed. Requires a contributor+ token."""
+    return _call("POST", f"/api/recommendations/{rec_id}/status", json={"status": status})
+
+
 if __name__ == "__main__":
     mcp.run()

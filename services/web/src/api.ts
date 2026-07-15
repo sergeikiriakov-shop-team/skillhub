@@ -46,6 +46,20 @@ export interface TaskGroup {
   avg_overall: number | null;
 }
 
+export interface Recommendation {
+  id: number;
+  kind: string;
+  title: string;
+  rationale: string;
+  scope: string | null;
+  targets: string[];
+  suggested_action: string;
+  status: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface SimilarSkill {
   id: number;
   name: string;
@@ -138,6 +152,7 @@ export const api = {
   deleteSkill: (id: number) => request<void>(`/skills/${id}`, { method: "DELETE" }),
   listCategories: () => request<CategoryInfo[]>("/categories"),
   listTaskGroups: () => request<TaskGroup[]>("/task-groups"),
+  listRecommendations: () => request<Recommendation[]>("/recommendations"),
   search: (q: string) => request<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`),
   stats: () => request<Stats>("/stats"),
   rubric: () => request<Rubric>("/rubric"),

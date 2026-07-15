@@ -11,6 +11,10 @@ SOURCE_TYPE_SYNTHESIZED = "synthesized"  # produced by the service's synthesis a
 # Author sentinel for a synthesized "ideal" skill — recognized on ingest to tag its source_type.
 SYNTHESIZED_AUTHOR = "SkillHub (synthesized)"
 
+# Curator recommendations: what kind of change is proposed, and its lifecycle state.
+REC_KINDS = ("synthesize", "split", "merge", "dedup", "delete", "other")
+REC_STATUSES = ("proposed", "accepted", "done", "dismissed")
+
 # The originating client format. Claude Code is canonical; the rest are adapters.
 FORMAT_CLAUDE_SKILL = "claude_skill"
 FORMAT_CURSOR_MDC = "cursor_mdc"

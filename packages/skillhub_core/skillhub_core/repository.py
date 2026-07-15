@@ -11,6 +11,7 @@ from .models import (
     SYNTHESIZED_AUTHOR,
     Category,
     Evaluation,
+    Recommendation,
     Skill,
     SkillCategory,
     SkillEmbedding,
@@ -197,6 +198,36 @@ def task_groups(session: Session) -> list[dict]:
         out.append(entry)
     out.sort(key=lambda d: -d["count"])
     return out
+
+
+# ---------------------------------------------------------------------------
+# Recommendations
+# ---------------------------------------------------------------------------
+
+
+def list_recommendations(session: Session, status: str | None = None) -> list[Recommendation]:
+    stmt = select(Recommendation).order_by(Recommendation.created_at.desc())
+    if status:
+        stmt = stmt.where(Recommendation.status == status)
+    return list(session.scalars(stmt).all())
+
+
+def create_recommendation(session: Session, data: dict, created_by: str | None = None) -> Recommendation:
+    rec = Recommendation(**data, created_by=created_by)
+    session.add(rec)
+    session.commit()
+    session.refresh(rec)
+    return rec
+
+
+def set_recommendation_status(session: Session, rec_id: int, status: str) -> Recommendation | None:
+    rec = session.get(Recommendation, rec_id)
+    if rec is None:
+        return None
+    rec.status = status
+    session.commit()
+    session.refresh(rec)
+    return rec
 
 
 def _loaded_skill_query():
