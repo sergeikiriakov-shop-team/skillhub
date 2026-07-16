@@ -16,10 +16,15 @@ class RoleUpdate(BaseModel):
     role: str
 
 
+class ReviewerUpdate(BaseModel):
+    is_reviewer: bool
+
+
 class UserOut(BaseModel):
     id: int
     name: str
     role: str
+    is_reviewer: bool = False
     created_at: datetime
 
 

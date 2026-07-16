@@ -23,6 +23,7 @@ from .routers import (
     evaluations,
     oauth,
     recommendations,
+    reviews,
     rubric,
     search,
     skills,
@@ -70,6 +71,8 @@ app.include_router(evaluations.router, prefix="/api", dependencies=_gated)
 app.include_router(rubric.router, prefix="/api", dependencies=_gated)
 app.include_router(stats.router, prefix="/api", dependencies=_gated)
 app.include_router(admin.router, prefix="/api", dependencies=_gated)
+# Task Review context (peer-review handoff between developers and the lead).
+app.include_router(reviews.router, prefix="/api", dependencies=_gated)
 
 
 @app.get("/api/health")

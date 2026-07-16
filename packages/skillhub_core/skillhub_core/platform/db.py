@@ -63,6 +63,8 @@ def _apply_column_migrations() -> None:
         "ALTER TABLE users DROP COLUMN IF EXISTS google_sub",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_provider_identity "
         "ON users (auth_provider, provider_sub)",
+        # Task Review context: reviewer/lead capability flag on the shared users table.
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_reviewer BOOLEAN NOT NULL DEFAULT false",
         # Carry any legacy per-user tokens over to auth_tokens so existing MCP tokens keep working.
         "INSERT INTO auth_tokens (user_id, token_hash, kind, created_at) "
         "SELECT id, token_hash, 'device', now() FROM users WHERE token_hash IS NOT NULL "

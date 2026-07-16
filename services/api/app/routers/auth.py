@@ -171,6 +171,7 @@ def me(user: User | None = Depends(current_user_optional)):
         "can_upload": user.can_upload,
         "can_evaluate": user.can_evaluate,
         "is_admin": user.is_admin,
+        "is_reviewer": user.is_reviewer,
     }
 
 

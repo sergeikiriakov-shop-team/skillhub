@@ -1,8 +1,9 @@
-"""SQLAlchemy ORM models for the SkillHub registry.
+"""Platform shared-kernel ORM models: identity & access.
 
-The internal representation is Claude-Code-shaped (name + description + body + references).
-Other client formats (Cursor, Codex, Copilot) are recorded via ``SkillVersion.source_format``
-and converted through ``skillhub_core.adapters`` on import/export.
+Users plus every access credential (OAuth sessions/tokens, the RFC 8628 device grant, and the
+RFC 7591/6749 OAuth authorization-server state for the remote HTTP MCP). :class:`Base` lives here
+and is shared by every bounded context (skills, reviews, …) so ``create_all`` and cross-context
+foreign keys (e.g. ``skills.created_by_user_id`` → ``users.id``) resolve on one metadata/registry.
 """
 
 from __future__ import annotations
@@ -62,6 +63,9 @@ class User(Base):
     auth_provider: Mapped[str | None] = mapped_column(String(20), nullable=True)
     provider_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
     token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Reviewer/lead capability for the Task Review context — orthogonal to the ascending role
+    # ladder (a lead may review regardless of role). Set by an admin. See the reviews module.
+    is_reviewer: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     tokens: Mapped[list["AuthToken"]] = relationship(

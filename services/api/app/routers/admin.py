@@ -9,7 +9,13 @@ from sqlalchemy.orm import Session
 from skillhub_core.platform import auth as core_auth
 from skillhub_core.platform.db import get_session
 from skillhub_core.platform.models import ROLES, User
-from skillhub_core.platform.schemas import RoleUpdate, UserCreate, UserCreated, UserOut
+from skillhub_core.platform.schemas import (
+    ReviewerUpdate,
+    RoleUpdate,
+    UserCreate,
+    UserCreated,
+    UserOut,
+)
 
 from ..auth import require_admin
 
@@ -17,7 +23,7 @@ router = APIRouter(tags=["admin"], prefix="/admin")
 
 
 def _out(u: User) -> UserOut:
-    return UserOut(id=u.id, name=u.name, role=u.role, created_at=u.created_at)
+    return UserOut(id=u.id, name=u.name, role=u.role, is_reviewer=u.is_reviewer, created_at=u.created_at)
 
 
 @router.get("/users", response_model=list[UserOut])
@@ -50,5 +56,21 @@ def set_role(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     user.role = payload.role
+    session.commit()
+    return _out(user)
+
+
+@router.post("/users/{user_id}/reviewer", response_model=UserOut)
+def set_reviewer(
+    user_id: int,
+    payload: ReviewerUpdate,
+    session: Session = Depends(get_session),
+    _: User = Depends(require_admin),
+):
+    """Grant/revoke the reviewer (lead) capability for the Task Review context."""
+    user = session.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_reviewer = payload.is_reviewer
     session.commit()
     return _out(user)
