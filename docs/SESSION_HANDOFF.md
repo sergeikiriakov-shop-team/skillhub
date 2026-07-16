@@ -85,12 +85,22 @@ Install `skills/skillhub/SKILL.md` into Claude Code (or point it at the repo). S
   `<pivot>` store+display + Claude-Code evaluator · `<auth>` multi-user auth + read-only frontend.
 
 ## MCP server (done)
-`services/mcp/` — a thin stdio FastMCP+httpx wrapper over the authed REST API. Image
-`skillhub-mcp` (build: `DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp`). Tools:
-`list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `get_stats`,
-`upload_skill` (contributor+), `submit_assessment` (evaluator). Each dev adds it to `.mcp.json`
-(`docker run -i ... -e SKILLHUB_TOKEN=<theirs> skillhub-mcp`) — see `services/mcp/README.md`.
-Verified from a container against the running API.
+`services/mcp/` — a FastMCP+httpx wrapper over the authed REST API, two transports (env
+`SKILLHUB_MCP_TRANSPORT`):
+- **`http` (prod, default on the server)** — remote streamable-HTTP resource server (compose service
+  `mcp`, nginx `/mcp`). Devs connect with `claude mcp add --transport http skillhub <url>/mcp` and
+  sign in in the browser via **MCP OAuth** — no Docker/token. SkillHub is the OAuth AS
+  (`services/api/app/routers/oauth.py`: DCR + code/PKCE + refresh, reusing the GitHub login); this
+  service validates the bearer via `/api/auth/me` and forwards it. **Deployed + verified on prod**
+  (metadata, PRM, 401/WWW-Authenticate, register→authorize→token→gated-read, single-use codes,
+  refresh≠access).
+- **`stdio` (local dev / legacy)** — the old `docker run -i` wrapper; device flow, token cached to a
+  volume. Image still publishable to GHCR for anyone mid-transition.
+
+Tools: `list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `get_stats`,
+`list_task_groups`, `list_recommendations`, `upload_skill` (contributor+), `submit_assessment`
+(evaluator), `add_recommendation`/`set_recommendation_status` (contributor+), `authenticate`.
+See `services/mcp/README.md`.
 
 ## Next
 - **Trial upload via Claude Code** using the MCP (connect it, then upload a real SKILL.md and

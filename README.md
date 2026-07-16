@@ -80,9 +80,11 @@ endpoints stay open). Writes always require auth:
   → admin`. Emails in `SKILLHUB_BOOTSTRAP_ADMINS` become admin on first login; an admin then
   promotes others. SkillHub is its own authorization server — GitHub only provides identity, so
   the provider is easy to swap (only `/login` and `/callback` are provider-specific).
-- **Claude Code / MCP** authorizes via the **OAuth device flow**: on the first write it shows a
-  verification URL + code; you approve it at `/device` (signed in with GitHub) and the minted
-  SkillHub token is cached to a docker volume. See `services/mcp/README.md`.
+- **Claude Code / MCP** connects to a **remote HTTP MCP** hosted by SkillHub (`<url>/mcp`) with one
+  `claude mcp add --transport http skillhub <url>/mcp` — no Docker, no token. It authenticates via
+  standard **MCP OAuth**: SkillHub is the authorization server (browser sign-in with GitHub, reusing
+  the login above), the MCP endpoint is the protected resource. The legacy stdio image (OAuth
+  **device flow**, cached to a docker volume) still works as a fallback. See `services/mcp/README.md`.
 
 Setup: register an OAuth App under your GitHub account (Settings → Developer settings → OAuth Apps;
 "Authorization callback URL" = `SKILLHUB_PUBLIC_URL` + `/api/auth/callback`), then set

@@ -47,10 +47,15 @@ synthesize an "ideal" merged skill.
   rest still works.
 - **SkillHub is its own authorization server; the OAuth provider is only identity.** Reads are
   public by default, or gated behind login via `SKILLHUB_PUBLIC_READS=false` (a `require_read_access`
-  dependency on the data routers; `/api/health` + `/api/auth/*` stay open). Humans log in with
-  **GitHub** (auth-code flow → opaque `skillhub_session` cookie); the
-  headless MCP uses the RFC 8628 device grant and gets a SkillHub-minted token. Both surfaces share
-  one `auth_tokens` table and `get_user_by_token`; `current_user_optional` accepts bearer or cookie.
+  dependency on the data routers; `/api/health` + `/api/auth/*` + `/api/oauth/*` + the well-known
+  metadata stay open). Humans log in with **GitHub** (auth-code flow → opaque `skillhub_session`
+  cookie). The MCP is a **remote HTTP server** (the `mcp` service, behind nginx at `/mcp`) and uses
+  standard **MCP OAuth**: SkillHub is a full OAuth 2.1 **authorization server** (`routers/oauth.py`:
+  Dynamic Client Registration + authorization-code/PKCE + refresh, reusing the GitHub browser login
+  for identity) and the MCP endpoint is the **resource server** (validates the bearer, serves
+  protected-resource metadata). A legacy stdio MCP + RFC 8628 device grant remains as a fallback.
+  All surfaces share one `auth_tokens` table and `get_user_by_token` (which accepts only
+  access-capable kinds, never a refresh token); `current_user_optional` accepts bearer or cookie.
   Roles (`viewer→contributor→evaluator→admin`) are a SkillHub concept the provider never carries.
   The provider is deliberately isolated to `/login` + `/callback` and the `(auth_provider,
   provider_sub)` identity columns, so swapping it (GitHub↔Google↔…) is a localized change.
