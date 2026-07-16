@@ -16,8 +16,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from . import embeddings, repository
-from .config import get_settings
-from .models import SOURCE_TYPE_UPLOAD, User
+from ..platform.config import get_settings
+from ..platform.models import User
+from .models import SOURCE_TYPE_UPLOAD
 from .parsing import compute_hash, parse
 from .schemas import ParsedSkill, Reference
 

@@ -53,7 +53,7 @@ docker compose up -d --build db api web
 
 ```bash
 # Import + parse + embed the real skills (the service never evaluates — that's Claude Code's job):
-docker compose exec api python -m skillhub_core.seed --path /seed/skills
+docker compose exec api python -m skillhub_core.skills.seed --path /seed/skills
 ```
 
 The `prologistics/ai.readme/skills` directory is mounted into the API container at `/seed/skills`

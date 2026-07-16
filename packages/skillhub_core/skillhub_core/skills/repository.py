@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from ..platform.models import User
 from .models import (
     SOURCE_TYPE_SYNTHESIZED,
     SOURCE_TYPE_UPLOAD,
@@ -16,7 +17,6 @@ from .models import (
     SkillCategory,
     SkillEmbedding,
     SkillVersion,
-    User,
 )
 from .parsing import compute_hash
 from .schemas import (

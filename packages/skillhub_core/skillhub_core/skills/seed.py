@@ -4,7 +4,7 @@ A skill is any immediate subdirectory containing a ``SKILL.md`` (the canonical l
 Prologistics' ``ai.readme/skills``). This only parses + embeds + persists — the service never
 evaluates (that is done by Claude Code and submitted back via the API).
 
-    python -m skillhub_core.seed --path /seed/skills
+    python -m skillhub_core.skills.seed --path /seed/skills
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import logging
 import sys
 from pathlib import Path
 
-from .db import init_db, session_scope
+from ..platform.db import init_db, session_scope
 from .models import SOURCE_TYPE_IMPORT
 from .parsing import parse_skill_dir
 from .pipeline import ingest

@@ -4,7 +4,7 @@ ORM engine + pgvector embeddings)."""
 
 from __future__ import annotations
 
-from skillhub_core.repository import DuplicateSkillError, normalize_content
+from skillhub_core.skills.repository import DuplicateSkillError, normalize_content
 
 
 def test_normalize_collapses_whitespace():

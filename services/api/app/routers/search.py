@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from skillhub_core import embeddings, repository, serializers
-from skillhub_core.db import get_session
-from skillhub_core.schemas import SkillSummary
+from skillhub_core.skills import embeddings, repository, serializers
+from skillhub_core.platform.db import get_session
+from skillhub_core.skills.schemas import SkillSummary
 
 router = APIRouter(tags=["search"])
 

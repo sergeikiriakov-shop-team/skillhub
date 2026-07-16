@@ -11,9 +11,9 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from skillhub_core.config import get_settings
-from skillhub_core.db import init_db
-from skillhub_core.rubric import RUBRIC_VERSION
+from skillhub_core.platform.config import get_settings
+from skillhub_core.platform.db import init_db
+from skillhub_core.skills.rubric import RUBRIC_VERSION
 
 from .auth import require_read_access
 from .routers import (

@@ -5,9 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from skillhub_core import repository
-from skillhub_core.db import get_session
-from skillhub_core.rubric import (
+from skillhub_core.skills import repository
+from skillhub_core.platform.db import get_session
+from skillhub_core.skills.rubric import (
     CATEGORIZATION_RULES,
     RUBRIC_CALIBRATION,
     RUBRIC_DIMENSIONS,
@@ -19,7 +19,7 @@ from skillhub_core.rubric import (
     SYNTHESIS_PROMPT,
     SYNTHESIS_STRATEGY,
 )
-from skillhub_core.schemas import EvaluationResult, RubricOut
+from skillhub_core.skills.schemas import EvaluationResult, RubricOut
 
 router = APIRouter(tags=["rubric"])
 

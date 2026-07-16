@@ -138,29 +138,6 @@ class RubricOut(BaseModel):
     synthesis_prompt: str = ""
 
 
-# --- Users / admin ---
-
-
-class UserCreate(BaseModel):
-    name: str
-    role: str = "contributor"
-
-
-class RoleUpdate(BaseModel):
-    role: str
-
-
-class UserOut(BaseModel):
-    id: int
-    name: str
-    role: str
-    created_at: datetime
-
-
-class UserCreated(UserOut):
-    token: str = Field(description="Shown once — store it now; only its hash is kept.")
-
-
 class StatsOut(BaseModel):
     total: int
     evaluated: int

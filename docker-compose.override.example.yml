@@ -3,7 +3,7 @@
 #
 #   cp docker-compose.override.example.yml docker-compose.override.yml
 #   docker compose up -d
-#   docker compose exec api python -m skillhub_core.seed --path /seed/skills
+#   docker compose exec api python -m skillhub_core.skills.seed --path /seed/skills
 #
 # Adjust the host path to your checkout of the prologistics repo.
 

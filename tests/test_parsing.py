@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from skillhub_core.constants import FORMAT_CLAUDE_SKILL, FORMAT_CURSOR_MDC
-from skillhub_core.parsing import (
+from skillhub_core.skills.constants import FORMAT_CLAUDE_SKILL, FORMAT_CURSOR_MDC
+from skillhub_core.skills.parsing import (
     compute_hash,
     extract_headings,
     extract_trigger,
@@ -14,7 +14,7 @@ from skillhub_core.parsing import (
     parse_skill_dir,
     split_frontmatter,
 )
-from skillhub_core.schemas import Reference
+from skillhub_core.skills.schemas import Reference
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

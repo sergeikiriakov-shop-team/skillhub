@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from . import adapters
-from .models import Evaluation, Skill, SkillVersion, User
+from ..platform.models import User
+from .models import Evaluation, Skill, SkillVersion
 from .schemas import (
     CategoryOut,
     EvaluationOut,

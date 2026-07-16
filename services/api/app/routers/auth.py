@@ -16,8 +16,8 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from skillhub_core import auth as core_auth
-from skillhub_core.config import (
+from skillhub_core.platform import auth as core_auth
+from skillhub_core.platform.config import (
     AUTH_PROVIDER,
     GITHUB_AUTHORIZE_URL,
     GITHUB_EMAILS_URL,
@@ -25,8 +25,8 @@ from skillhub_core.config import (
     GITHUB_USER_URL,
     get_settings,
 )
-from skillhub_core.db import get_session
-from skillhub_core.models import TOKEN_PAT, TOKEN_SESSION, User
+from skillhub_core.platform.db import get_session
+from skillhub_core.platform.models import TOKEN_PAT, TOKEN_SESSION, User
 
 from ..auth import SESSION_COOKIE, current_user_optional, require_user
 

@@ -65,7 +65,7 @@ locally.
 ```
 docker compose up -d db api web            # base stack (uses built images)
 # seed the 8 real prologistics skills (already copied into the api container at /tmp/skills):
-docker exec skillhub-api-1 python -m skillhub_core.seed --path /tmp/skills
+docker exec skillhub-api-1 python -m skillhub_core.skills.seed --path /tmp/skills
 # rebuild after code changes:
 DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker compose build
 ```

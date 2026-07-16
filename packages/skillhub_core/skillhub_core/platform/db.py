@@ -9,7 +9,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from .config import get_settings
-from .models import Base, Category
+from .models import Base
 
 _settings = get_settings()
 
@@ -87,6 +87,8 @@ def _bootstrap_admin() -> None:
 
 
 def _seed_categories() -> None:
+    from ..skills.models import Category
+
     with SessionLocal() as session:
         existing = {c.key for c in session.query(Category).all()}
         for cat in DEFAULT_CATEGORIES:

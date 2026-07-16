@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import re
 
-from skillhub_core.auth import _generate_user_code, generate_token, hash_token
-from skillhub_core.config import Settings
+from skillhub_core.platform.auth import _generate_user_code, generate_token, hash_token
+from skillhub_core.platform.config import Settings
 
 
 def _settings(**overrides) -> Settings:

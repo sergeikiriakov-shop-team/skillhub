@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from skillhub_core import auth as core_auth
-from skillhub_core.db import get_session
-from skillhub_core.models import ROLES, User
-from skillhub_core.schemas import RoleUpdate, UserCreate, UserCreated, UserOut
+from skillhub_core.platform import auth as core_auth
+from skillhub_core.platform.db import get_session
+from skillhub_core.platform.models import ROLES, User
+from skillhub_core.platform.schemas import RoleUpdate, UserCreate, UserCreated, UserOut
 
 from ..auth import require_admin
 

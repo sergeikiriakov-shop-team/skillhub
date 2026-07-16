@@ -8,10 +8,10 @@ from __future__ import annotations
 from fastapi import Cookie, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
-from skillhub_core import auth as core_auth
-from skillhub_core.config import get_settings
-from skillhub_core.db import get_session
-from skillhub_core.models import User
+from skillhub_core.platform import auth as core_auth
+from skillhub_core.platform.config import get_settings
+from skillhub_core.platform.db import get_session
+from skillhub_core.platform.models import User
 
 SESSION_COOKIE = "skillhub_session"
 

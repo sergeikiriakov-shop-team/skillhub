@@ -8,10 +8,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
-from skillhub_core import pipeline, repository, serializers
-from skillhub_core.db import get_session
-from skillhub_core.models import User
-from skillhub_core.schemas import Reference, SkillCreate, SkillDetail, SkillSummary
+from skillhub_core.skills import pipeline, repository, serializers
+from skillhub_core.platform.db import get_session
+from skillhub_core.platform.models import User
+from skillhub_core.skills.schemas import Reference, SkillCreate, SkillDetail, SkillSummary
 
 from ..auth import require_admin, require_upload
 

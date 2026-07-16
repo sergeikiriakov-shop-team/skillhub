@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from skillhub_core import repository
-from skillhub_core.db import get_session
+from skillhub_core.skills import repository
+from skillhub_core.platform.db import get_session
 
 router = APIRouter(tags=["task-groups"])
 

@@ -5,9 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from skillhub_core import repository
-from skillhub_core.db import get_session
-from skillhub_core.schemas import StatsOut
+from skillhub_core.skills import repository
+from skillhub_core.platform.db import get_session
+from skillhub_core.skills.schemas import StatsOut
 
 router = APIRouter(tags=["stats"])
 

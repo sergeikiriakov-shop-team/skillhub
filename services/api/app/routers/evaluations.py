@@ -5,11 +5,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from skillhub_core import repository, serializers
-from skillhub_core.db import get_session
-from skillhub_core.models import User
-from skillhub_core.rubric import RUBRIC_VERSION
-from skillhub_core.schemas import AssessmentIn, EvaluationOut, SkillDetail
+from skillhub_core.skills import repository, serializers
+from skillhub_core.platform.db import get_session
+from skillhub_core.platform.models import User
+from skillhub_core.skills.rubric import RUBRIC_VERSION
+from skillhub_core.skills.schemas import AssessmentIn, EvaluationOut, SkillDetail
 
 from ..auth import require_evaluate
 

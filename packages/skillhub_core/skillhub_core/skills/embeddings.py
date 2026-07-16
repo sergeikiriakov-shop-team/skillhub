@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from .config import get_settings
+from ..platform.config import get_settings
 
 logger = logging.getLogger(__name__)
 

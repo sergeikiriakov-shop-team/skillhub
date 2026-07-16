@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from skillhub_core.db import get_session
-from skillhub_core.models import Category, SkillCategory
+from skillhub_core.platform.db import get_session
+from skillhub_core.skills.models import Category, SkillCategory
 
 router = APIRouter(tags=["categories"])
 
