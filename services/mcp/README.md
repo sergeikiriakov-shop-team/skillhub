@@ -1,48 +1,54 @@
 # SkillHub MCP server
 
-A thin **stdio** MCP server that exposes the SkillHub REST API as tools for Claude Code. Each
-developer runs it with their own token; authorization is enforced by the API.
+Exposes the SkillHub REST API as MCP tools for Claude Code. Runs in two transports:
+
+- **`http` (production, recommended)** — a **remote streamable-HTTP** server hosted on the SkillHub
+  box (the `mcp` service in `docker-compose.prod.yml`, behind nginx at `/mcp`). Developers connect
+  with a single `claude mcp add --transport http …` and sign in **in the browser via OAuth** — no
+  local Docker, no image, no token. SkillHub is the OAuth authorization server (GitHub identity);
+  this process is the resource server: it validates the incoming Bearer against `/api/auth/me` and
+  forwards it to the REST API.
+- **`stdio` (local dev / legacy)** — the thin local wrapper Claude Code spawns via `docker run -i`;
+  writes authorize via the OAuth **device flow** (token cached to a volume).
+
+Transport is chosen by `SKILLHUB_MCP_TRANSPORT` (default `stdio`).
 
 Tools: `list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `get_stats`,
 `list_task_groups`, `list_recommendations`, `upload_skill` (contributor+),
-`submit_assessment` (evaluator), `add_recommendation`/`set_recommendation_status` (contributor+).
+`submit_assessment` (evaluator), `add_recommendation`/`set_recommendation_status` (contributor+),
+`authenticate`.
 
-## Install (developer — no build)
+## Connect (developer — remote HTTP, no build, no Docker)
 
-The image is published, so developers **don't build anything**. The easiest path is to ask your
-Claude Code in plain language (with the `connect-skillhub` skill installed):
+Ask your Claude Code in plain language (with the `connect-skillhub` skill installed):
 
 > "install the SkillHub MCP for `https://166.1.29.218.sslip.io`"
 
-…and it runs the command below for you. Or run it directly (substitute your server URL):
+…or run it directly (substitute your server URL; the MCP endpoint is `<URL>/mcp`):
 
 ```bash
-claude mcp add --scope user skillhub -- \
-  docker run --rm -i \
-  -e SKILLHUB_URL=https://166.1.29.218.sslip.io \
-  -e SKILLHUB_TOKEN_FILE=/data/token \
-  -v skillhub-mcp-token:/data \
-  ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest
+claude mcp add --transport http --scope user skillhub https://166.1.29.218.sslip.io/mcp
 ```
 
 `--scope user` registers it for all your projects (use `--scope project` to commit it to a repo's
-`.mcp.json` for the whole team). Restart Claude Code; verify with `claude mcp list`.
+`.mcp.json`). Restart Claude Code; verify with `claude mcp list` (it may show "Needs authentication"
+until first use). The **first time** a SkillHub tool runs, Claude Code opens your browser for a
+one-time **OAuth sign-in with GitHub** — approve it and you're connected; the token is managed by
+Claude Code. Access depends on your role: a fresh account can read and upload; `evaluator`/`admin`
+are granted by an admin.
 
-## Publish the image (maintainer — once per release)
+### How the OAuth flow works (remote HTTP)
 
-```bash
-DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp
-docker tag skillhub-mcp ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest
-echo "$GHCR_TOKEN" | docker login ghcr.io -u <your-github-user> --password-stdin   # PAT with write:packages
-docker push ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest
-```
+Standard MCP authorization (spec 2025-06-18). Claude Code: hits `/mcp` → gets `401` with
+`WWW-Authenticate` → fetches protected-resource metadata (`/.well-known/oauth-protected-resource/mcp`,
+served by this service) → fetches authorization-server metadata (`/.well-known/oauth-authorization-server`,
+served by the api) → **Dynamic Client Registration** → **authorization-code + PKCE** (the browser
+step, where SkillHub reuses its GitHub login) → **token** → calls `/mcp` with the Bearer. Refresh
+tokens are issued so re-login is rare. See `services/api/app/routers/oauth.py`.
 
-Make the GHCR package **public** (GitHub → the package → Package settings → Change visibility) so
-developers can pull without `docker login`. The image is a thin API proxy — it contains no secrets.
+## Local development (`stdio`)
 
-## Local development (`.mcp.json`)
-For working on SkillHub itself, the committed repo-root `.mcp.json` runs the locally-built image
-against a local API:
+For working on SkillHub itself, run the stdio image against a local API. Example `.mcp.json`:
 
 ```json
 {
@@ -62,20 +68,27 @@ against a local API:
 }
 ```
 
-- **Authentication is automatic (device flow).** On an open instance, reads need nothing; if the
-  instance requires sign-in for reads too (`SKILLHUB_PUBLIC_READS=false`), the device flow also
-  triggers on the first read. The first time you use a **write** tool (upload/assess/recommend) —
-  or hit a gated read — the server starts the OAuth device flow and
-  returns a verification URL + short code. Open it, sign in with GitHub, approve, and the minted
-  SkillHub token is cached to the `skillhub-mcp-token` docker volume (`/data/token`) so you only do
-  this once per machine. You can also run the `authenticate` tool proactively. Writes still require
-  a role — a fresh account is a `viewer`; ask an admin to promote you to `contributor`/`evaluator`.
-- **`SKILLHUB_TOKEN` (optional override).** If set, it skips the device flow entirely (useful for
-  CI or a break-glass admin token). Leave it unset for the normal flow.
-- `SKILLHUB_URL` points at the server. Default `http://host.docker.internal:8000` reaches a locally
-  published API; for a remote deployment set it to your public URL (e.g. `https://skillhub.example.com`).
-  If you run the MCP on the compose network instead, use `--network skillhub_default` and
-  `SKILLHUB_URL=http://api:8000`.
+- **Auth is the device flow.** On an open instance reads need nothing; on a login-only instance the
+  device flow also triggers on the first read. The first **write** (or gated read) returns a
+  verification URL + code — open it, sign in with GitHub, approve; the token is cached to the
+  `skillhub-mcp-token` volume so you do this once per machine. Run `authenticate` to do it eagerly.
+- **`SKILLHUB_TOKEN`** (optional) skips the device flow (CI / break-glass).
+- Build the image locally: `DOCKER_BUILDKIT=0 docker build -t skillhub-mcp services/mcp`.
+
+## Publish the stdio image (optional — legacy path)
+
+Only needed for developers still on the stdio/`docker run` connect method (the remote HTTP transport
+above needs no published image):
+
+```bash
+docker build -t skillhub-mcp services/mcp
+docker tag skillhub-mcp ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest
+echo "$GHCR_TOKEN" | docker login ghcr.io -u <your-github-user> --password-stdin   # PAT: write:packages
+docker push ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest
+```
+
+Make the GHCR package **public** so developers can pull without `docker login`. The image is a thin
+API proxy — no secrets.
 
 ## Use
 Once connected, ask Claude Code things like:

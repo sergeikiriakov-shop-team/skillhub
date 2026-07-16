@@ -22,12 +22,7 @@ interface GuideContent {
 }
 
 // __ORIGIN__ is replaced at render time with the URL you're viewing the portal at.
-const MCP_ADD_CMD = `claude mcp add --scope user skillhub -- \\
-  docker run --rm -i \\
-  -e SKILLHUB_URL=__ORIGIN__ \\
-  -e SKILLHUB_TOKEN_FILE=/data/token \\
-  -v skillhub-mcp-token:/data \\
-  ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest`;
+const MCP_ADD_CMD = `claude mcp add --transport http --scope user skillhub __ORIGIN__/mcp`;
 
 const en: GuideContent = {
   title: "Developer guide",
@@ -80,15 +75,16 @@ const en: GuideContent = {
       blocks: [
         {
           kind: "p",
-          text: "No build needed — the MCP image is published. Easiest: ask your Claude Code in plain " +
-            "language (with the connect-skillhub skill): “install the SkillHub MCP for __ORIGIN__”. " +
-            "It runs this one command for you — or run it yourself:",
+          text: "The MCP is hosted remotely — no Docker, no image, no token. Easiest: ask your Claude " +
+            "Code in plain language (with the connect-skillhub skill): “install the SkillHub MCP for " +
+            "__ORIGIN__”. It runs this one command for you — or run it yourself:",
         },
         { kind: "code", text: MCP_ADD_CMD },
         {
           kind: "p",
           text: "--scope user registers it for all your projects. Restart Claude Code, then check with " +
-            "`claude mcp list`.",
+            "`claude mcp list`. The first time a SkillHub tool runs, Claude Code opens your browser " +
+            "for a one-time sign-in with GitHub (OAuth) — approve it and you're connected.",
         },
         {
           kind: "p",
@@ -198,15 +194,16 @@ const ru: GuideContent = {
       blocks: [
         {
           kind: "p",
-          text: "Собирать ничего не нужно — образ MCP опубликован. Проще всего попросить свой Claude " +
-            "Code обычным текстом (со скиллом connect-skillhub): «установи SkillHub MCP для " +
-            "__ORIGIN__». Он выполнит одну команду за вас — или выполните её сами:",
+          text: "MCP работает на сервере — ни Docker, ни образа, ни токена не нужно. Проще всего " +
+            "попросить свой Claude Code обычным текстом (со скиллом connect-skillhub): «установи " +
+            "SkillHub MCP для __ORIGIN__». Он выполнит одну команду за вас — или выполните её сами:",
         },
         { kind: "code", text: MCP_ADD_CMD },
         {
           kind: "p",
           text: "--scope user регистрирует MCP для всех ваших проектов. Перезапустите Claude Code, " +
-            "затем проверьте `claude mcp list`.",
+            "затем проверьте `claude mcp list`. При первом вызове инструмента SkillHub Claude Code " +
+            "откроет браузер для однократного входа через GitHub (OAuth) — подтвердите, и вы подключены.",
         },
         {
           kind: "p",

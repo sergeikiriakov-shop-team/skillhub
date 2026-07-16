@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     skillhub_public_reads: bool = True
     # Session cookie lifetime (seconds); default 14 days.
     skillhub_session_ttl: int = 14 * 24 * 3600
+    # OAuth access-token lifetime (seconds) for the remote HTTP MCP; default 30 days. A paired
+    # refresh token (non-expiring) lets the client mint a fresh access token without re-login.
+    skillhub_oauth_access_ttl: int = 30 * 24 * 3600
     # Role assigned to a brand-new user (validated against ROLES at use site).
     skillhub_default_role: str = "viewer"
     # Comma-separated emails promoted to admin on their (verified) first login.

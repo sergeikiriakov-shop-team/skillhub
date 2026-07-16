@@ -51,7 +51,12 @@ ROLES = (ROLE_VIEWER, ROLE_CONTRIBUTOR, ROLE_EVALUATOR, ROLE_ADMIN)
 TOKEN_SESSION = "session"  # browser cookie, TTL'd
 TOKEN_DEVICE = "device"  # long-lived, issued to the MCP via the device flow
 TOKEN_PAT = "pat"  # long-lived personal access token, self-minted from the UI
-TOKEN_KINDS = (TOKEN_SESSION, TOKEN_DEVICE, TOKEN_PAT)
+TOKEN_OAUTH = "oauth"  # access token from the OAuth authorization-code flow (remote HTTP MCP)
+TOKEN_OAUTH_REFRESH = "oauth_refresh"  # refresh token paired with a TOKEN_OAUTH access token
+TOKEN_KINDS = (TOKEN_SESSION, TOKEN_DEVICE, TOKEN_PAT, TOKEN_OAUTH, TOKEN_OAUTH_REFRESH)
+# Kinds usable as a bearer/cookie to *access* the API. A refresh token is deliberately excluded so
+# it can never be replayed as an access token (it only mints new access tokens at /oauth/token).
+ACCESS_TOKEN_KINDS = (TOKEN_SESSION, TOKEN_DEVICE, TOKEN_PAT, TOKEN_OAUTH)
 
 # --- device-flow states ---
 DEVICE_PENDING = "pending"
@@ -266,6 +271,39 @@ class DeviceCode(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class OAuthClient(Base):
+    """A dynamically-registered OAuth client (RFC 7591) — e.g. a developer's Claude Code connecting
+    the remote HTTP MCP. Public client (no secret); PKCE is required at the authorize/token steps."""
+
+    __tablename__ = "oauth_clients"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    client_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    client_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    redirect_uris: Mapped[list] = mapped_column(JSONB, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class OAuthCode(Base):
+    """A short-lived, single-use OAuth authorization code (code flow + PKCE). Stored hashed; bound to
+    the client, redirect_uri, PKCE challenge and the authenticated user."""
+
+    __tablename__ = "oauth_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    code_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    client_id: Mapped[str] = mapped_column(String(64), index=True)
+    redirect_uri: Mapped[str] = mapped_column(String(500))
+    code_challenge: Mapped[str] = mapped_column(String(128))
+    code_challenge_method: Mapped[str] = mapped_column(String(10), default="S256")
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    scope: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    resource: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    used: Mapped[bool] = mapped_column(default=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Recommendation(Base):

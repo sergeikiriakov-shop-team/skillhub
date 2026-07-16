@@ -7,6 +7,7 @@ are assigned inside SkillHub. The device grant (RFC 8628) lets the headless MCP 
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .models import (
+    ACCESS_TOKEN_KINDS,
     DEVICE_APPROVED,
     DEVICE_CONSUMED,
     DEVICE_DENIED,
@@ -25,8 +27,11 @@ from .models import (
     ROLE_VIEWER,
     ROLES,
     TOKEN_DEVICE,
+    TOKEN_OAUTH_REFRESH,
     AuthToken,
     DeviceCode,
+    OAuthClient,
+    OAuthCode,
     User,
 )
 
@@ -76,10 +81,25 @@ def get_user_by_token(session: Session, token: str) -> User | None:
     row = session.scalars(select(AuthToken).where(AuthToken.token_hash == hash_token(token))).first()
     if row is None:
         return None
+    if row.kind not in ACCESS_TOKEN_KINDS:
+        return None  # e.g. a refresh token must never authenticate an API/MCP call
     if row.expires_at is not None and row.expires_at < _now():
         return None
     row.last_used_at = _now()  # persisted only if the request commits (writes); harmless on reads
     return row.user
+
+
+def load_refresh_token(session: Session, token: str) -> AuthToken | None:
+    """Resolve an OAuth refresh token (kind ``oauth_refresh``), honouring expiry. Used only by the
+    token endpoint's refresh grant — never by ``get_user_by_token`` (which rejects this kind)."""
+    if not token:
+        return None
+    row = session.scalars(select(AuthToken).where(AuthToken.token_hash == hash_token(token))).first()
+    if row is None or row.kind != TOKEN_OAUTH_REFRESH:
+        return None
+    if row.expires_at is not None and row.expires_at < _now():
+        return None
+    return row
 
 
 def list_tokens_for_user(session: Session, user: User) -> list[AuthToken]:
@@ -274,3 +294,101 @@ def poll_device_token(session: Session, device_code: str) -> tuple[str, str | No
         session.flush()
         return ("success", plaintext)
     return ("access_denied", None)
+
+
+# --- OAuth 2.1 authorization server (remote HTTP MCP: browser login, code flow + PKCE) ----------
+#
+# SkillHub is the authorization server; the MCP endpoint is the protected resource. Identity is the
+# existing GitHub browser login (the /authorize endpoint reuses the session cookie). These helpers
+# hold the storage + PKCE logic; the HTTP surface lives in ``services/api/app/routers/oauth.py``.
+
+_OAUTH_CODE_TTL = 300  # authorization codes are single-use and short-lived
+
+
+def _b64url_no_pad(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+
+def verify_pkce(code_verifier: str, code_challenge: str, method: str = "S256") -> bool:
+    """RFC 7636 PKCE check. Only S256 (and the discouraged 'plain') are accepted."""
+    if not code_verifier or not code_challenge:
+        return False
+    if method == "S256":
+        computed = _b64url_no_pad(hashlib.sha256(code_verifier.encode("ascii")).digest())
+        return secrets.compare_digest(computed, code_challenge)
+    if method == "plain":
+        return secrets.compare_digest(code_verifier, code_challenge)
+    return False
+
+
+def register_oauth_client(
+    session: Session, client_name: str | None, redirect_uris: list[str]
+) -> OAuthClient:
+    """Dynamic Client Registration (RFC 7591). Public client — no secret is issued (PKCE is used)."""
+    row = OAuthClient(
+        client_id="shc_" + secrets.token_urlsafe(18),
+        client_name=client_name,
+        redirect_uris=list(redirect_uris),
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
+def get_oauth_client(session: Session, client_id: str) -> OAuthClient | None:
+    if not client_id:
+        return None
+    return session.scalars(select(OAuthClient).where(OAuthClient.client_id == client_id)).first()
+
+
+def create_oauth_code(
+    session: Session,
+    *,
+    client_id: str,
+    redirect_uri: str,
+    code_challenge: str,
+    code_challenge_method: str,
+    user: User,
+    scope: str | None,
+    resource: str | None,
+) -> tuple[OAuthCode, str]:
+    """Mint a single-use authorization code bound to the client/redirect/PKCE/user. Returns
+    ``(row, code_plaintext)``; only the SHA-256 of the code is stored."""
+    code = generate_token()
+    row = OAuthCode(
+        code_hash=hash_token(code),
+        client_id=client_id,
+        redirect_uri=redirect_uri,
+        code_challenge=code_challenge,
+        code_challenge_method=code_challenge_method or "S256",
+        user_id=user.id,
+        scope=scope,
+        resource=resource,
+        expires_at=_now() + timedelta(seconds=_OAUTH_CODE_TTL),
+    )
+    session.add(row)
+    session.flush()
+    return row, code
+
+
+def consume_oauth_code(
+    session: Session, *, code: str, client_id: str, redirect_uri: str, code_verifier: str
+) -> tuple[User, str | None, str | None] | None:
+    """Validate and single-use-consume an authorization code. Returns ``(user, resource, scope)`` on
+    success, else ``None``. Enforces: exists, unused, unexpired, matching client + redirect_uri, and
+    a valid PKCE verifier."""
+    if not code:
+        return None
+    row = session.scalars(select(OAuthCode).where(OAuthCode.code_hash == hash_token(code))).first()
+    if row is None or row.used or row.expires_at < _now():
+        return None
+    if row.client_id != client_id or row.redirect_uri != redirect_uri:
+        return None
+    if not verify_pkce(code_verifier, row.code_challenge, row.code_challenge_method):
+        return None
+    row.used = True  # consume — replay yields None above
+    user = session.get(User, row.user_id)
+    if user is None:
+        return None
+    session.flush()
+    return user, row.resource, row.scope

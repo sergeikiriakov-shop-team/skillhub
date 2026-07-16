@@ -44,13 +44,22 @@ ssh skillhub 'cd /opt/skillhub && docker compose -f docker-compose.prod.yml up -
   (`viewer → contributor → evaluator`). This instance sets `SKILLHUB_PUBLIC_READS=false`, so even
   reads require sign-in (only `/api/health` + `/api/auth/*` stay open).
 
-## MCP for developers
-- Publish the MCP image once (maintainer): `docker build -t skillhub-mcp services/mcp`, tag/push to
-  `ghcr.io/sergeikiriakov-shop-team/skillhub-mcp:latest` (PAT with `write:packages`), make the
-  package **public**. See `services/mcp/README.md`.
-- Each developer: ask Claude Code (with the `connect-skillhub` skill) "install the SkillHub MCP for
-  `https://166.1.29.218.sslip.io`", or run the `claude mcp add …` command from the portal's **Guide**
-  page. No build; the published image is pulled. Writes authorize via the device flow.
+## MCP for developers (remote HTTP + OAuth)
+- The MCP is a **service in this compose** (`mcp`), hosted behind nginx at `/mcp`. Nothing to publish
+  and no per-developer Docker. SkillHub is the OAuth authorization server; the `mcp` service is the
+  resource server (validates the Bearer via the api and forwards it). See `services/mcp/README.md`.
+- Each developer connects with one command (or asks Claude Code via the `connect-skillhub` skill,
+  "install the SkillHub MCP for `https://166.1.29.218.sslip.io`"):
+  ```
+  claude mcp add --transport http --scope user skillhub https://166.1.29.218.sslip.io/mcp
+  ```
+  On first use Claude Code opens the browser for a one-time GitHub sign-in (OAuth); no token to copy.
+- **Routing** (nginx, `services/web/nginx.conf`): `/mcp` and `/.well-known/oauth-protected-resource`
+  → `mcp:9000`; `/.well-known/oauth-authorization-server` → `api:8000`; `/api/oauth/*` → `api`.
+- **GitHub OAuth App:** unchanged — the MCP flow reuses the existing `/api/auth/login` + `/callback`,
+  so the only registered callback stays `https://166.1.29.218.sslip.io/api/auth/callback`.
+- The legacy stdio image (`ghcr.io/…/skillhub-mcp`, device flow, needs local Docker) still works for
+  anyone mid-transition; prefer the HTTP form above.
 
 ## Ops
 - Logs: `ssh skillhub 'cd /opt/skillhub && docker compose -f docker-compose.prod.yml logs -f <svc>'`.

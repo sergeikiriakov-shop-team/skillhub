@@ -55,6 +55,25 @@ services:
     restart: unless-stopped
     # No published ports: reached only via the web nginx proxy on the internal network.
 
+  # Remote MCP server (streamable HTTP). Hosts the SkillHub MCP so developers connect with a single
+  # `claude mcp add --transport http ...` and authenticate in the browser via OAuth — no local Docker.
+  # Resource server: validates the Bearer against the api and forwards it; the api is the OAuth AS.
+  mcp:
+    image: skillhub-mcp
+    build:
+      context: services/mcp
+      dockerfile: Dockerfile
+    environment:
+      SKILLHUB_MCP_TRANSPORT: http
+      SKILLHUB_URL: http://api:8000
+      SKILLHUB_PUBLIC_URL: ${SKILLHUB_PUBLIC_URL:-}
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "9000"
+    depends_on:
+      - api
+    restart: unless-stopped
+    # No published port — reached only via the web nginx proxy (/mcp) on the internal network.
+
   web:
     image: skillhub-web
     build:
@@ -62,6 +81,7 @@ services:
       dockerfile: services/web/Dockerfile
     depends_on:
       - api
+      - mcp
     restart: unless-stopped
     # No published port — reached only via the caddy reverse proxy (https) on the internal network.
 

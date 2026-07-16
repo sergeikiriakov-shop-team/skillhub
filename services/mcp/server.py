@@ -1,15 +1,20 @@
-"""SkillHub MCP server — a thin stdio wrapper over the SkillHub REST API.
+"""SkillHub MCP server — a thin wrapper over the SkillHub REST API, in two transports.
 
-Reads are public and need no token. For writes (upload, submit assessment, recommendations) the
-server obtains a SkillHub token via the OAuth 2.0 Device Authorization Grant: it asks the API for
-a code, surfaces a verification URL + user code to you, you approve it in the browser (signing in
-with GitHub), and the server caches the minted token to a mounted volume so later sessions reuse
-it. A `SKILLHUB_TOKEN` env var still overrides everything (back-compat / CI).
+- ``http`` (SKILLHUB_MCP_TRANSPORT=http): a remote streamable-HTTP server hosted on the SkillHub
+  box. Auth is standard MCP OAuth — SkillHub is the authorization server (browser login via
+  GitHub); this process is the *resource server*. It validates the incoming Bearer against
+  ``/api/auth/me`` and forwards that same token to the REST API. No local Docker, no cached token.
+- ``stdio`` (default): the legacy local wrapper Claude Code spawns via ``docker run -i``. Reads are
+  public; writes obtain a token via the OAuth 2.0 Device Authorization Grant, cached to a volume.
+  A ``SKILLHUB_TOKEN`` env var still overrides everything (back-compat / CI).
 
 Env:
-  SKILLHUB_URL         base URL of the API (default http://host.docker.internal:8000)
-  SKILLHUB_TOKEN       optional explicit bearer token (skips the device flow)
-  SKILLHUB_TOKEN_FILE  where to cache the device-flow token (default /data/token; mount a volume)
+  SKILLHUB_MCP_TRANSPORT  stdio (default) | http
+  SKILLHUB_URL            base URL of the REST API (default http://host.docker.internal:8000)
+  SKILLHUB_PUBLIC_URL     public origin of SkillHub (http mode: OAuth issuer + resource base)
+  MCP_HOST / MCP_PORT     bind address for http mode (default 0.0.0.0:9000)
+  SKILLHUB_TOKEN          optional explicit bearer token (stdio: skips the device flow)
+  SKILLHUB_TOKEN_FILE     where to cache the device-flow token (stdio; default /data/token)
 """
 
 from __future__ import annotations
@@ -22,13 +27,50 @@ from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
 
+TRANSPORT = os.environ.get("SKILLHUB_MCP_TRANSPORT", "stdio").strip().lower()
 BASE = os.environ.get("SKILLHUB_URL", "http://host.docker.internal:8000").rstrip("/")
+PUBLIC_URL = os.environ.get("SKILLHUB_PUBLIC_URL", BASE).rstrip("/")
+MCP_HOST = os.environ.get("MCP_HOST", "0.0.0.0")
+MCP_PORT = int(os.environ.get("MCP_PORT", "9000"))
 _ENV_TOKEN = os.environ.get("SKILLHUB_TOKEN", "").strip()
 TOKEN_FILE = Path(os.environ.get("SKILLHUB_TOKEN_FILE", "/data/token"))
 # One write-tool call waits up to this long for you to approve before returning "approve & retry".
 _DEVICE_MAX_WAIT = 60
 
-mcp = FastMCP("skillhub")
+if TRANSPORT == "http":
+    # Resource-server mode: validate the Bearer minted by SkillHub's OAuth AS, and let the SDK serve
+    # the protected-resource metadata + emit 401/WWW-Authenticate so Claude Code runs the browser flow.
+    from mcp.server.auth.middleware.auth_context import get_access_token
+    from mcp.server.auth.provider import AccessToken, TokenVerifier
+    from mcp.server.auth.settings import AuthSettings
+
+    class _SkillHubVerifier(TokenVerifier):
+        async def verify_token(self, token: str) -> AccessToken | None:
+            try:
+                async with httpx.AsyncClient(base_url=BASE, timeout=15) as c:
+                    r = await c.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+                data = r.json() if r.status_code == 200 else {}
+            except (httpx.HTTPError, ValueError):
+                return None
+            if not data.get("authenticated"):
+                return None
+            return AccessToken(
+                token=token, client_id="skillhub-mcp", scopes=[], subject=str(data.get("id"))
+            )
+
+    mcp = FastMCP(
+        "skillhub",
+        host=MCP_HOST,
+        port=MCP_PORT,
+        token_verifier=_SkillHubVerifier(),
+        auth=AuthSettings(
+            issuer_url=PUBLIC_URL,
+            resource_server_url=f"{PUBLIC_URL}/mcp",
+            required_scopes=[],
+        ),
+    )
+else:
+    mcp = FastMCP("skillhub")
 
 # Process-lifetime state (the server stays alive for the whole Claude Code session).
 _state: dict[str, Any] = {"token": None, "pending": None}
@@ -159,7 +201,16 @@ def _acquire_token(max_wait: int = _DEVICE_MAX_WAIT) -> tuple[str | None, str]:
     return None, msg
 
 
+def _http_token() -> str | None:
+    """http mode: the Bearer the client presented on this MCP request (already verified by the SDK).
+    We forward the same token to the REST API, which enforces read-gating and roles."""
+    tok = get_access_token()
+    return tok.token if tok else None
+
+
 def _authed_call(method: str, path: str, **kwargs: Any) -> Any:
+    if TRANSPORT == "http":
+        return _call(method, path, token=_http_token(), **kwargs)
     token, message = _acquire_token()
     if token is None:
         return {"action_required": message}
@@ -167,8 +218,10 @@ def _authed_call(method: str, path: str, **kwargs: Any) -> Any:
 
 
 def _read_call(method: str, path: str, **kwargs: Any) -> Any:
-    """Read from the API. Tries with any cached token; if the instance gates reads (401), it runs
-    the device flow and retries. Works whether the server is public-read or login-only."""
+    """Read from the API. In http mode the per-request OAuth token is forwarded. In stdio mode it
+    tries any cached token and, if the instance gates reads (401), runs the device flow and retries."""
+    if TRANSPORT == "http":
+        return _call(method, path, token=_http_token(), **kwargs)
     r = _call(method, path, token=_cached_token(), **kwargs)
     if isinstance(r, dict) and r.get("error") == 401:
         token, message = _acquire_token()
@@ -247,9 +300,14 @@ def list_recommendations(status: str | None = None) -> Any:
 
 @mcp.tool()
 def authenticate() -> Any:
-    """Authorize this MCP for writes via the device flow. Returns a verification URL + code to open
-    in a browser (sign in with GitHub, approve), and waits briefly for approval. Safe to call again
-    to resume; the token is cached so you normally only do this once per machine."""
+    """Check/obtain authorization for write tools. In http mode auth is handled by your MCP client's
+    OAuth (browser sign-in) before any tool runs — this just reports status. In stdio mode it runs
+    the device flow: returns a verification URL + code to open in a browser (sign in with GitHub,
+    approve), caching the token so you normally do this only once per machine."""
+    if TRANSPORT == "http":
+        if _http_token():
+            return {"ok": True, "detail": "Authorized via OAuth. Write tools are ready."}
+        return {"action_required": "Not authorized — your MCP client should run the OAuth sign-in."}
     token, message = _acquire_token()
     if token is not None:
         return {"ok": True, "detail": "Authorized. Write tools are ready."}
@@ -332,4 +390,7 @@ def set_recommendation_status(rec_id: int, status: str) -> Any:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    if TRANSPORT == "http":
+        mcp.run(transport="streamable-http")
+    else:
+        mcp.run()

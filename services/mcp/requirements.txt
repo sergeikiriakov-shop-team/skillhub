@@ -1,2 +1,4 @@
-mcp>=1.2.0
+# >=1.12 for the resource-server auth API (TokenVerifier + AuthSettings.resource_server_url,
+# used by the streamable-http OAuth mode). httpx for the REST + token-verification calls.
+mcp>=1.12
 httpx>=0.27

@@ -21,6 +21,7 @@ from .routers import (
     auth,
     categories,
     evaluations,
+    oauth,
     recommendations,
     rubric,
     search,
@@ -28,6 +29,7 @@ from .routers import (
     stats,
     task_groups,
 )
+from .routers.oauth import authorization_server_metadata
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("skillhub.api")
@@ -57,6 +59,8 @@ app.add_middleware(
 # SKILLHUB_PUBLIC_READS=true and requires a logged-in user otherwise (writes keep their own role gates).
 _gated = [Depends(require_read_access)]
 app.include_router(auth.router, prefix="/api")
+# OAuth 2.1 authorization server for the remote HTTP MCP — infrastructure, never read-gated.
+app.include_router(oauth.router, prefix="/api")
 app.include_router(skills.router, prefix="/api", dependencies=_gated)
 app.include_router(categories.router, prefix="/api", dependencies=_gated)
 app.include_router(task_groups.router, prefix="/api", dependencies=_gated)
@@ -71,3 +75,10 @@ app.include_router(admin.router, prefix="/api", dependencies=_gated)
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok", "rubric_version": RUBRIC_VERSION}
+
+
+@app.get("/.well-known/oauth-authorization-server")
+def oauth_authorization_server_metadata() -> dict:
+    """RFC 8414 discovery for the MCP OAuth flow. The protected-resource metadata that points here
+    is served by the mcp service at /.well-known/oauth-protected-resource/mcp."""
+    return authorization_server_metadata()
