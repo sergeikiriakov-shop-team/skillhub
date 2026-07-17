@@ -389,6 +389,82 @@ def set_recommendation_status(rec_id: int, status: str) -> Any:
     return _authed_call("POST", f"/api/recommendations/{rec_id}/status", json={"status": status})
 
 
+# --- Task Review context (peer-review handoff developer <-> lead) ------------------------------
+
+
+@mcp.tool()
+def submit_for_review(
+    task_ref: str,
+    title: str = "",
+    branch: str | None = None,
+    commit_shas: list[str] | None = None,
+    summary: str = "",
+    files: list[str] | None = None,
+    verified_notes: str = "",
+) -> Any:
+    """Submit a deploy-ready Prologistics task for review by the lead. Pass a POINTER to the work —
+    the code stays in git; the reviewer fetches the branch and reviews the real diff. `task_ref` is
+    the issue_logs id/link; `commit_shas`/`files` describe the change; `summary` is what changed and
+    why; `verified_notes` is what you checked (php -l / harness / QA) and what you did not. The single
+    lead is auto-assigned. Returns the created review (with its id and status)."""
+    body = {
+        "task_ref": task_ref, "title": title, "branch": branch,
+        "commit_shas": commit_shas or [], "summary": summary,
+        "files": files or [], "verified_notes": verified_notes,
+    }
+    return _authed_call("POST", "/api/reviews", json=body)
+
+
+@mcp.tool()
+def list_review_queue() -> Any:
+    """Lead's inbox: reviews awaiting review (status `submitted`). For each, run `get_review`, fetch
+    the branch and review the diff, then post `submit_review_result`."""
+    return _read_call("GET", "/api/reviews", params={"status": "submitted"})
+
+
+@mcp.tool()
+def list_my_reviews(status: str | None = None) -> Any:
+    """Reviews you authored. Filter by `status` (submitted|changes_requested|approved|done). The ones
+    needing your action are `changes_requested` (fix + `resubmit_review`) and `approved` (`ack_review`)."""
+    params = {"mine": "true"}
+    if status:
+        params["status"] = status
+    return _read_call("GET", "/api/reviews", params=params)
+
+
+@mcp.tool()
+def get_review(review_id: int) -> Any:
+    """Get one review with its full thread (submit -> verdict -> resubmit -> ...), pointer fields
+    (task_ref, branch, commit_shas, files), summary and the author's verification notes."""
+    return _read_call("GET", f"/api/reviews/{review_id}")
+
+
+@mcp.tool()
+def submit_review_result(review_id: int, verdict: str, comments: str = "") -> Any:
+    """Lead posts a verdict on a review. `verdict`: `approve` | `changes_requested` (comments required
+    for changes_requested). Requires the reviewer (lead) role. Only a review awaiting review can be
+    decided."""
+    return _authed_call(
+        "POST", f"/api/reviews/{review_id}/result", json={"verdict": verdict, "comments": comments}
+    )
+
+
+@mcp.tool()
+def resubmit_review(review_id: int, commit_shas: list[str] | None = None, note: str = "") -> Any:
+    """Author sends a task back for another round after addressing the review comments. Pass the new
+    `commit_shas` and a `note` on what changed. Moves the review back into the lead's queue."""
+    return _authed_call(
+        "POST", f"/api/reviews/{review_id}/resubmit",
+        json={"commit_shas": commit_shas or [], "note": note},
+    )
+
+
+@mcp.tool()
+def ack_review(review_id: int) -> Any:
+    """Author acknowledges the outcome; an approved review is closed (status `done`)."""
+    return _authed_call("POST", f"/api/reviews/{review_id}/ack", json={})
+
+
 if __name__ == "__main__":
     if TRANSPORT == "http":
         mcp.run(transport="streamable-http")
