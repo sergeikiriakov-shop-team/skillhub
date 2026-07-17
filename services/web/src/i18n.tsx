@@ -13,12 +13,63 @@ type Dict = Record<string, string>;
 
 const en: Dict = {
   // header / nav
-  "app.subtitle": "Claude Code skills registry (read-only dashboard)",
+  "app.subtitle": "Developer services platform",
   "nav.catalog": "Catalog",
   "nav.categories": "Categories & ratings",
   "nav.recommendations": "Recommendations",
   "nav.methodology": "Methodology",
   "nav.guide": "Guide",
+  "nav.skills": "Skills",
+  "nav.reviews": "Reviews",
+
+  // home hub (two service entry points)
+  "home.title": "Developer services",
+  "home.subtitle": "Two shared services for the team, one sign-in.",
+  "home.enter": "Open",
+  "home.skills.title": "🧩 SkillHub",
+  "home.skills.desc":
+    "Team registry of Claude Code skills — catalog, semantic search, quality scores, task-group " +
+    "clustering and curator recommendations.",
+  "home.skills.stat": "{total} skills · avg {avg}",
+  "home.reviews.title": "🔁 Task reviews",
+  "home.reviews.desc":
+    "Peer-review handoff: submit a deploy-ready task, the lead reviews the branch and sends a " +
+    "verdict, feedback flows back — all from Claude Code.",
+  "home.reviews.stat": "{open} awaiting action",
+
+  // reviews
+  "reviews.title": "Task reviews",
+  "reviews.intro":
+    "The review board. Developers submit deploy-ready tasks (a pointer to the branch); the lead " +
+    "reviews and posts a verdict. Actions happen from Claude Code (submit-for-review / review-inbox " +
+    "/ review-status); this page is read-only.",
+  "reviews.queueTab": "Review queue",
+  "reviews.mineTab": "My submissions",
+  "reviews.allTab": "All",
+  "reviews.count": "{count} review(s)",
+  "reviews.empty": "No reviews here yet.",
+  "reviews.by": "by {author}",
+  "reviews.reviewer": "reviewer: {who}",
+  "reviews.unassigned": "unassigned",
+  "reviews.status.submitted": "in review",
+  "reviews.status.changes_requested": "changes requested",
+  "reviews.status.approved": "approved",
+  "reviews.status.done": "done",
+  "reviews.task": "Task",
+  "reviews.branch": "Branch",
+  "reviews.commits": "Commits",
+  "reviews.files": "Changed files",
+  "reviews.summary": "Summary",
+  "reviews.verified": "Verified by author",
+  "reviews.thread": "Thread",
+  "reviews.notFound": "Review not found.",
+  "reviews.event.submit": "submitted",
+  "reviews.event.verdict": "verdict",
+  "reviews.event.resubmit": "resubmitted",
+  "reviews.event.ack": "acknowledged",
+  "reviews.usageHint":
+    "Act from Claude Code: developers use the submit-for-review / review-status skills; the lead " +
+    "runs review-inbox (under /loop). Verdicts and resubmits are not done from this page.",
 
   // common
   "common.copy": "Copy",
@@ -162,12 +213,63 @@ const en: Dict = {
 
 const ru: Dict = {
   // header / nav
-  "app.subtitle": "Реестр скиллов Claude Code (дашборд только для чтения)",
+  "app.subtitle": "Платформа сервисов для разработки",
   "nav.catalog": "Каталог",
   "nav.categories": "Категории и рейтинги",
   "nav.recommendations": "Рекомендации",
   "nav.methodology": "Методология",
   "nav.guide": "Инструкция",
+  "nav.skills": "Скиллы",
+  "nav.reviews": "Ревью",
+
+  // home hub (две точки входа в сервисы)
+  "home.title": "Сервисы для разработки",
+  "home.subtitle": "Два общих сервиса для команды, один вход.",
+  "home.enter": "Открыть",
+  "home.skills.title": "🧩 SkillHub",
+  "home.skills.desc":
+    "Командный реестр скиллов Claude Code — каталог, семантический поиск, оценки качества, " +
+    "кластеризация по рабочим группам и рекомендации куратора.",
+  "home.skills.stat": "скиллов: {total} · средн. {avg}",
+  "home.reviews.title": "🔁 Ревью задач",
+  "home.reviews.desc":
+    "Передача на ревью: разработчик отправляет готовую задачу (указатель на ветку), лид смотрит " +
+    "ветку и выносит вердикт, обратная связь возвращается — всё из Claude Code.",
+  "home.reviews.stat": "требуют действия: {open}",
+
+  // reviews
+  "reviews.title": "Ревью задач",
+  "reviews.intro":
+    "Доска ревью. Разработчики отправляют готовые к деплою задачи (указатель на ветку); лид " +
+    "смотрит и выносит вердикт. Действия выполняются из Claude Code (submit-for-review / " +
+    "review-inbox / review-status); эта страница — только для чтения.",
+  "reviews.queueTab": "Очередь ревью",
+  "reviews.mineTab": "Мои заявки",
+  "reviews.allTab": "Все",
+  "reviews.count": "заявок: {count}",
+  "reviews.empty": "Здесь пока нет заявок.",
+  "reviews.by": "автор: {author}",
+  "reviews.reviewer": "ревьюер: {who}",
+  "reviews.unassigned": "не назначен",
+  "reviews.status.submitted": "на ревью",
+  "reviews.status.changes_requested": "нужны правки",
+  "reviews.status.approved": "одобрено",
+  "reviews.status.done": "закрыто",
+  "reviews.task": "Задача",
+  "reviews.branch": "Ветка",
+  "reviews.commits": "Коммиты",
+  "reviews.files": "Изменённые файлы",
+  "reviews.summary": "Сводка",
+  "reviews.verified": "Проверено автором",
+  "reviews.thread": "Тред",
+  "reviews.notFound": "Заявка не найдена.",
+  "reviews.event.submit": "отправлено",
+  "reviews.event.verdict": "вердикт",
+  "reviews.event.resubmit": "переотправлено",
+  "reviews.event.ack": "подтверждено",
+  "reviews.usageHint":
+    "Действия — из Claude Code: разработчики используют скиллы submit-for-review / review-status; " +
+    "лид запускает review-inbox (под /loop). Вердикты и переотправка не делаются с этой страницы.",
 
   // common
   "common.copy": "Копировать",

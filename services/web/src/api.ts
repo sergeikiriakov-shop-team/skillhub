@@ -120,6 +120,37 @@ export interface Me {
   can_upload?: boolean;
   can_evaluate?: boolean;
   is_admin?: boolean;
+  is_reviewer?: boolean;
+}
+
+// --- Task Review context ---
+export interface ReviewEvent {
+  id: number;
+  kind: string;
+  author: string | null;
+  verdict: string | null;
+  body: string;
+  created_at: string;
+}
+
+export interface ReviewSummary {
+  id: number;
+  task_ref: string;
+  title: string;
+  branch: string | null;
+  status: string;
+  author: string | null;
+  reviewer: string | null;
+  updated_at: string;
+}
+
+export interface ReviewDetail extends ReviewSummary {
+  commit_shas: string[];
+  summary: string;
+  files: string[];
+  verified_notes: string;
+  created_at: string;
+  events: ReviewEvent[];
 }
 
 export interface RubricCategory {
@@ -176,6 +207,16 @@ export const api = {
   search: (q: string) => request<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`),
   stats: () => request<Stats>("/stats"),
   rubric: () => request<Rubric>("/rubric"),
+  // --- reviews ---
+  listReviews: (opts?: { status?: string; mine?: boolean; queue?: boolean }) => {
+    const params = new URLSearchParams();
+    if (opts?.status) params.set("status", opts.status);
+    if (opts?.mine) params.set("mine", "true");
+    if (opts?.queue) params.set("queue", "true");
+    const qs = params.toString();
+    return request<ReviewSummary[]>(`/reviews${qs ? `?${qs}` : ""}`);
+  },
+  getReview: (id: number) => request<ReviewDetail>(`/reviews/${id}`),
   // --- auth ---
   me: () => request<Me>("/auth/me"),
   logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),

@@ -18,8 +18,11 @@ import Catalog from "./pages/Catalog";
 import Categories from "./pages/Categories";
 import DeviceApprove from "./pages/DeviceApprove";
 import Guide from "./pages/Guide";
+import Home from "./pages/Home";
 import Methodology from "./pages/Methodology";
 import Recommendations from "./pages/Recommendations";
+import Reviews from "./pages/Reviews";
+import ReviewDetail from "./pages/ReviewDetail";
 import SkillDetail from "./pages/SkillDetail";
 import PageLoader from "./components/PageLoader";
 import { useI18n } from "./i18n";
@@ -40,6 +43,22 @@ function NavItem({ to, label }: { to: string; label: string }) {
     >
       {label}
     </NavLink>
+  );
+}
+
+// A top-level service tab (Skills / Reviews). Active across the whole section, not just an exact path.
+function ServiceLink({ to, label, active }: { to: string; label: string; active: boolean }) {
+  return (
+    <Anchor
+      component={Link}
+      to={to}
+      underline="never"
+      fw={active ? 700 : 500}
+      c={active ? "blue.6" : "dimmed"}
+      size="sm"
+    >
+      {label}
+    </Anchor>
   );
 }
 
@@ -85,9 +104,16 @@ function AuthControl() {
             <Text size="xs" truncate>
               {me?.email}
             </Text>
-            <Badge size="xs" variant="light">
-              {me?.role}
-            </Badge>
+            <Group gap={4} wrap="nowrap">
+              {me?.is_reviewer && (
+                <Badge size="xs" variant="light" color="grape">
+                  lead
+                </Badge>
+              )}
+              <Badge size="xs" variant="light">
+                {me?.role}
+              </Badge>
+            </Group>
           </Group>
         </Menu.Label>
         <Menu.Divider />
@@ -119,26 +145,33 @@ export default function App() {
   const { t } = useI18n();
   const { isAuthenticated, isLoading, readsRequireAuth } = useAuth();
   const location = useLocation();
+  const path = location.pathname;
   // Gate everything behind login when the server closes reads — except the device-approval page,
   // which handles its own sign-in and must stay reachable for the MCP flow.
-  const gated = readsRequireAuth && !isAuthenticated && location.pathname !== "/device";
+  const gated = readsRequireAuth && !isAuthenticated && path !== "/device";
+
+  const isReviews = path === "/reviews" || path.startsWith("/reviews/");
+  const isSkills = !isReviews && path !== "/" && path !== "/device";
 
   return (
     <AppShell header={{ height: 60 }} padding="md">
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Group wrap="nowrap">
+          <Group wrap="nowrap" gap="lg">
             <Anchor component={Link} to="/" underline="never">
-              <Title order={3}>🧩 SkillHub</Title>
+              <Title order={3}>🧰 Dev Services</Title>
             </Anchor>
-            <Text c="dimmed" size="sm" visibleFrom="md">
-              {t("app.subtitle")}
-            </Text>
+            {!gated && (
+              <Group gap="md" wrap="nowrap">
+                <ServiceLink to="/skills" label={t("nav.skills")} active={isSkills} />
+                <ServiceLink to="/reviews" label={t("nav.reviews")} active={isReviews} />
+              </Group>
+            )}
           </Group>
           <Group gap="lg" wrap="nowrap">
-            {!gated && (
-              <Group gap="lg" wrap="nowrap">
-                <NavItem to="/" label={t("nav.catalog")} />
+            {!gated && isSkills && (
+              <Group gap="lg" wrap="nowrap" visibleFrom="lg">
+                <NavItem to="/skills" label={t("nav.catalog")} />
                 <NavItem to="/categories" label={t("nav.categories")} />
                 <NavItem to="/recommendations" label={t("nav.recommendations")} />
                 <NavItem to="/methodology" label={t("nav.methodology")} />
@@ -158,13 +191,16 @@ export default function App() {
           <LoginGate />
         ) : (
           <Routes>
-            <Route path="/" element={<Catalog />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/skills" element={<Catalog />} />
+            <Route path="/skills/:id" element={<SkillDetail />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/recommendations" element={<Recommendations />} />
             <Route path="/methodology" element={<Methodology />} />
             <Route path="/guide" element={<Guide />} />
+            <Route path="/reviews" element={<Reviews />} />
+            <Route path="/reviews/:id" element={<ReviewDetail />} />
             <Route path="/device" element={<DeviceApprove />} />
-            <Route path="/skills/:id" element={<SkillDetail />} />
           </Routes>
         )}
       </AppShell.Main>
