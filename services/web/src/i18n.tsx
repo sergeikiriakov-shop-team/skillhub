@@ -182,6 +182,7 @@ const en: Dict = {
   "detail.installPhrase": 'Install the "{name}" skill from SkillHub into my project',
   "detail.installNote":
     "Claude Code fetches it and writes SKILL.md (+ references) into .claude/skills/{name}/.",
+  "detail.improvements": "Available improvements ({count})",
 
   // auth
   "auth.signIn": "Sign in with GitHub",
@@ -382,6 +383,7 @@ const ru: Dict = {
   "detail.installPhrase": "Установи скилл «{name}» из SkillHub в мой проект",
   "detail.installNote":
     "Claude Code скачает его и запишет SKILL.md (+ references) в .claude/skills/{name}/.",
+  "detail.improvements": "Доступные улучшения ({count})",
 
   // auth
   "auth.signIn": "Войти через GitHub",

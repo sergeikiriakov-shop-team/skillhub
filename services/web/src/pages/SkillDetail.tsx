@@ -23,6 +23,7 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { ScoreBadge, ScoreBreakdown } from "../components/Score";
 import { useI18n } from "../i18n";
+import { KIND_COLOR } from "./Recommendations";
 
 export default function SkillDetail() {
   const { t } = useI18n();
@@ -32,6 +33,10 @@ export default function SkillDetail() {
   const { data: skill, isLoading } = useQuery({
     queryKey: ["skill", skillId],
     queryFn: () => api.getSkill(skillId),
+  });
+  const { data: allRecs } = useQuery({
+    queryKey: ["recommendations"],
+    queryFn: api.listRecommendations,
   });
 
   if (isLoading) {
@@ -51,6 +56,18 @@ export default function SkillDetail() {
 
   const evalr = skill.latest_evaluation;
   const installPhrase = t("detail.installPhrase", { name: skill.name });
+
+  // Open recommendations that apply to THIS skill: it is a named target, or the scope matches the
+  // skill's name / task_group / one of its categories.
+  const catKeys = new Set(skill.categories.map((c) => c.key));
+  const improvements = (allRecs ?? []).filter(
+    (r) =>
+      (r.status === "proposed" || r.status === "accepted") &&
+      (r.targets.includes(skill.name) ||
+        r.scope === skill.name ||
+        (skill.task_group != null && r.scope === skill.task_group) ||
+        (r.scope != null && catKeys.has(r.scope))),
+  );
 
   return (
     <Container size="xl">
@@ -156,6 +173,61 @@ export default function SkillDetail() {
                 {t("detail.installNote", { name: skill.name })}
               </Text>
             </Card>
+
+            {improvements.length > 0 && (
+              <Card
+                withBorder
+                radius="md"
+                padding="md"
+                mb="md"
+                style={{ borderColor: "var(--mantine-color-indigo-4)" }}
+              >
+                <Text fw={600} mb="sm">
+                  ✨ {t("detail.improvements", { count: improvements.length })}
+                </Text>
+                <Stack gap="sm">
+                  {improvements.map((r) => (
+                    <Paper key={r.id} withBorder radius="sm" p="sm">
+                      <Group gap="xs" mb={4} wrap="nowrap">
+                        <Badge color={KIND_COLOR[r.kind] ?? "gray"} variant="filled" size="sm">
+                          {r.kind}
+                        </Badge>
+                        <Text size="sm" fw={600}>
+                          {r.title}
+                        </Text>
+                      </Group>
+                      <Text size="xs" c="dimmed" mb={r.suggested_action ? 6 : 0}>
+                        {r.rationale}
+                      </Text>
+                      {r.suggested_action && (
+                        <>
+                          <Group justify="space-between" align="center" mb={4}>
+                            <Text size="xs" c="dimmed">
+                              {t("rec.runThis")}
+                            </Text>
+                            <CopyButton value={r.suggested_action}>
+                              {({ copied, copy }) => (
+                                <Button
+                                  size="compact-xs"
+                                  variant="light"
+                                  color={copied ? "teal" : "gray"}
+                                  onClick={copy}
+                                >
+                                  {copied ? t("common.copied") : t("common.copy")}
+                                </Button>
+                              )}
+                            </CopyButton>
+                          </Group>
+                          <Code block style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>
+                            {r.suggested_action}
+                          </Code>
+                        </>
+                      )}
+                    </Paper>
+                  ))}
+                </Stack>
+              </Card>
+            )}
 
             <Card withBorder radius="md" padding="md">
               <Text fw={600} mb="sm">

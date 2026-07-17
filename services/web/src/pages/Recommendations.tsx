@@ -15,7 +15,7 @@ import { api, Recommendation } from "../api";
 import PageLoader from "../components/PageLoader";
 import { useI18n } from "../i18n";
 
-const KIND_COLOR: Record<string, string> = {
+export const KIND_COLOR: Record<string, string> = {
   synthesize: "grape",
   split: "blue",
   improve: "indigo",
