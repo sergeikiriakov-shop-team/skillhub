@@ -71,7 +71,11 @@ def require_admin(user: User = Depends(require_user)) -> User:
 
 
 def require_reviewer(user: User = Depends(require_user)) -> User:
-    """Task Review context: only the lead (``is_reviewer``) or an admin may post a verdict."""
+    """Task Review context: who may post a verdict. When ``skillhub_open_review`` is on (default,
+    early phase) any authenticated user may — "anyone can be the lead". Once it is turned off, only
+    a designated lead (``is_reviewer``) or an admin may."""
+    if get_settings().skillhub_open_review:
+        return user
     if not (user.is_reviewer or user.is_admin):
         raise HTTPException(status_code=403, detail="Reviewer (lead) role required")
     return user

@@ -6,15 +6,17 @@ description: >
   review queue", "проверь очередь ревью", or a `/loop review-inbox`. For each queued task it fetches
   the pointer (task, branch, commit SHAs), checks out/fetches the branch, reviews the real diff via
   `code-review` (and `check-task` for UI when relevant), then posts a verdict (approve /
-  changes_requested + comments) back through the `skillhub` MCP. Only the lead (`is_reviewer`) may post
-  verdicts.
+  changes_requested + comments) back through the `skillhub` MCP. In open-review mode (default) any
+  authenticated user may review; a designated lead (`is_reviewer`) is required only once it is off.
 ---
 
 # Review inbox — pull and review queued tasks (lead)
 
 Poll the SkillHub review board for tasks awaiting review and review them. Designed to run under
-`/loop` on the lead's machine (e.g. `/loop 10m review-inbox`). Requires the `skillhub` MCP connected;
-posting a verdict requires the **reviewer/lead** role (`is_reviewer`) — an admin grants it.
+`/loop` on the lead's machine (e.g. `/loop 10m review-inbox`). Requires the `skillhub` MCP connected.
+Posting a verdict: while the instance runs in **open-review** mode (default early phase) any
+authenticated user may review; once a fixed lead is designated (`is_reviewer`, open-review off) only
+they or an admin can.
 
 ## Each tick
 1. **Fetch the queue:** `list_review_queue()` (reviews with status `submitted`). If empty, report

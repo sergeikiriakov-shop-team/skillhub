@@ -56,6 +56,10 @@ class Settings(BaseSettings):
     skillhub_oauth_access_ttl: int = 30 * 24 * 3600
     # Role assigned to a brand-new user (validated against ROLES at use site).
     skillhub_default_role: str = "viewer"
+    # Task Review: when True (default, early phase), ANY authenticated user may post a review verdict
+    # ("anyone can be the lead"). Set False once a fixed lead exists — then only users flagged
+    # ``is_reviewer`` (or admins) may review.
+    skillhub_open_review: bool = True
     # Comma-separated emails promoted to admin on their (verified) first login.
     skillhub_bootstrap_admins: str = ""
     # Set True in production (HTTPS) so cookies carry the Secure flag. Must be False on http://localhost.
