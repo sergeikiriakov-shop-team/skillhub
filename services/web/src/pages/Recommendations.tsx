@@ -18,6 +18,7 @@ import { useI18n } from "../i18n";
 const KIND_COLOR: Record<string, string> = {
   synthesize: "grape",
   split: "blue",
+  improve: "indigo",
   merge: "teal",
   dedup: "cyan",
   delete: "red",

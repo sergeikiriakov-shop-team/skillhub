@@ -12,7 +12,13 @@ SOURCE_TYPE_SYNTHESIZED = "synthesized"  # produced by the service's synthesis a
 SYNTHESIZED_AUTHOR = "SkillHub (synthesized)"
 
 # Curator recommendations: what kind of change is proposed, and its lifecycle state.
-REC_KINDS = ("synthesize", "split", "merge", "dedup", "delete", "other")
+# - synthesize: merge a competing task_group into one ideal skill
+# - split: break one skill into a short core + references/ (or into separate skills)
+# - improve: upgrade/restructure ONE skill in place — move detail into references/, add examples,
+#   tighten the trigger, apply progressive disclosure — without splitting it into multiple skills
+# - merge: fold near-duplicate skills together   - dedup: remove/redirect duplicated content
+# - delete: retire a skill   - other: anything else
+REC_KINDS = ("synthesize", "split", "improve", "merge", "dedup", "delete", "other")
 REC_STATUSES = ("proposed", "accepted", "done", "dismissed")
 
 # The originating client format. Claude Code is canonical; the rest are adapters.

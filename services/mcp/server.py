@@ -290,7 +290,7 @@ def get_stats() -> Any:
 
 @mcp.tool()
 def list_recommendations(status: str | None = None) -> Any:
-    """List curator recommendations (proposed catalog changes: synthesize/split/merge/dedup/delete).
+    """List curator recommendations (proposed catalog changes: synthesize/split/improve/merge/dedup/delete).
     Optionally filter by status: proposed|accepted|done|dismissed."""
     return _read_call("GET", "/api/recommendations", params={"status": status} if status else None)
 
@@ -370,8 +370,10 @@ def add_recommendation(
     suggested_action: str = "",
 ) -> Any:
     """Propose a catalog change so it is stored and shown on the dashboard for a developer to run
-    later. `kind`: synthesize|split|merge|dedup|delete|other. `scope`: a category/task_group/skill.
-    `suggested_action`: a runnable instruction. Requires a contributor+ role."""
+    later. `kind`: synthesize|split|improve|merge|dedup|delete|other (`improve` = upgrade/restructure
+    ONE skill in place — move detail into references/, add examples, tighten the trigger, progressive
+    disclosure — without splitting it). `scope`: a category/task_group/skill. `suggested_action`: a
+    runnable instruction. Requires a contributor+ role."""
     body = {
         "kind": kind,
         "title": title,
