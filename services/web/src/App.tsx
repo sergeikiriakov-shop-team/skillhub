@@ -1,4 +1,5 @@
 import {
+  Alert,
   Anchor,
   AppShell,
   Avatar,
@@ -146,6 +147,7 @@ export default function App() {
   const { isAuthenticated, isLoading, readsRequireAuth } = useAuth();
   const location = useLocation();
   const path = location.pathname;
+  const loginError = new URLSearchParams(location.search).get("login_error");
   // Gate everything behind login when the server closes reads — except the device-approval page,
   // which handles its own sign-in and must stay reachable for the MCP flow.
   const gated = readsRequireAuth && !isAuthenticated && path !== "/device";
@@ -185,6 +187,13 @@ export default function App() {
       </AppShell.Header>
 
       <AppShell.Main>
+        {loginError === "org" && (
+          <Container size="sm" mb="md">
+            <Alert color="red" title={t("auth.orgDeniedTitle")}>
+              {t("auth.orgDenied")}
+            </Alert>
+          </Container>
+        )}
         {isLoading ? (
           <PageLoader />
         ) : gated ? (

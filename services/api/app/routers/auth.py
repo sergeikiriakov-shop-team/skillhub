@@ -21,6 +21,7 @@ from skillhub_core.platform.config import (
     AUTH_PROVIDER,
     GITHUB_AUTHORIZE_URL,
     GITHUB_EMAILS_URL,
+    GITHUB_ORG_MEMBERSHIP_URL,
     GITHUB_TOKEN_URL,
     GITHUB_USER_URL,
     get_settings,
@@ -67,10 +68,12 @@ def login(next: str = Query("/")):
     if not settings.oauth_enabled:
         raise HTTPException(status_code=503, detail="GitHub OAuth is not configured on this server")
     state = core_auth.generate_token()
+    # read:org lets the callback verify org membership when access is restricted to one org.
+    scope = "read:user user:email" + (" read:org" if settings.oauth_org_restricted else "")
     params = {
         "client_id": settings.github_client_id,
         "redirect_uri": settings.effective_redirect_uri,
-        "scope": "read:user user:email",
+        "scope": scope,
         "state": state,
         "allow_signup": "false",
     }
@@ -117,9 +120,25 @@ def callback(
             gh = user_resp.json()
             emails_resp = client.get(GITHUB_EMAILS_URL, headers=auth_h)
             emails = emails_resp.json() if emails_resp.status_code == 200 else []
+            # Org gate: only active members of the configured org may sign in (200 + state=active).
+            org_member = True
+            if settings.oauth_org_restricted:
+                m = client.get(
+                    GITHUB_ORG_MEMBERSHIP_URL.format(org=settings.github_org), headers=auth_h
+                )
+                org_member = m.status_code == 200 and m.json().get("state") == "active"
     except httpx.HTTPError as exc:
         logger.warning("GitHub OAuth exchange failed: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="GitHub authentication failed") from exc
+
+    if settings.oauth_org_restricted and not org_member:
+        logger.info("Login denied: not an active member of org %s", settings.github_org)
+        deny = RedirectResponse(
+            f"{settings.skillhub_public_url.rstrip('/')}/?login_error=org", status_code=302
+        )
+        deny.delete_cookie(STATE_COOKIE, path="/api/auth")
+        deny.delete_cookie(NEXT_COOKIE, path="/api/auth")
+        return deny
 
     sub = gh.get("id")
     if not sub:

@@ -189,6 +189,10 @@ const en: Dict = {
   "auth.signOut": "Sign out",
   "auth.gateTitle": "Sign in to SkillHub",
   "auth.gateText": "This SkillHub instance requires sign-in to view the catalog and everything else.",
+  "auth.orgDeniedTitle": "Access restricted",
+  "auth.orgDenied":
+    "This SkillHub instance is limited to members of our GitHub organization. Sign in with a GitHub " +
+    "account that belongs to the org, or ask an admin for an invite.",
 
   // device flow
   "device.title": "Connect a device",
@@ -390,6 +394,10 @@ const ru: Dict = {
   "auth.signOut": "Выйти",
   "auth.gateTitle": "Вход в SkillHub",
   "auth.gateText": "Этот экземпляр SkillHub требует входа для просмотра каталога и всего остального.",
+  "auth.orgDeniedTitle": "Доступ ограничен",
+  "auth.orgDenied":
+    "Этот экземпляр SkillHub доступен только участникам нашей GitHub-организации. Войдите под " +
+    "аккаунтом, состоящим в организации, или попросите админа выслать инвайт.",
 
   // device flow
   "device.title": "Подключение устройства",
