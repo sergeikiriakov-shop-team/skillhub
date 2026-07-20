@@ -135,6 +135,22 @@ def _default_role() -> str:
     return role if role in ROLES else ROLE_VIEWER
 
 
+def find_user_by_identity(
+    session: Session, provider: str, sub: str, email: str | None = None, email_verified: bool = False
+) -> User | None:
+    """Find the existing user behind an OAuth identity WITHOUT creating one. Mirrors the lookup in
+    :func:`upsert_oauth_user` (by ``(provider, sub)``, then by verified email). Used to decide, at
+    the callback, whether a login belongs to an already-known user (e.g. an admin) before any
+    org-membership gating."""
+    email_l = (email or "").strip().lower() or None
+    user = session.scalars(
+        select(User).where(User.auth_provider == provider, User.provider_sub == sub)
+    ).first()
+    if user is None and email_verified and email_l:
+        user = session.scalars(select(User).where(User.email == email_l)).first()
+    return user
+
+
 def upsert_oauth_user(
     session: Session,
     provider: str,
