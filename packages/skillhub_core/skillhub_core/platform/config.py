@@ -15,9 +15,9 @@ GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
 GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
 GITHUB_USER_URL = "https://api.github.com/user"
 GITHUB_EMAILS_URL = "https://api.github.com/user/emails"
-# Membership of the authenticated user in one org (200 + state=active if a member, 404 if not).
-# Needs the read:org scope; format with the org login.
-GITHUB_ORG_MEMBERSHIP_URL = "https://api.github.com/user/memberships/orgs/{org}"
+# Repository visibility for the authenticated user: 200 if the token's user can access the repo
+# (collaborator/owner), 404 if not. Needs the `repo` scope for a private repo; format with owner/repo.
+GITHUB_REPO_URL = "https://api.github.com/repos/{repo}"
 
 
 class Settings(BaseSettings):
@@ -47,10 +47,11 @@ class Settings(BaseSettings):
     github_client_secret: str = ""
     # Exact callback URL registered in the GitHub OAuth App. Empty → derived from public_url.
     oauth_redirect_uri: str = ""
-    # Restrict access to members of this GitHub organization (login slug, e.g. "prologisticsbeliani").
-    # Empty → any GitHub account may sign in (current behaviour). When set, login also requests the
-    # read:org scope and rejects non-members at the callback.
-    skillhub_github_org: str = ""
+    # Restrict access to people who can access this GitHub repository ("owner/repo", e.g.
+    # "prologisticsbeliani/prologistics") — repo access == service access. Empty → any GitHub account
+    # may sign in. When set, login also requests the `repo` scope and rejects non-collaborators at the
+    # callback (admins bypass).
+    skillhub_allowed_repo: str = ""
 
     # --- Auth: sessions / roles ---
     # When False, even reads (catalog/search/stats/…) require a logged-in user; only health and the
@@ -101,13 +102,13 @@ class Settings(BaseSettings):
         return bool(self.github_client_id and self.github_client_secret)
 
     @property
-    def github_org(self) -> str:
-        """The allowed org login, normalized (lowercased, trimmed). Empty = no restriction."""
-        return self.skillhub_github_org.strip().lower()
+    def allowed_repo(self) -> str:
+        """The gating repo as "owner/repo", trimmed. Empty = no restriction."""
+        return self.skillhub_allowed_repo.strip().strip("/")
 
     @property
-    def oauth_org_restricted(self) -> bool:
-        return bool(self.github_org)
+    def access_restricted(self) -> bool:
+        return bool(self.allowed_repo)
 
 
 @lru_cache

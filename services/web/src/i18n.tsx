@@ -191,8 +191,8 @@ const en: Dict = {
   "auth.gateText": "This SkillHub instance requires sign-in to view the catalog and everything else.",
   "auth.orgDeniedTitle": "Access restricted",
   "auth.orgDenied":
-    "This SkillHub instance is limited to members of our GitHub organization. Sign in with a GitHub " +
-    "account that belongs to the org, or ask an admin for an invite.",
+    "This SkillHub instance is limited to the team — GitHub accounts with access to our repository. " +
+    "Ask an admin (or the repo owner) to grant your account access, then sign in again.",
 
   // device flow
   "device.title": "Connect a device",
@@ -396,8 +396,8 @@ const ru: Dict = {
   "auth.gateText": "Этот экземпляр SkillHub требует входа для просмотра каталога и всего остального.",
   "auth.orgDeniedTitle": "Доступ ограничен",
   "auth.orgDenied":
-    "Этот экземпляр SkillHub доступен только участникам нашей GitHub-организации. Войдите под " +
-    "аккаунтом, состоящим в организации, или попросите админа выслать инвайт.",
+    "Этот экземпляр SkillHub доступен только команде — GitHub-аккаунтам с доступом к нашему " +
+    "репозиторию. Попросите админа (или владельца репо) выдать вашему аккаунту доступ и войдите снова.",
 
   // device flow
   "device.title": "Подключение устройства",

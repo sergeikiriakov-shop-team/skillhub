@@ -21,7 +21,7 @@ from skillhub_core.platform.config import (
     AUTH_PROVIDER,
     GITHUB_AUTHORIZE_URL,
     GITHUB_EMAILS_URL,
-    GITHUB_ORG_MEMBERSHIP_URL,
+    GITHUB_REPO_URL,
     GITHUB_TOKEN_URL,
     GITHUB_USER_URL,
     get_settings,
@@ -68,8 +68,8 @@ def login(next: str = Query("/")):
     if not settings.oauth_enabled:
         raise HTTPException(status_code=503, detail="GitHub OAuth is not configured on this server")
     state = core_auth.generate_token()
-    # read:org lets the callback verify org membership when access is restricted to one org.
-    scope = "read:user user:email" + (" read:org" if settings.oauth_org_restricted else "")
+    # The `repo` scope lets the callback verify the user can access the gating repo (private).
+    scope = "read:user user:email" + (" repo" if settings.access_restricted else "")
     params = {
         "client_id": settings.github_client_id,
         "redirect_uri": settings.effective_redirect_uri,
@@ -120,19 +120,13 @@ def callback(
             gh = user_resp.json()
             emails_resp = client.get(GITHUB_EMAILS_URL, headers=auth_h)
             emails = emails_resp.json() if emails_resp.status_code == 200 else []
-            # Org gate: only active members of the configured org may sign in (200 + state=active).
-            org_member = True
-            org_debug = ""
-            if settings.oauth_org_restricted:
-                m = client.get(
-                    GITHUB_ORG_MEMBERSHIP_URL.format(org=settings.github_org), headers=auth_h
-                )
-                try:
-                    body = m.json()
-                except ValueError:
-                    body = {}
-                org_member = m.status_code == 200 and body.get("state") == "active"
-                org_debug = f"http={m.status_code} state={body.get('state')}"
+            # Access gate: only people who can access the configured repo may sign in (200 = access).
+            allowed = True
+            gate_debug = ""
+            if settings.access_restricted:
+                rr = client.get(GITHUB_REPO_URL.format(repo=settings.allowed_repo), headers=auth_h)
+                allowed = rr.status_code == 200
+                gate_debug = f"repo={settings.allowed_repo} http={rr.status_code}"
     except httpx.HTTPError as exc:
         logger.warning("GitHub OAuth exchange failed: %s", type(exc).__name__)
         raise HTTPException(status_code=502, detail="GitHub authentication failed") from exc
@@ -152,21 +146,21 @@ def callback(
     if email is None:
         email = gh.get("email")  # unverified profile email, if any
 
-    # Org gate. Existing admins bypass it so the operator can never be locked out (e.g. if the org
-    # blocks the OAuth app). Everyone else must be an active member of the configured org.
-    if settings.oauth_org_restricted:
+    # Access gate. Existing admins bypass it so the operator can never be locked out. Everyone else
+    # must be able to access the configured repo (a collaborator/owner).
+    if settings.access_restricted:
         existing = core_auth.find_user_by_identity(
             session, AUTH_PROVIDER, str(sub), email, email_verified
         )
         bypass = existing is not None and existing.is_admin
         logger.info(
-            "Org gate for %s: member=%s admin_bypass=%s (%s)",
+            "Access gate for %s: allowed=%s admin_bypass=%s (%s)",
             gh.get("login"),
-            org_member,
+            allowed,
             bypass,
-            org_debug,
+            gate_debug,
         )
-        if not org_member and not bypass:
+        if not allowed and not bypass:
             deny = RedirectResponse(
                 f"{settings.skillhub_public_url.rstrip('/')}/?login_error=org", status_code=302
             )
