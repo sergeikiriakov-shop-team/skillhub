@@ -187,7 +187,7 @@ export default function App() {
       </AppShell.Header>
 
       <AppShell.Main>
-        {loginError === "org" && (
+        {loginError === "org" && !isAuthenticated && (
           <Container size="sm" mb="md">
             <Alert color="red" title={t("auth.orgDeniedTitle")}>
               {t("auth.orgDenied")}

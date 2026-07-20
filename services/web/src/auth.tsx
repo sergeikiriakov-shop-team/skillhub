@@ -28,7 +28,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = useCallback((next?: string) => {
-    const dest = next ?? window.location.pathname + window.location.search;
+    let dest = next;
+    if (dest === undefined) {
+      // Don't carry a previous ?login_error into the return URL, or a successful re-login would land
+      // back on the error banner.
+      const params = new URLSearchParams(window.location.search);
+      params.delete("login_error");
+      const qs = params.toString();
+      dest = window.location.pathname + (qs ? `?${qs}` : "");
+    }
     window.location.href = `/api/auth/login?next=${encodeURIComponent(dest)}`;
   }, []);
 
