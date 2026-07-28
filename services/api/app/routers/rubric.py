@@ -1,70 +1,37 @@
-"""Serve the evaluation rubric so Claude Code scores skills consistently, and let an admin manage
-the dimension weights that drive the server-computed overall score."""
+"""Serve the evaluation rubric and let an admin manage the dimension weights.
+
+Thin HTTP layer: it delegates to ``RubricService`` (injected via the DI container) and maps domain
+errors to HTTP status. All rubric logic — assembling the strategy, validating and applying weights,
+recomputing scores, owning the commit — lives in the service."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
-from skillhub_core.platform.db import get_session
 from skillhub_core.platform.models import User
-from skillhub_core.skills import repository
-from skillhub_core.skills.rubric import (
-    CATEGORIZATION_RULES,
-    RUBRIC_CALIBRATION,
-    RUBRIC_DIMENSIONS,
-    RUBRIC_INSTRUCTIONS,
-    RUBRIC_VERSION,
-    SELECTION_STRATEGY,
-    SYNTHESIS_ALGORITHM,
-    SYNTHESIS_PROMPT,
-    SYNTHESIS_STRATEGY,
-)
-from skillhub_core.skills.schemas import EvaluationResult, RubricOut, WeightsUpdate
+from skillhub_core.skills.errors import InvalidWeights
+from skillhub_core.skills.schemas import RubricOut, WeightsUpdate
+from skillhub_core.skills.services import RubricService
 
 from ..auth import require_admin
+from ..deps import get_rubric_service
 
 router = APIRouter(tags=["rubric"])
 
-_DIMENSION_KEYS = {d["key"] for d in RUBRIC_DIMENSIONS}
-
 
 @router.get("/rubric", response_model=RubricOut)
-def get_rubric(session: Session = Depends(get_session)) -> RubricOut:
-    return RubricOut(
-        rubric_version=RUBRIC_VERSION,
-        instructions=RUBRIC_INSTRUCTIONS,
-        dimensions=RUBRIC_DIMENSIONS,
-        evaluation_schema=EvaluationResult.model_json_schema(),
-        categories=repository.get_taxonomy(session),
-        weights=repository.get_weights(session),
-        calibration=RUBRIC_CALIBRATION,
-        categorization_rules=CATEGORIZATION_RULES,
-        selection_strategy=SELECTION_STRATEGY,
-        synthesis_strategy=SYNTHESIS_STRATEGY,
-        synthesis_algorithm=SYNTHESIS_ALGORITHM,
-        synthesis_prompt=SYNTHESIS_PROMPT,
-    )
+def get_rubric(service: RubricService = Depends(get_rubric_service)) -> RubricOut:
+    return service.get_rubric()
 
 
 @router.put("/rubric/weights", response_model=dict)
 def update_weights(
     payload: WeightsUpdate,
-    session: Session = Depends(get_session),
+    service: RubricService = Depends(get_rubric_service),
     _: User = Depends(require_admin),
 ) -> dict:
-    """Admin-only: set the dimension weights. Validated against the rubric's dimensions; weights
-    must be >= 0 with at least one > 0. Applying them recomputes every skill's overall score."""
-    weights = payload.weights
-    unknown = set(weights) - _DIMENSION_KEYS
-    if unknown:
-        raise HTTPException(status_code=400, detail=f"unknown dimension(s): {sorted(unknown)}")
-    if any(w < 0 for w in weights.values()):
-        raise HTTPException(status_code=400, detail="weights must be >= 0")
-    if sum(weights.values()) <= 0:
-        raise HTTPException(status_code=400, detail="at least one weight must be > 0")
-
-    saved = repository.set_weights(session, weights)
-    rescored = repository.recompute_overall_scores(session)
-    session.commit()
-    return {"weights": saved, "rescored": rescored}
+    """Admin-only: set the dimension weights. Applying them recomputes every skill's overall."""
+    try:
+        return service.set_weights(payload.weights)
+    except InvalidWeights as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

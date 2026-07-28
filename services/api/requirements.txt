@@ -3,3 +3,5 @@ uvicorn[standard]>=0.29,<0.35
 python-multipart>=0.0.9
 # Server-side Google OAuth token/userinfo exchange.
 httpx>=0.27,<0.28
+# DI container (composition root in app/container.py). 4.42+ ships cp312 wheels.
+dependency-injector>=4.42,<5
