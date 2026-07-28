@@ -21,6 +21,9 @@ services/web/.vite/
 hf_cache/
 *.log
 
+# Skill-eval sandbox runtime (fixtures, fake-service call logs, trial results)
+.sandbox/
+
 # OS / editors
 .DS_Store
 Thumbs.db
