@@ -23,3 +23,10 @@ class RubricOut(BaseModel):
     synthesis_strategy: str = ""
     synthesis_algorithm: list[dict] = Field(default_factory=list)
     synthesis_prompt: str = ""
+
+
+class WeightsUpdate(BaseModel):
+    """Admin payload to set rubric dimension weights. Each weight must be >= 0 and at least one
+    must be > 0 (so the weighted mean has a positive denominator)."""
+
+    weights: dict[str, float] = Field(description="dimension -> weight (>= 0)")

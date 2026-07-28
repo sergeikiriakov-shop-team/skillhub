@@ -207,6 +207,11 @@ export const api = {
   search: (q: string) => request<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`),
   stats: () => request<Stats>("/stats"),
   rubric: () => request<Rubric>("/rubric"),
+  updateRubricWeights: (weights: Record<string, number>) =>
+    request<{ weights: Record<string, number>; rescored: number }>("/rubric/weights", {
+      method: "PUT",
+      body: JSON.stringify({ weights }),
+    }),
   // --- reviews ---
   listReviews: (opts?: { status?: string; mine?: boolean; queue?: boolean }) => {
     const params = new URLSearchParams();

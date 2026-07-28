@@ -7,7 +7,7 @@ from .assessment import AssessmentIn
 from .evaluation import CategorizationResult, CategoryAssignment, EvaluationResult
 from .parsed import ParsedSkill, Reference
 from .recommendation import RecommendationIn, RecommendationOut, RecommendationStatusUpdate
-from .rubric import RubricOut
+from .rubric import RubricOut, WeightsUpdate
 from .skill import (
     CategoryOut,
     EvaluationOut,
@@ -28,6 +28,7 @@ __all__ = [
     "CategorizationResult",
     "AssessmentIn",
     "RubricOut",
+    "WeightsUpdate",
     "ReferenceIn",
     "SkillCreate",
     "StatsOut",

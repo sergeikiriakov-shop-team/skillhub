@@ -36,6 +36,7 @@ def init_db() -> None:
     Base.metadata.create_all(engine)
     _apply_column_migrations()
     _seed_categories()
+    _seed_rubric_weights()
     _bootstrap_admin()
 
 
@@ -97,6 +98,24 @@ def _seed_categories() -> None:
             if cat["key"] not in existing:
                 session.add(Category(**cat))
         session.commit()
+
+
+def _seed_rubric_weights() -> None:
+    """Seed the admin-managed dimension weights from the rubric defaults (missing dimensions only),
+    then align stored ``overall`` scores with the weighted-mean definition so the server-computed
+    score is authoritative from first boot. Idempotent."""
+    from ..skills import repository
+    from ..skills.models import RubricWeight
+    from ..skills.rubric import RUBRIC_WEIGHTS
+
+    with SessionLocal() as session:
+        existing = {r.dimension for r in session.query(RubricWeight).all()}
+        for dimension, weight in RUBRIC_WEIGHTS.items():
+            if dimension not in existing:
+                session.add(RubricWeight(dimension=dimension, weight=float(weight)))
+        session.commit()
+        if repository.recompute_overall_scores(session):
+            session.commit()
 
 
 @contextmanager

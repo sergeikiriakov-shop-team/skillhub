@@ -13,12 +13,14 @@ from .models import (
     Category,
     Evaluation,
     Recommendation,
+    RubricWeight,
     Skill,
     SkillCategory,
     SkillEmbedding,
     SkillVersion,
 )
 from .parsing import compute_hash
+from .rubric import compute_overall
 from .schemas import (
     CategorizationResult,
     EvaluationResult,
@@ -149,12 +151,17 @@ def save_evaluation(
         "safety": result.safety,
         "structure": result.structure,
     }
+    # `overall` is server-authoritative: the weighted mean of the dimension scores under the
+    # admin-managed weights, not the model's holistic figure (kept deterministic and re-rankable).
+    overall = compute_overall(scores, get_weights(session))
+    if overall is None:  # no weights configured yet (shouldn't happen post-seed) — fall back
+        overall = float(result.overall)
     evaluation = Evaluation(
         skill_version_id=version.id,
         model=model,
         rubric_version=rubric_version,
         scores=scores,
-        overall_score=result.overall,
+        overall_score=overall,
         strengths=result.strengths,
         weaknesses=result.weaknesses,
         rationale=result.rationale,
@@ -232,6 +239,42 @@ def get_taxonomy(session: Session) -> list[dict]:
         {"key": c.key, "label": c.label, "description": c.description}
         for c in session.scalars(select(Category).order_by(Category.id)).all()
     ]
+
+
+# ---------------------------------------------------------------------------
+# Rubric weights (admin-managed; drive the server-computed overall score)
+# ---------------------------------------------------------------------------
+
+
+def get_weights(session: Session) -> dict[str, float]:
+    """Current dimension weights (dimension -> weight), as stored in the DB."""
+    return {r.dimension: float(r.weight) for r in session.scalars(select(RubricWeight)).all()}
+
+
+def set_weights(session: Session, weights: dict[str, float]) -> dict[str, float]:
+    """Upsert the given dimension weights (flush only; the caller owns the transaction)."""
+    existing = {r.dimension: r for r in session.scalars(select(RubricWeight)).all()}
+    for dimension, weight in weights.items():
+        if dimension in existing:
+            existing[dimension].weight = float(weight)
+        else:
+            session.add(RubricWeight(dimension=dimension, weight=float(weight)))
+    session.flush()
+    return get_weights(session)
+
+
+def recompute_overall_scores(session: Session) -> int:
+    """Recompute every evaluation's overall_score from its stored per-dimension scores and the
+    current weights. Call after the weights change. Returns how many rows were updated."""
+    weights = get_weights(session)
+    updated = 0
+    for evaluation in session.scalars(select(Evaluation)).all():
+        recomputed = compute_overall(evaluation.scores or {}, weights)
+        if recomputed is not None and recomputed != evaluation.overall_score:
+            evaluation.overall_score = recomputed
+            updated += 1
+    session.flush()
+    return updated
 
 
 def task_groups(session: Session) -> list[dict]:

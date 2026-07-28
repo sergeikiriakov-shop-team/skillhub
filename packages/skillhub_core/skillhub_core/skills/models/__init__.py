@@ -23,6 +23,7 @@ from .category import Category, SkillCategory
 from .embedding import EMBEDDING_DIM, SkillEmbedding
 from .evaluation import Evaluation
 from .recommendation import Recommendation
+from .rubric_weight import RubricWeight
 from .skill import Skill, SkillVersion
 
 __all__ = [
@@ -32,6 +33,7 @@ __all__ = [
     "Category",
     "SkillCategory",
     "Recommendation",
+    "RubricWeight",
     "SkillEmbedding",
     "EMBEDDING_DIM",
     "FORMAT_CLAUDE_SKILL",

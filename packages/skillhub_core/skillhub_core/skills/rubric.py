@@ -37,7 +37,9 @@ RUBRIC_DIMENSIONS: list[dict] = [
     {"key": "structure", "description": "Good headings, examples, progressive disclosure via references?"},
 ]
 
-# Relative weight of each dimension when computing `overall`. Trigger and completeness dominate.
+# Default weight of each dimension when computing `overall`. Trigger and completeness dominate.
+# These are only the SEED values: the live weights are admin-editable and stored in the DB
+# (rubric_weights table); see skillhub_core.skills.repository.get_weights / set_weights.
 RUBRIC_WEIGHTS: dict[str, float] = {
     "trigger_quality": 2.0,
     "completeness": 2.0,
@@ -46,6 +48,25 @@ RUBRIC_WEIGHTS: dict[str, float] = {
     "safety": 1.0,
     "structure": 1.0,
 }
+
+
+def compute_overall(scores: dict, weights: dict) -> float | None:
+    """The server-authoritative ``overall``: the weighted mean of the per-dimension scores.
+
+    Only dimensions that have both a score and a positive weight contribute. Returns ``None`` when
+    nothing contributes (no weights configured, or an evaluation with no matching scores), so the
+    caller can fall back. Rounded to 2 dp to match how scores are displayed and ranked."""
+    numerator = 0.0
+    denominator = 0.0
+    for dimension, weight in (weights or {}).items():
+        score = (scores or {}).get(dimension)
+        if score is None or weight is None or float(weight) <= 0:
+            continue
+        numerator += float(score) * float(weight)
+        denominator += float(weight)
+    if denominator <= 0:
+        return None
+    return round(numerator / denominator, 2)
 
 # 0-10 calibration anchors — the same meaning for every reviewer, so scores are comparable.
 RUBRIC_CALIBRATION: list[dict] = [

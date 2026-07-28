@@ -152,8 +152,16 @@ const en: Dict = {
   "meth.measures": "What it measures",
   "meth.weight": "Weight",
   "meth.overallNote":
-    "overall is a holistic 0-10 judgement weighted by these factors — trigger quality and " +
-    "completeness count roughly double.",
+    "overall is the weighted mean of the dimension scores, computed on the server — so changing a " +
+    "weight instantly re-ranks the whole catalog.",
+  "meth.weightsEditable": "editable (admin)",
+  "meth.saveWeights": "Save weights",
+  "meth.resetWeights": "Reset",
+  "meth.weightsSaved": "Saved — {n} scores recomputed",
+  "meth.weightsError": "Could not save weights",
+  "meth.weightsAdminHint":
+    "You are an admin: edit the weights below and save. Every skill's overall score recomputes " +
+    "from its dimension scores under the new weights.",
   "meth.calibrationTitle": "Score calibration (0–10)",
   "meth.band": "Band",
   "meth.label": "Label",
@@ -357,8 +365,16 @@ const ru: Dict = {
   "meth.measures": "Что измеряет",
   "meth.weight": "Вес",
   "meth.overallNote":
-    "overall — это целостная оценка 0-10, взвешенная по этим факторам: качество триггера и полнота " +
-    "весят примерно вдвое больше.",
+    "overall — это взвешенное среднее баллов по критериям, считается на сервере: изменение веса " +
+    "мгновенно переранжирует весь каталог.",
+  "meth.weightsEditable": "редактируется (админ)",
+  "meth.saveWeights": "Сохранить веса",
+  "meth.resetWeights": "Сбросить",
+  "meth.weightsSaved": "Сохранено — пересчитано баллов: {n}",
+  "meth.weightsError": "Не удалось сохранить веса",
+  "meth.weightsAdminHint":
+    "Вы админ: измените веса ниже и сохраните. Общий балл каждого скилла пересчитается из его " +
+    "покритериальных баллов по новым весам.",
   "meth.calibrationTitle": "Калибровка баллов (0–10)",
   "meth.band": "Диапазон",
   "meth.label": "Метка",
