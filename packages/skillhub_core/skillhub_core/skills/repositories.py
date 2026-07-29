@@ -9,19 +9,22 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
+from ..platform.config import get_settings
 from ..platform.models import User
-from . import embeddings, pipeline, repository, serializers
-from .errors import DuplicateSkill
+from . import embeddings, repository, serializers
 from .schemas import (
     CategoryInfo,
+    ParsedSkill,
     RecommendationOut,
-    Reference,
     SearchHit,
     SkillDetail,
     SkillSummary,
     StatsOut,
     TaskGroupInfo,
 )
+
+# A different-named skill at/above this cosine similarity is flagged (not blocked) on upload.
+_SIMILAR_WARN_THRESHOLD = 0.90
 
 
 class SqlRubricRepository:
@@ -62,30 +65,64 @@ class SqlSkillRepository:
             return None
         return serializers.skill_to_detail(skill, repository.find_similar(self._session, skill))
 
-    def create(
+    # --- ingest primitives (orchestrated by IngestService; each delegates to a query helper) ---
+    def embed(self, text: str) -> list[float] | None:
+        return embeddings.embed(text)
+
+    def name_exists(self, name: str) -> bool:
+        return repository.skill_with_name_exists(self._session, name)
+
+    def duplicate_for_new_name(
+        self, name: str, content_hash: str, body_md: str, vector: list[float] | None
+    ) -> tuple[int, str] | None:
+        # Block an essentially-identical copy under a NEW name. "Identical" is judged on the skill
+        # BODY (so renaming a copy doesn't slip past); the exact raw-hash is the cheap fallback.
+        dup = repository.find_exact_content_duplicate(self._session, content_hash, name)
+        if dup is None and vector is not None:
+            norm_body = repository.normalize_content(body_md)
+            for cand, _sim in repository.nearest_other_skills(self._session, vector, name, limit=3):
+                latest = cand.latest_version
+                if latest is not None and repository.normalize_content(latest.body_md) == norm_body:
+                    dup = cand
+                    break
+        return (dup.id, dup.name) if dup is not None else None
+
+    def save_parsed(
         self,
+        parsed: ParsedSkill,
         *,
-        content: str,
         author: str | None,
-        references: list[Reference],
-        source_format: str,
-        user: User,
-    ) -> SkillDetail:
-        try:
-            result = pipeline.ingest_raw(
-                self._session,
-                content=content,
-                author=author,  # ignored while authenticated; authorship comes from the user
-                references=references,
-                source_format=source_format,
-                user=user,
-            )
-        except repository.DuplicateSkillError as exc:
-            raise DuplicateSkill(exc.existing_id, exc.existing_name) from exc
-        skill = repository.get_skill(self._session, result.skill_id)
-        detail = serializers.skill_to_detail(skill, repository.find_similar(self._session, skill))
-        detail.similar_warning = result.similar_warning
-        return detail
+        source_type: str,
+        origin: str | None,
+        user: User | None,
+        vector: list[float] | None,
+    ) -> dict:
+        settings = get_settings()
+        skill, version, is_new_version = repository.upsert_skill(
+            self._session, parsed, author=author, source_type=source_type, origin=origin, user=user
+        )
+        embedded = False
+        notes: list[str] = []
+        similar_warning = None
+        if vector is not None:
+            repository.save_embedding(self._session, version, vector, settings.embedding_model)
+            embedded = True
+            # Warn (don't block) when a different skill is highly similar — variants are welcome.
+            neighbours = repository.nearest_other_skills(self._session, vector, parsed.name, limit=1)
+            if neighbours and neighbours[0][1] >= _SIMILAR_WARN_THRESHOLD:
+                cand, sim = neighbours[0]
+                similar_warning = {"skill_id": cand.id, "name": cand.name, "similarity": round(sim, 4)}
+        else:
+            notes.append("embedding model unavailable")
+        self._session.flush()
+        return {
+            "skill_id": skill.id,
+            "version_id": version.id,
+            "is_new_version": is_new_version,
+            "embedded": embedded,
+            "similar_warning": similar_warning,
+            "notes": notes,
+        }
 
     def delete(self, skill_id: int) -> bool:
         skill = repository.get_skill(self._session, skill_id)

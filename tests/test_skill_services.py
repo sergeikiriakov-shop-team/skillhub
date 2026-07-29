@@ -6,6 +6,8 @@ and the infra duplicate error surfaces as the domain :class:`DuplicateSkill`."""
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from skillhub_core.skills.errors import (
@@ -17,13 +19,22 @@ from skillhub_core.skills.errors import (
 from skillhub_core.skills.services import IngestService, RecommendationService, SkillService
 
 
+_OUTCOME = {
+    "skill_id": 1, "version_id": 1, "is_new_version": True,
+    "embedded": True, "similar_warning": None, "notes": [],
+}
+
+
 class FakeSkillRepo:
-    def __init__(self, *, detail=None, exists=True, duplicate=None):
+    def __init__(self, *, detail=None, exists=True, name_exists=False, duplicate=None, outcome=None):
         self._detail = detail
         self._exists = exists
+        self._name_exists = name_exists
         self._duplicate = duplicate
+        self._outcome = outcome or dict(_OUTCOME)
         self.committed = False
         self.deleted = None
+        self.saved = None
 
     def list(self, *, search, category, evaluated):
         return ["s1", "s2"]
@@ -31,17 +42,32 @@ class FakeSkillRepo:
     def get(self, skill_id):
         return self._detail if self._exists else None
 
-    def create(self, *, content, author, references, source_format, user):
-        if self._duplicate is not None:
-            raise self._duplicate
-        return self._detail
-
     def delete(self, skill_id):
         self.deleted = skill_id
         return self._exists
 
+    # ingest primitives
+    def embed(self, text):
+        return [0.1, 0.2]
+
+    def name_exists(self, name):
+        return self._name_exists
+
+    def duplicate_for_new_name(self, name, content_hash, body_md, vector):
+        return self._duplicate
+
+    def save_parsed(self, parsed, **kwargs):
+        self.saved = parsed
+        return self._outcome
+
     def commit(self):
         self.committed = True
+
+
+def _parsed():
+    return SimpleNamespace(
+        name="x", raw_content="raw", references=[], body_md="body", searchable_text=lambda: "text"
+    )
 
 
 def test_get_skill_found_returns_detail():
@@ -66,12 +92,24 @@ def test_delete_missing_raises_and_does_not_commit():
     assert repo.committed is False
 
 
-def test_ingest_surfaces_domain_duplicate():
-    repo = FakeSkillRepo(duplicate=DuplicateSkill(7, "green-loop"))
+def test_ingest_new_name_duplicate_raises():
+    repo = FakeSkillRepo(name_exists=False, duplicate=(7, "green-loop"))
     with pytest.raises(DuplicateSkill):
-        IngestService(repo).create(
-            content="x", author=None, references=[], source_format="claude_skill", user=object()
-        )
+        IngestService(repo).ingest_parsed(_parsed(), author=None, source_type="upload")
+    assert repo.saved is None  # gate blocked before persisting
+
+
+def test_ingest_same_name_skips_gate_and_saves():
+    # A same-name re-upload is a new version — the dedupe gate must not fire even if a dup exists.
+    repo = FakeSkillRepo(name_exists=True, duplicate=(1, "dup"))
+    out = IngestService(repo).ingest_parsed(_parsed(), author=None, source_type="upload")
+    assert out == _OUTCOME and repo.saved is not None
+
+
+def test_ingest_new_name_no_dup_saves():
+    repo = FakeSkillRepo(name_exists=False, duplicate=None)
+    out = IngestService(repo).ingest_parsed(_parsed(), author=None, source_type="upload")
+    assert out["skill_id"] == 1 and repo.saved is not None
 
 
 class FakeRecRepo:

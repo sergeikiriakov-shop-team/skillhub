@@ -12,8 +12,8 @@ from ..platform.models import User
 from .schemas import (
     CategoryInfo,
     EvaluationOut,
+    ParsedSkill,
     RecommendationOut,
-    Reference,
     SearchHit,
     SkillDetail,
     SkillSummary,
@@ -62,28 +62,43 @@ class NotebookRepository(Protocol):
 
 
 class SkillRepository(Protocol):
-    """Read/list/ingest/delete for the skill catalog. Returns API DTOs (not ORM) so services stay
-    DB-free and fakeable."""
+    """Read/list/delete + the ingest primitives for the skill catalog. Read methods return API DTOs
+    (not ORM) so services stay DB-free and fakeable; the ingest primitives are the granular data
+    operations the ``IngestService`` orchestrates."""
 
     def list(self, *, search: str | None, category: str | None, evaluated: bool | None) -> list[SkillSummary]: ...
 
     def get(self, skill_id: int) -> SkillDetail | None: ...
 
-    def create(
-        self,
-        *,
-        content: str,
-        author: str | None,
-        references: list[Reference],
-        source_format: str,
-        user: User,
-    ) -> SkillDetail:
-        """Ingest raw skill content (parse → dedupe gate → upsert → embed) and return the detail.
-        Raises ``repository.DuplicateSkillError`` for an identical upload under a new name."""
-        ...
-
     def delete(self, skill_id: int) -> bool:
         """Delete a skill (flush only; caller commits). False if it does not exist."""
+        ...
+
+    # --- ingest primitives (orchestrated by IngestService) ---
+    def embed(self, text: str) -> list[float] | None:
+        """Embed searchable text (None when the embedding model is unavailable)."""
+        ...
+
+    def name_exists(self, name: str) -> bool: ...
+
+    def duplicate_for_new_name(
+        self, name: str, content_hash: str, body_md: str, vector: list[float] | None
+    ) -> tuple[int, str] | None:
+        """(id, name) of an essentially-identical existing skill under a DIFFERENT name, else None."""
+        ...
+
+    def save_parsed(
+        self,
+        parsed: ParsedSkill,
+        *,
+        author: str | None,
+        source_type: str,
+        origin: str | None,
+        user: User | None,
+        vector: list[float] | None,
+    ) -> dict:
+        """Upsert the skill version + embedding (flush only; caller commits). Returns
+        {skill_id, version_id, is_new_version, embedded, similar_warning, notes}."""
         ...
 
     def commit(self) -> None: ...
