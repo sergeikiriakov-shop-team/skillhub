@@ -13,6 +13,7 @@ CLI:
     python -m evals.harness setup   <scenario> --run-dir DIR --workspace DIR
     python -m evals.harness check   <scenario> --run-dir DIR --workspace DIR --label green-loop
     python -m evals.harness compare --run-dir DIR
+    python -m evals.harness notebook <scenario> --run-dir DIR --workspace DIR  # emit trial.ipynb + trial.json
 """
 
 from __future__ import annotations
@@ -79,6 +80,8 @@ class Scenario:
     # Files seeded into the temp workspace before the run: {relative_path: content}.
     workspace_seed: dict[str, str] = field(default_factory=dict)
     checks: list[Check] = field(default_factory=list)
+    # The skill / family this scenario exercises (groups trials on the SkillHub frontend).
+    task_group: str = ""
 
 
 @dataclass
@@ -171,6 +174,127 @@ def compare(run_dir: Path) -> None:
     print("score".ljust(width), *[f"| {len(r['passed'])}/{len(r['passed']) + len(r['failed'])}" for r in results])
 
 
+# --------------------------------------------------------------------------- notebook (the run record)
+
+
+def _md(source: str) -> dict:
+    return {"cell_type": "markdown", "metadata": {}, "source": source}
+
+
+def _code(source: str, stdout: str = "") -> dict:
+    outputs = [{"output_type": "stream", "name": "stdout", "text": stdout}] if stdout else []
+    return {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": outputs, "source": source}
+
+
+def _ab_matrix_text(results: list[dict]) -> str:
+    if not results:
+        return "(no results)"
+    names = sorted({n for r in results for n in r["passed"] + r["failed"]})
+    labels = [r["label"] for r in results]
+    width = max([len(n) for n in names] + [len("check")])
+    lines = ["check".ljust(width) + "".join(f" | {lbl}" for lbl in labels)]
+    for n in names:
+        cells = ["OK" if n in r["passed"] else "--" for r in results]
+        lines.append(n.ljust(width) + "".join(f" | {c}" for c in cells))
+    lines.append(
+        "score".ljust(width)
+        + "".join(f" | {len(r['passed'])}/{len(r['passed']) + len(r['failed'])}" for r in results)
+    )
+    return "\n".join(lines)
+
+
+def emit_notebook(scenario: Scenario, run_dir: Path, workspace: Path, created_at: str) -> dict:
+    """Build a Jupyter notebook (.ipynb, nbformat 4.5) that *is* the trial's run record, plus a
+    compact ``trial.json`` for the store. Pure stdlib ``json`` — no Jupyter runtime needed to
+    produce it. The notebook holds: the task, the fake-service routes, the recorded call trace, each
+    skill version's scorecard + the plan it produced, and the A/B matrix."""
+    calls = load_calls(run_dir)
+    results = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(run_dir.glob("result-*.json"))]
+
+    cells: list[dict] = []
+    cells.append(
+        _md(
+            f"# Skill trial — {scenario.name}\n\n"
+            f"- **Task group:** {scenario.task_group or '(none)'}\n"
+            f"- **Scenario:** {scenario.description}\n"
+            f"- **Created:** {created_at}\n\n"
+            f"> Sandbox trial: the live Claude Code ran the skill against a *fake service* + a temp "
+            f"workspace. This notebook is the run record — nothing here touched a real system."
+        )
+    )
+    cells.append(_md("## Task handed to the skill\n\n" + scenario.task))
+    cells.append(
+        _code(
+            "# Fake service — canned routes (routes.json)\n" + json.dumps(scenario.routes, indent=2)
+        )
+    )
+    trace = "\n".join(f"{c['method']:6} {c['path']}" + (f"  body={c['body']}" if c.get("body") else "") for c in calls)
+    cells.append(
+        _md("## Recorded calls — what the skill actually did\n\n" + f"{len(calls)} request(s) hit the fake service.")
+    )
+    cells.append(_code("# calls.jsonl (recorded by the fake service)", trace or "(no calls recorded)"))
+
+    entries = []
+    for r in results:
+        label = r["label"]
+        total = len(r["passed"]) + len(r["failed"])
+        score = f"{len(r['passed'])}/{total}"
+        lines = [f"## Result — `{label}` · {score}", ""]
+        for n in r["passed"]:
+            lines.append(f"- ✅ {n}")
+        for n in r["failed"]:
+            lines.append(f"- ❌ {n}")
+        cells.append(_md("\n".join(lines)))
+        # Prefer a per-label snapshot the runner saved (artifact-<label>.md); else the workspace plan.
+        artifact = run_dir / f"artifact-{label}.md"
+        if artifact.exists():
+            cells.append(_code(f"# artifact-{label}.md — the plan this version produced\n" + artifact.read_text(encoding="utf-8")))
+        elif (workspace / "plan.md").exists():
+            cells.append(_code("# plan.md — the plan this version produced\n" + (workspace / "plan.md").read_text(encoding="utf-8")))
+        entries.append(
+            {
+                "label": label,
+                "skill_name": scenario.task_group or label,
+                "skill_version": label,
+                "passed": r["passed"],
+                "failed": r["failed"],
+                "score": score,
+            }
+        )
+
+    cells.append(_md("## A/B scorecard"))
+    cells.append(_code("# compare()", _ab_matrix_text(results)))
+
+    notebook = {
+        "cells": cells,
+        "metadata": {
+            "skillhub_trial": {
+                "scenario": scenario.name,
+                "task_group": scenario.task_group,
+                "created_at": created_at,
+            }
+        },
+        "nbformat": 4,
+        "nbformat_minor": 5,
+    }
+    (run_dir / "trial.ipynb").write_text(json.dumps(notebook, indent=1, ensure_ascii=False), encoding="utf-8")
+    (run_dir / "trial.json").write_text(
+        json.dumps(
+            {
+                "scenario": scenario.name,
+                "task_group": scenario.task_group,
+                "created_at": created_at,
+                "entries": entries,
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    print(f"wrote {run_dir / 'trial.ipynb'} ({len(cells)} cells) and {run_dir / 'trial.json'}")
+    return notebook
+
+
 # --------------------------------------------------------------------------- CLI
 
 
@@ -186,6 +310,11 @@ def main() -> None:
             p.add_argument("--label", required=True)
     pc = sub.add_parser("compare")
     pc.add_argument("--run-dir", required=True)
+    pn = sub.add_parser("notebook")
+    pn.add_argument("scenario")
+    pn.add_argument("--run-dir", required=True)
+    pn.add_argument("--workspace", required=True)
+    pn.add_argument("--created-at", default="", help="ISO timestamp; pass one for a reproducible record")
 
     args = parser.parse_args()
     if args.cmd == "setup":
@@ -194,6 +323,13 @@ def main() -> None:
         check(load_scenario(args.scenario), Path(args.run_dir), Path(args.workspace), args.label)
     elif args.cmd == "compare":
         compare(Path(args.run_dir))
+    elif args.cmd == "notebook":
+        created_at = args.created_at
+        if not created_at:
+            from datetime import datetime, timezone
+
+            created_at = datetime.now(timezone.utc).isoformat()
+        emit_notebook(load_scenario(args.scenario), Path(args.run_dir), Path(args.workspace), created_at)
 
 
 if __name__ == "__main__":
