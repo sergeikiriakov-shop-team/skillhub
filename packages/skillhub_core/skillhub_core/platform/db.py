@@ -120,14 +120,15 @@ def _seed_rubric_weights() -> None:
 
 
 def _seed_skill_notebooks() -> None:
-    """Attach the recorded green-loop sandbox trial to the ``green-loop`` skill on first boot, so
-    the Trials view has a real example immediately. Best-effort + idempotent: a no-op if the skill
-    is absent or already has a notebook, and it never breaks boot."""
+    """Attach the recorded green-loop sandbox trial to the ``green-loop`` skill, so the Trials view
+    has a real example immediately, and keep that seed-owned demo in sync with the shipped fixture
+    on each boot. Best-effort + idempotent, and it never clobbers a notebook a real user submitted
+    (``created_by_user_id`` set) nor breaks boot."""
     import json
     from pathlib import Path
 
     from ..skills import repository
-    from ..skills.models import Skill
+    from ..skills.models import Skill, SkillNotebook
 
     seed_dir = Path(__file__).resolve().parents[1] / "skills" / "seed_data"
     nb_file = seed_dir / "green_loop_trial.ipynb"
@@ -139,8 +140,14 @@ def _seed_skill_notebooks() -> None:
         summary = json.loads(sum_file.read_text(encoding="utf-8")) if sum_file.exists() else {}
         with SessionLocal() as session:
             skill = session.query(Skill).filter(Skill.name == "green-loop").first()
-            if skill is None or repository.get_skill_notebook(session, skill.id) is not None:
+            if skill is None:
                 return
+            existing = session.get(SkillNotebook, skill.id)
+            if existing is not None:
+                # Leave a user-submitted notebook alone; only refresh the seed-owned demo, and only
+                # when the shipped fixture actually changed.
+                if existing.created_by_user_id is not None or existing.notebook == notebook:
+                    return
             row = repository.upsert_skill_notebook(
                 session,
                 skill_id=skill.id,

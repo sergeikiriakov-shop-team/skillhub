@@ -186,6 +186,14 @@ def _code(source: str, stdout: str = "") -> dict:
     return {"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": outputs, "source": source}
 
 
+def _read_source(path: Path) -> str:
+    """Read a source file to embed verbatim in the notebook; empty string if it is missing."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
 def _ab_matrix_text(results: list[dict]) -> str:
     if not results:
         return "(no results)"
@@ -228,6 +236,31 @@ def emit_notebook(scenario: Scenario, run_dir: Path, workspace: Path, created_at
             "# Fake service — canned routes (routes.json)\n" + json.dumps(scenario.routes, indent=2)
         )
     )
+    # The actual Python that stood in for the real service, embedded verbatim so a reader can see
+    # (and copy) exactly what the skill was tested against — the recording engine and the scenario.
+    fake_src = _read_source(Path(__file__).parent / "fake_service.py")
+    if fake_src:
+        cells.append(
+            _md(
+                "## The fake service that stood in for the real one\n\n"
+                "A dependency-free, stdlib-only recording HTTP service: it serves the canned routes "
+                "above and appends every request it receives to `calls.jsonl`, so the harness can "
+                "assert what the skill actually did. This is the Python that imitated the real "
+                "service for the test — the same file for every scenario; the scenario supplies the "
+                "routes + checks."
+            )
+        )
+        cells.append(_code("# evals/fake_service.py\n" + fake_src))
+    scenario_src = _read_source(SCENARIOS_DIR / scenario.name / "scenario.py")
+    if scenario_src:
+        cells.append(
+            _md(
+                "## The scenario — fixtures + effectiveness checks\n\n"
+                "What made the fake behave like *this* system: the canned responses it serves and "
+                "the checks scored against the recorded calls + workspace after the run."
+            )
+        )
+        cells.append(_code(f"# evals/scenarios/{scenario.name}/scenario.py\n" + scenario_src))
     trace = "\n".join(f"{c['method']:6} {c['path']}" + (f"  body={c['body']}" if c.get("body") else "") for c in calls)
     cells.append(
         _md("## Recorded calls — what the skill actually did\n\n" + f"{len(calls)} request(s) hit the fake service.")
