@@ -10,7 +10,14 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from skillhub_core.platform.db import get_session
-from skillhub_core.skills.services import NotebookService, RubricService
+from skillhub_core.skills.services import (
+    EvaluationService,
+    IngestService,
+    NotebookService,
+    RecommendationService,
+    RubricService,
+    SkillService,
+)
 
 from .container import Container
 
@@ -23,3 +30,21 @@ def get_rubric_service(session: Session = Depends(get_session)) -> RubricService
 
 def get_notebook_service(session: Session = Depends(get_session)) -> NotebookService:
     return container.notebook_service(notebooks=container.notebook_repository(session=session))
+
+
+def get_skill_service(session: Session = Depends(get_session)) -> SkillService:
+    return container.skill_service(skills=container.skill_repository(session=session))
+
+
+def get_ingest_service(session: Session = Depends(get_session)) -> IngestService:
+    return container.ingest_service(skills=container.skill_repository(session=session))
+
+
+def get_evaluation_service(session: Session = Depends(get_session)) -> EvaluationService:
+    return container.evaluation_service(evaluations=container.evaluation_repository(session=session))
+
+
+def get_recommendation_service(session: Session = Depends(get_session)) -> RecommendationService:
+    return container.recommendation_service(
+        recommendations=container.recommendation_repository(session=session)
+    )

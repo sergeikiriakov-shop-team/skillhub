@@ -1,17 +1,15 @@
-"""Skill upload / import, listing and retrieval.
+"""Skill upload / import, listing, retrieval and the per-skill sandbox notebook.
 
-Reads are open. Uploading requires the contributor role; deletion requires admin.
-Evaluation is submitted separately (routers/evaluations.py) by users with the evaluator role."""
+Thin HTTP layer: it delegates to the Skills services (injected via the DI container) and maps
+domain errors to HTTP status. Reads are open; uploading requires the contributor role; deletion
+requires admin. Evaluation is submitted separately (routers/evaluations.py)."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy.orm import Session
 
-from skillhub_core.skills import pipeline, repository, serializers
-from skillhub_core.platform.db import get_session
 from skillhub_core.platform.models import User
-from skillhub_core.skills.errors import InvalidNotebook, SkillNotFound
+from skillhub_core.skills.errors import DuplicateSkill, InvalidNotebook, SkillNotFound
 from skillhub_core.skills.schemas import (
     NotebookOut,
     NotebookSubmit,
@@ -20,10 +18,10 @@ from skillhub_core.skills.schemas import (
     SkillDetail,
     SkillSummary,
 )
-from skillhub_core.skills.services import NotebookService
+from skillhub_core.skills.services import IngestService, NotebookService, SkillService
 
 from ..auth import require_admin, require_read_access, require_upload
-from ..deps import get_notebook_service
+from ..deps import get_ingest_service, get_notebook_service, get_skill_service
 
 router = APIRouter(tags=["skills"])
 
@@ -33,30 +31,28 @@ def list_skills(
     search: str | None = None,
     category: str | None = None,
     evaluated: bool | None = None,
-    session: Session = Depends(get_session),
+    service: SkillService = Depends(get_skill_service),
 ) -> list[SkillSummary]:
     """List skills (open). ``evaluated=false`` returns the work queue for evaluators."""
-    skills = repository.list_skills(session, search=search, category=category, evaluated=evaluated)
-    return [serializers.skill_to_summary(s) for s in skills]
+    return service.list_skills(search=search, category=category, evaluated=evaluated)
 
 
 @router.post("/skills", response_model=SkillDetail, status_code=201)
 def create_skill(
     payload: SkillCreate,
-    session: Session = Depends(get_session),
+    service: IngestService = Depends(get_ingest_service),
     user: User = Depends(require_upload),
 ) -> SkillDetail:
     references = [Reference(path=r.path, content=r.content) for r in payload.references]
     try:
-        result = pipeline.ingest_raw(
-            session,
+        return service.create(
             content=payload.content,
             author=payload.author,  # ignored while authenticated; authorship comes from the user
             references=references,
             source_format=payload.source_format,
             user=user,
         )
-    except repository.DuplicateSkillError as exc:
+    except DuplicateSkill as exc:
         # Identical prompt already exists under another name → don't create a duplicate.
         raise HTTPException(
             status_code=409,
@@ -67,22 +63,14 @@ def create_skill(
                 "existing_name": exc.existing_name,
             },
         ) from exc
-    skill = repository.get_skill(session, result.skill_id)
-    if skill is None:  # pragma: no cover - just created
-        raise HTTPException(status_code=500, detail="Skill was not persisted")
-    similar = repository.find_similar(session, skill)
-    detail = serializers.skill_to_detail(skill, similar)
-    detail.similar_warning = result.similar_warning
-    return detail
 
 
 @router.get("/skills/{skill_id}", response_model=SkillDetail)
-def get_skill(skill_id: int, session: Session = Depends(get_session)) -> SkillDetail:
-    skill = repository.get_skill(session, skill_id)
-    if skill is None:
-        raise HTTPException(status_code=404, detail="Skill not found")
-    similar = repository.find_similar(session, skill)
-    return serializers.skill_to_detail(skill, similar)
+def get_skill(skill_id: int, service: SkillService = Depends(get_skill_service)) -> SkillDetail:
+    try:
+        return service.get_skill(skill_id)
+    except SkillNotFound as exc:
+        raise HTTPException(status_code=404, detail="Skill not found") from exc
 
 
 @router.get("/skills/{skill_id}/notebook", response_model=NotebookOut)
@@ -126,12 +114,11 @@ def put_skill_notebook(
 @router.delete("/skills/{skill_id}", status_code=204, response_class=Response)
 def delete_skill(
     skill_id: int,
-    session: Session = Depends(get_session),
-    user: User = Depends(require_admin),
+    service: SkillService = Depends(get_skill_service),
+    _: User = Depends(require_admin),
 ) -> Response:
-    skill = repository.get_skill(session, skill_id)
-    if skill is None:
-        raise HTTPException(status_code=404, detail="Skill not found")
-    session.delete(skill)
-    session.commit()
+    try:
+        service.delete_skill(skill_id)
+    except SkillNotFound as exc:
+        raise HTTPException(status_code=404, detail="Skill not found") from exc
     return Response(status_code=204)

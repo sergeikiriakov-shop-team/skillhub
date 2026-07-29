@@ -7,8 +7,22 @@ rest of the Skills context (and later Reviews/Platform) follows."""
 
 from __future__ import annotations
 
-from .errors import InvalidNotebook, InvalidWeights, SkillNotFound
-from .interfaces import NotebookRepository, RubricRepository
+from ..platform.models import User
+from .constants import REC_KINDS, REC_STATUSES
+from .errors import (
+    InvalidNotebook,
+    InvalidRecommendation,
+    InvalidWeights,
+    RecommendationNotFound,
+    SkillNotFound,
+)
+from .interfaces import (
+    EvaluationRepository,
+    NotebookRepository,
+    RecommendationRepository,
+    RubricRepository,
+    SkillRepository,
+)
 from .rubric import (
     CATEGORIZATION_RULES,
     RUBRIC_CALIBRATION,
@@ -20,7 +34,15 @@ from .rubric import (
     SYNTHESIS_PROMPT,
     SYNTHESIS_STRATEGY,
 )
-from .schemas import EvaluationResult, NotebookOut, RubricOut
+from .schemas import (
+    EvaluationOut,
+    EvaluationResult,
+    NotebookOut,
+    RecommendationOut,
+    Reference,
+    SkillDetail,
+    SkillSummary,
+)
 
 _DIMENSION_KEYS = {d["key"] for d in RUBRIC_DIMENSIONS}
 
@@ -103,3 +125,115 @@ class NotebookService:
             raise SkillNotFound(f"skill {skill_id} does not exist")
         self._notebooks.commit()
         return NotebookOut(**row)
+
+
+class SkillService:
+    """Read/list/delete for the skill catalog. Owns the transaction boundary for deletes; raises
+    :class:`SkillNotFound` (mapped to 404 in the API)."""
+
+    def __init__(self, skills: SkillRepository) -> None:
+        self._skills = skills
+
+    def list_skills(
+        self, *, search: str | None = None, category: str | None = None, evaluated: bool | None = None
+    ) -> list[SkillSummary]:
+        return self._skills.list(search=search, category=category, evaluated=evaluated)
+
+    def get_skill(self, skill_id: int) -> SkillDetail:
+        detail = self._skills.get(skill_id)
+        if detail is None:
+            raise SkillNotFound(f"skill {skill_id} not found")
+        return detail
+
+    def delete_skill(self, skill_id: int) -> None:
+        if not self._skills.delete(skill_id):
+            raise SkillNotFound(f"skill {skill_id} not found")
+        self._skills.commit()
+
+
+class IngestService:
+    """Ingest an uploaded/imported skill (parse → dedupe gate → upsert → embed). The pipeline owns
+    its own commit; this service maps the infra duplicate error to the domain
+    :class:`DuplicateSkill` (raised by the repository) and returns the created skill."""
+
+    def __init__(self, skills: SkillRepository) -> None:
+        self._skills = skills
+
+    def create(
+        self,
+        *,
+        content: str,
+        author: str | None,
+        references: list[Reference],
+        source_format: str,
+        user: User,
+    ) -> SkillDetail:
+        return self._skills.create(
+            content=content,
+            author=author,
+            references=references,
+            source_format=source_format,
+            user=user,
+        )
+
+
+class EvaluationService:
+    """Evaluation history + assessment submission. Owns the commit on submit; raises
+    :class:`SkillNotFound` when the skill (or its version) is absent."""
+
+    def __init__(self, evaluations: EvaluationRepository) -> None:
+        self._evaluations = evaluations
+
+    def list_for_skill(self, skill_id: int) -> list[EvaluationOut]:
+        rows = self._evaluations.list_for_skill(skill_id)
+        if rows is None:
+            raise SkillNotFound(f"skill {skill_id} not found")
+        return rows
+
+    def submit(
+        self,
+        skill_id: int,
+        *,
+        evaluation,
+        model: str,
+        rubric_version: str,
+        categorization,
+    ) -> SkillDetail:
+        detail = self._evaluations.save_assessment(
+            skill_id=skill_id,
+            evaluation=evaluation,
+            model=model,
+            rubric_version=rubric_version,
+            categorization=categorization,
+        )
+        if detail is None:
+            raise SkillNotFound(f"skill {skill_id} not found or has no version")
+        self._evaluations.commit()
+        return detail
+
+
+class RecommendationService:
+    """Curator recommendations. Validates kind/status (→ :class:`InvalidRecommendation`), owns the
+    commit on writes, and raises :class:`RecommendationNotFound` on a missing id."""
+
+    def __init__(self, recommendations: RecommendationRepository) -> None:
+        self._recs = recommendations
+
+    def list(self, status: str | None = None) -> list[RecommendationOut]:
+        return self._recs.list(status)
+
+    def create(self, payload: dict, *, created_by: str | None) -> RecommendationOut:
+        if payload.get("kind") not in REC_KINDS:
+            raise InvalidRecommendation(f"kind must be one of {REC_KINDS}")
+        rec = self._recs.create(payload, created_by)
+        self._recs.commit()
+        return rec
+
+    def set_status(self, rec_id: int, status: str) -> RecommendationOut:
+        if status not in REC_STATUSES:
+            raise InvalidRecommendation(f"status must be one of {REC_STATUSES}")
+        rec = self._recs.set_status(rec_id, status)
+        if rec is None:
+            raise RecommendationNotFound(f"recommendation {rec_id} not found")
+        self._recs.commit()
+        return rec

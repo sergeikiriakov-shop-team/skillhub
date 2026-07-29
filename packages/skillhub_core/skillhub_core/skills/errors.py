@@ -20,3 +20,21 @@ class SkillNotFound(SkillsError):
 
 class InvalidNotebook(SkillsError):
     """A submitted trial notebook failed validation (not a notebook / no cells)."""
+
+
+class DuplicateSkill(SkillsError):
+    """An upload under a NEW name is essentially identical to an existing skill (mapped to 409).
+    Carries the existing skill so the API can point the uploader at it."""
+
+    def __init__(self, existing_id: int, existing_name: str) -> None:
+        self.existing_id = existing_id
+        self.existing_name = existing_name
+        super().__init__(f"Identical to existing skill '{existing_name}' (#{existing_id})")
+
+
+class InvalidRecommendation(SkillsError):
+    """A recommendation payload failed validation (unknown kind or status; mapped to 400)."""
+
+
+class RecommendationNotFound(SkillsError):
+    """A recommendation id did not resolve (mapped to 404)."""

@@ -8,6 +8,15 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from ..platform.models import User
+from .schemas import (
+    EvaluationOut,
+    RecommendationOut,
+    Reference,
+    SkillDetail,
+    SkillSummary,
+)
+
 
 class RubricRepository(Protocol):
     """Persistence for the admin-managed rubric weights and the category taxonomy."""
@@ -43,6 +52,73 @@ class NotebookRepository(Protocol):
         created_by_user_id: int | None,
     ) -> dict | None:
         """Create/replace the skill's notebook; None if the skill does not exist."""
+        ...
+
+    def commit(self) -> None: ...
+
+
+class SkillRepository(Protocol):
+    """Read/list/ingest/delete for the skill catalog. Returns API DTOs (not ORM) so services stay
+    DB-free and fakeable."""
+
+    def list(self, *, search: str | None, category: str | None, evaluated: bool | None) -> list[SkillSummary]: ...
+
+    def get(self, skill_id: int) -> SkillDetail | None: ...
+
+    def create(
+        self,
+        *,
+        content: str,
+        author: str | None,
+        references: list[Reference],
+        source_format: str,
+        user: User,
+    ) -> SkillDetail:
+        """Ingest raw skill content (parse → dedupe gate → upsert → embed) and return the detail.
+        Raises ``repository.DuplicateSkillError`` for an identical upload under a new name."""
+        ...
+
+    def delete(self, skill_id: int) -> bool:
+        """Delete a skill (flush only; caller commits). False if it does not exist."""
+        ...
+
+    def commit(self) -> None: ...
+
+
+class EvaluationRepository(Protocol):
+    """Evaluation history + assessment submission for a skill."""
+
+    def list_for_skill(self, skill_id: int) -> list[EvaluationOut] | None:
+        """The skill's evaluations, or None if the skill does not exist."""
+        ...
+
+    def save_assessment(
+        self,
+        *,
+        skill_id: int,
+        evaluation: dict,
+        model: str,
+        rubric_version: str,
+        categorization: dict | None,
+    ) -> SkillDetail | None:
+        """Persist an evaluation (+ optional categorization) and return the refreshed detail
+        (flush only; caller commits). None if the skill does not exist / has no version."""
+        ...
+
+    def commit(self) -> None: ...
+
+
+class RecommendationRepository(Protocol):
+    """Curator recommendations (proposed catalog changes)."""
+
+    def list(self, status: str | None) -> list[RecommendationOut]: ...
+
+    def create(self, payload: dict, created_by: str | None) -> RecommendationOut:
+        """Create a recommendation (flush only; caller commits)."""
+        ...
+
+    def set_status(self, rec_id: int, status: str) -> RecommendationOut | None:
+        """Update a recommendation's status (flush only; caller commits). None if not found."""
         ...
 
     def commit(self) -> None: ...
