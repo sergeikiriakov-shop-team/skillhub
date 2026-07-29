@@ -443,6 +443,20 @@ function Gutter({ label, color }: { label: string; color: string }) {
 
 const MONO_BLOCK = { flex: 1, minWidth: 0, whiteSpace: "pre" as const, overflowX: "auto" as const, fontSize: 12 };
 
+// Offer the raw notebook as a downloadable .ipynb so anyone can grab the exact file and run it in
+// Jupyter / VS Code. Built client-side from the stored notebook JSON (no server round-trip).
+function downloadIpynb(filename: string, notebook: unknown): void {
+  const blob = new Blob([JSON.stringify(notebook, null, 1)], { type: "application/x-ipynb+json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 function NotebookCells({ cells }: { cells: NotebookCell[] }) {
   return (
     <Stack gap="sm">
@@ -549,6 +563,40 @@ function SandboxTrial({ notebook }: { notebook?: SkillNotebook | null }) {
                   </Paper>
                 ))}
               </Stack>
+            </div>
+          )}
+
+          {cells.length > 0 && (
+            <div>
+              <Text size="sm" fw={600} mb={2}>
+                {t("trial.notebookFile")} · {notebook.scenario || "trial"}.ipynb
+              </Text>
+              <Text size="xs" c="dimmed" mb={6}>
+                {t("trial.notebookFileHint")}
+              </Text>
+              <Group gap="xs">
+                <CopyButton value={JSON.stringify(notebook.notebook, null, 1)}>
+                  {({ copied, copy }) => (
+                    <Button
+                      size="compact-xs"
+                      variant="light"
+                      color={copied ? "teal" : "gray"}
+                      onClick={copy}
+                    >
+                      {copied ? t("common.copied") : t("trial.copyIpynb")}
+                    </Button>
+                  )}
+                </CopyButton>
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  onClick={() =>
+                    downloadIpynb(`${notebook.scenario || "trial"}.ipynb`, notebook.notebook)
+                  }
+                >
+                  {t("trial.downloadIpynb")}
+                </Button>
+              </Group>
             </div>
           )}
 
