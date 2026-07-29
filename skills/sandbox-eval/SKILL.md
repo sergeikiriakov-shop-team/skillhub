@@ -23,10 +23,18 @@ touch real systems: no real git push/deploy, no real MCP/DB, no network beyond `
 whole point is a safe, throwaway environment.
 
 ## Inputs
-- A **scenario** name from `evals/scenarios/` (e.g. `task_fetch_and_plan`).
+- A **scenario** name from `evals/scenarios/` (e.g. `task_fetch_and_plan`, `green_loop_understand`).
 - One or more **skills under test**, each a `(label, SKILL.md)` — e.g. `("green-loop", <md>)` and
   `("prolo-task-driver", <md>)` for an A/B. Get the `SKILL.md` from the repo, from SkillHub
   (`get_skill` → `skill_md`), or the user pastes it.
+- Optional: a **`skill_id`** on SkillHub to attach the result to, and a **`regenerate`** flag.
+
+## Reuse vs. regenerate (check SkillHub first)
+Each skill has ONE stored trial notebook on SkillHub. Before running, if you have a `skill_id`,
+call `get_skill_notebook(skill_id)`. If it returns a notebook that is **not `stale`** and the user
+did **not** ask to regenerate, **reuse it** — show its scorecard and stop; don't re-run. Regenerate
+(run the trial below) when: the user asked to, no notebook exists, or `stale` is true (the skill
+changed since the last run).
 
 ## Procedure (repeat per skill version, then compare)
 Let `RUN=.sandbox/<scenario>` and, per label, `WS=$RUN/ws-<label>`.
@@ -42,12 +50,26 @@ For each `(label, skill_md)`:
    read/write files under `$WS`). Obey the guardrail above.
 4. **Score**: `python -m evals.harness check <scenario> --run-dir $RUN --workspace $WS --label <label>`
    → prints a ✓/✗ scorecard and writes `result-<label>.json`.
+4b. **Snapshot the artifact** so the notebook shows what each version produced: copy the key output
+    file to `$RUN/artifact-<label>.md` (e.g. `cp $WS/plan.md $RUN/artifact-<label>.md`).
 5. **Stop the fake service** (kill the background process from step 1).
 
-Then **A/B**: `python -m evals.harness compare --run-dir $RUN` → a side-by-side check matrix +
-scores. Report which version passed more checks and where they differ; that is the empirical
-evidence (complementing the SkillHub rubric score). Optionally record it back to SkillHub as trial
-evidence for the task_group (future).
+Then **A/B**: `python -m evals.harness compare --run-dir $RUN` → a side-by-side check matrix + scores.
+Report which version passed more checks and where they differ; that is the empirical evidence
+(complementing the SkillHub rubric score).
+
+## Record it to SkillHub (one notebook per skill)
+1. **Emit the run record**: `python -m evals.harness notebook <scenario> --run-dir $RUN --workspace $WS`
+   → writes `$RUN/trial.ipynb` (the notebook) + `$RUN/trial.json` (the scorecard).
+2. **Store it** so it shows on the skill's page: `submit_skill_notebook(skill_id, notebook=<trial.ipynb
+   JSON>, summary=<trial.json JSON>, scenario="<scenario>", task_group="<group>")`. This upserts the
+   one notebook for that skill (regenerating overwrites it); the server snapshots the tested version
+   so the UI flags it `stale` once the skill changes. Requires a contributor+ role (`authenticate`).
+
+## Docker option (no local Python)
+Same steps in a container: `docker build -t skillhub-evals evals`, then run each `python -m evals.*`
+command as `docker run --rm -v "$RUN:/run" skillhub-evals evals.<module> ... --run-dir /run`. Run the
+fake service with `--host 0.0.0.0 --port 8099 -p 8099:8099` and curl the published port from the host.
 
 ## Notes & honest limits
 - Skill execution is non-deterministic; for a firm verdict run each label 2–3× and report the range.

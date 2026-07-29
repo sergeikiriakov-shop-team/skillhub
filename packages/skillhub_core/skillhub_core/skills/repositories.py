@@ -32,3 +32,36 @@ class SqlRubricRepository:
 
     def commit(self) -> None:
         self._session.commit()
+
+
+class SqlNotebookRepository:
+    """``NotebookRepository`` backed by SQLAlchemy."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get(self, skill_id: int) -> dict | None:
+        return repository.get_skill_notebook(self._session, skill_id)
+
+    def upsert(
+        self,
+        *,
+        skill_id: int,
+        scenario: str,
+        task_group: str | None,
+        notebook: dict,
+        summary: dict,
+        created_by_user_id: int | None,
+    ) -> dict | None:
+        return repository.upsert_skill_notebook(
+            self._session,
+            skill_id=skill_id,
+            scenario=scenario,
+            task_group=task_group,
+            notebook=notebook,
+            summary=summary,
+            created_by_user_id=created_by_user_id,
+        )
+
+    def commit(self) -> None:
+        self._session.commit()

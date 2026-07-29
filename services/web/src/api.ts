@@ -174,6 +174,42 @@ export interface Rubric {
   synthesis_prompt: string;
 }
 
+// --- Sandbox trial notebook (one per skill) ---
+export interface TrialEntry {
+  label: string;
+  skill_name?: string;
+  skill_version?: string;
+  passed: string[];
+  failed: string[];
+  score: string;
+}
+
+export interface TrialSummary {
+  scenario?: string;
+  task_group?: string;
+  created_at?: string;
+  entries?: TrialEntry[];
+}
+
+export interface NotebookCell {
+  cell_type: string;
+  source: string | string[];
+  outputs?: { output_type: string; name?: string; text?: string | string[] }[];
+}
+
+export interface SkillNotebook {
+  skill_id: number;
+  scenario: string;
+  task_group: string | null;
+  notebook: { cells?: NotebookCell[]; [k: string]: unknown };
+  summary: TrialSummary;
+  tested_version_no: number | null;
+  stale: boolean;
+  created_by: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -199,6 +235,15 @@ export const api = {
     return request<SkillSummary[]>(`/skills${qs ? `?${qs}` : ""}`);
   },
   getSkill: (id: number) => request<SkillDetail>(`/skills/${id}`),
+  // One sandbox-trial notebook per skill; null when no trial has been recorded (404).
+  getSkillNotebook: async (id: number): Promise<SkillNotebook | null> => {
+    try {
+      return await request<SkillNotebook>(`/skills/${id}/notebook`);
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith("404")) return null;
+      throw err;
+    }
+  },
   createSkill: (payload: SkillCreate) =>
     request<SkillDetail>("/skills", { method: "POST", body: JSON.stringify(payload) }),
   deleteSkill: (id: number) => request<void>(`/skills/${id}`, { method: "DELETE" }),

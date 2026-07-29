@@ -9,13 +9,15 @@ from __future__ import annotations
 
 from dependency_injector import containers, providers
 
-from skillhub_core.skills.repositories import SqlRubricRepository
-from skillhub_core.skills.services import RubricService
+from skillhub_core.skills.repositories import SqlNotebookRepository, SqlRubricRepository
+from skillhub_core.skills.services import NotebookService, RubricService
 
 
 class Container(containers.DeclarativeContainer):
     # Repositories: Factory — the request Session is supplied at call time (see deps.py).
     rubric_repository = providers.Factory(SqlRubricRepository)
+    notebook_repository = providers.Factory(SqlNotebookRepository)
 
     # Services: Factory — their repositories are supplied at call time.
     rubric_service = providers.Factory(RubricService)
+    notebook_service = providers.Factory(NotebookService)

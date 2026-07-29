@@ -19,8 +19,10 @@ import {
   Title,
 } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
+import type { NotebookCell, SkillNotebook, TrialEntry } from "../api";
 import { ScoreBadge, ScoreBreakdown } from "../components/Score";
 import { useI18n } from "../i18n";
 import { KIND_COLOR } from "./Recommendations";
@@ -37,6 +39,10 @@ export default function SkillDetail() {
   const { data: allRecs } = useQuery({
     queryKey: ["recommendations"],
     queryFn: api.listRecommendations,
+  });
+  const { data: notebook } = useQuery({
+    queryKey: ["skill-notebook", skillId],
+    queryFn: () => api.getSkillNotebook(skillId),
   });
 
   if (isLoading) {
@@ -143,6 +149,8 @@ export default function SkillDetail() {
                 </Accordion>
               </Card>
             )}
+
+            <SandboxTrial notebook={notebook} />
           </Grid.Col>
 
           {/* Right: install + evaluation + similar */}
@@ -344,5 +352,224 @@ export default function SkillDetail() {
         </Grid>
       </Stack>
     </Container>
+  );
+}
+
+// --- Sandbox trial (one notebook per skill) --------------------------------------------------
+
+function cellText(src: string | string[] | undefined): string {
+  return Array.isArray(src) ? src.join("") : (src ?? "");
+}
+
+function scoreColor(entry: TrialEntry): string {
+  const [a, b] = entry.score.split("/").map(Number);
+  if (!b) return "gray";
+  const ratio = a / b;
+  return ratio >= 0.999 ? "teal" : ratio >= 0.5 ? "yellow" : "red";
+}
+
+// Inline **bold** / `code` → React nodes (never raw HTML → no XSS).
+function inlineMd(text: string, keyBase: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const re = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const tok = m[0];
+    if (tok.startsWith("**")) nodes.push(<strong key={`${keyBase}-b${i}`}>{tok.slice(2, -2)}</strong>);
+    else nodes.push(<Code key={`${keyBase}-c${i}`}>{tok.slice(1, -1)}</Code>);
+    last = m.index + tok.length;
+    i++;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
+// A minimal, safe markdown renderer for notebook markdown cells: headings, lists, paragraphs.
+function Markdown({ src }: { src: string }) {
+  const lines = src.split("\n");
+  const blocks: ReactNode[] = [];
+  let list: ReactNode[] = [];
+  const flush = (k: string) => {
+    if (list.length) {
+      blocks.push(
+        <List key={`l${k}`} size="sm" spacing={2} withPadding>
+          {list}
+        </List>,
+      );
+      list = [];
+    }
+  };
+  lines.forEach((raw, idx) => {
+    const line = raw.trimEnd();
+    const heading = /^(#{1,4})\s+(.*)/.exec(line);
+    const bullet = /^\s*[-*]\s+(.*)/.exec(line);
+    const ordered = /^\s*\d+\.\s+(.*)/.exec(line);
+    if (heading) {
+      flush(`${idx}`);
+      const lvl = heading[1].length;
+      blocks.push(
+        <Text key={idx} fw={700} size={lvl <= 1 ? "lg" : lvl === 2 ? "md" : "sm"} mt={blocks.length ? "xs" : 0}>
+          {inlineMd(heading[2], `h${idx}`)}
+        </Text>,
+      );
+    } else if (bullet || ordered) {
+      const content = bullet ? bullet[1] : ordered![1];
+      list.push(<List.Item key={idx}>{inlineMd(content, `i${idx}`)}</List.Item>);
+    } else if (line === "") {
+      flush(`${idx}`);
+    } else {
+      flush(`${idx}`);
+      blocks.push(
+        <Text key={idx} size="sm">
+          {inlineMd(line, `p${idx}`)}
+        </Text>,
+      );
+    }
+  });
+  flush("end");
+  return <Stack gap={4}>{blocks}</Stack>;
+}
+
+function Gutter({ label, color }: { label: string; color: string }) {
+  return (
+    <Text ff="monospace" fw={700} size="10px" c={color} style={{ width: 34, textAlign: "right", flexShrink: 0, paddingTop: 3 }}>
+      {label}
+    </Text>
+  );
+}
+
+const MONO_BLOCK = { flex: 1, minWidth: 0, whiteSpace: "pre" as const, overflowX: "auto" as const, fontSize: 12 };
+
+function NotebookCells({ cells }: { cells: NotebookCell[] }) {
+  return (
+    <Stack gap="sm">
+      {cells.map((cell, i) => {
+        const src = cellText(cell.source);
+        if (cell.cell_type === "markdown") {
+          return (
+            <Group key={i} align="flex-start" gap="sm" wrap="nowrap">
+              <Gutter label="MD" color="dimmed" />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Markdown src={src} />
+              </div>
+            </Group>
+          );
+        }
+        return (
+          <Stack key={i} gap={4}>
+            <Group align="flex-start" gap="sm" wrap="nowrap">
+              <Gutter label="IN" color="blue" />
+              <Code block style={MONO_BLOCK}>
+                {src}
+              </Code>
+            </Group>
+            {(cell.outputs ?? []).map((o, j) => (
+              <Group key={j} align="flex-start" gap="sm" wrap="nowrap">
+                <Gutter label="OUT" color="teal" />
+                <Code block style={{ ...MONO_BLOCK, background: "var(--mantine-color-default)" }}>
+                  {cellText(o.text)}
+                </Code>
+              </Group>
+            ))}
+          </Stack>
+        );
+      })}
+    </Stack>
+  );
+}
+
+function SandboxTrial({ notebook }: { notebook?: SkillNotebook | null }) {
+  const { t } = useI18n();
+  const cells = notebook?.notebook?.cells ?? [];
+  const entries = notebook?.summary?.entries ?? [];
+  return (
+    <Card withBorder radius="md" padding="md" mt="md">
+      <Group justify="space-between" align="center" mb="xs" wrap="nowrap">
+        <Text fw={600}>🧪 {t("trial.title")}</Text>
+        {notebook && (
+          <Badge color={notebook.stale ? "orange" : "teal"} variant="light">
+            {notebook.stale ? t("trial.stale") : t("trial.fresh")}
+          </Badge>
+        )}
+      </Group>
+      <Text size="sm" c="dimmed" mb="sm">
+        {t("trial.subtitle")}
+      </Text>
+      {!notebook ? (
+        <Alert color="gray" variant="light">
+          <Text size="sm">{t("trial.none")}</Text>
+          <Text size="xs" c="dimmed" mt={4}>
+            {t("trial.noneHint")}
+          </Text>
+        </Alert>
+      ) : (
+        <Stack gap="sm">
+          <Group gap="md">
+            <Text size="xs" c="dimmed">
+              {t("trial.scenario", { name: notebook.scenario })}
+            </Text>
+            {notebook.created_by && (
+              <Text size="xs" c="dimmed">
+                {t("trial.ranBy", { who: notebook.created_by })}
+              </Text>
+            )}
+          </Group>
+
+          {entries.length > 0 && (
+            <div>
+              <Text size="sm" fw={600} mb={4}>
+                {t("trial.scorecard")}
+              </Text>
+              <Stack gap="xs">
+                {entries.map((e) => (
+                  <Paper key={e.label} withBorder radius="sm" p="xs">
+                    <Group justify="space-between" mb={4} wrap="nowrap">
+                      <Text ff="monospace" size="sm" fw={600}>
+                        {e.label}
+                      </Text>
+                      <Badge color={scoreColor(e)} variant="light">
+                        {e.score}
+                      </Badge>
+                    </Group>
+                    <Group gap={4}>
+                      {e.passed.map((p) => (
+                        <Badge key={p} color="teal" variant="light" size="xs" tt="none" fw={500}>
+                          ✓ {p}
+                        </Badge>
+                      ))}
+                      {e.failed.map((f) => (
+                        <Badge key={f} color="red" variant="light" size="xs" tt="none" fw={500}>
+                          ✗ {f}
+                        </Badge>
+                      ))}
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            </div>
+          )}
+
+          {cells.length > 0 && (
+            <Accordion variant="contained">
+              <Accordion.Item value="notebook">
+                <Accordion.Control>
+                  {t("trial.viewNotebook")} · {cells.length}
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <NotebookCells cells={cells} />
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
+          )}
+
+          <Text size="xs" c="dimmed">
+            {t("trial.evidence")}
+          </Text>
+        </Stack>
+      )}
+    </Card>
   );
 }

@@ -1,5 +1,17 @@
 # Sandbox trials on the frontend (+ notebook contents) — design memo
 
+> **SHIPPED (2026-07-29), one-notebook-per-skill model.** Decided with the user: store **one trial
+> notebook per skill** (an upsert keyed by `skill_id`, not a list of trials), attached to the skill;
+> a new run **reuses** it or **regenerates** it by a developer-supplied flag. Backend: `SkillNotebook`
+> model (`skill_notebooks`), `NotebookService` + `SqlNotebookRepository` (DDD/DI template),
+> `GET/PUT /api/skills/{id}/notebook`, MCP `get_skill_notebook`/`submit_skill_notebook`. Staleness =
+> the skill's `content_hash` moved on since the trial (server snapshots the tested version). Frontend:
+> a "🧪 Sandbox trial" card on the skill-detail page — scorecard + a read-only notebook render
+> (structured cells only, no raw HTML). The recorded green-loop trial is seeded onto skill
+> `green-loop` on first boot. The section below is the original design; the list/`trials`-context
+> variant was superseded by one-per-skill.
+
+
 Next feature for the skill-evaluation sandbox (`evals/`, Approach A). Goal: surface trial runs in
 the SkillHub dashboard — the **scorecard / A-B** *and* the **contents of the notebook** that was run
 for each trial. This is the "display layer" that Approach C sketched, done incrementally on top of

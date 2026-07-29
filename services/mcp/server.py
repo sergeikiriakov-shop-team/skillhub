@@ -295,6 +295,16 @@ def list_recommendations(status: str | None = None) -> Any:
     return _read_call("GET", "/api/recommendations", params={"status": status} if status else None)
 
 
+@mcp.tool()
+def get_skill_notebook(skill_id: int) -> Any:
+    """Get the skill's ONE sandbox-trial notebook (the run record from the `evals/` harness): the
+    `notebook` (nbformat cells), the `summary` scorecard, and `stale` (true once the skill changed
+    since the trial ran). Returns `{error: 404}` if no trial has been recorded. Call this before a
+    sandbox run to decide reuse vs. regenerate: if a fresh (non-stale) notebook exists and the
+    developer did not ask to regenerate, reuse it instead of running again."""
+    return _read_call("GET", f"/api/skills/{skill_id}/notebook")
+
+
 # --- auth ---------------------------------------------------------------------------------------
 
 
@@ -389,6 +399,28 @@ def add_recommendation(
 def set_recommendation_status(rec_id: int, status: str) -> Any:
     """Update a recommendation's status: proposed|accepted|done|dismissed. Requires a contributor+ role."""
     return _authed_call("POST", f"/api/recommendations/{rec_id}/status", json={"status": status})
+
+
+@mcp.tool()
+def submit_skill_notebook(
+    skill_id: int,
+    notebook: dict,
+    summary: dict | None = None,
+    scenario: str = "",
+    task_group: str | None = None,
+) -> Any:
+    """Store (create or REGENERATE) the skill's one sandbox-trial notebook — the run record the
+    `evals/` harness emits (`trial.ipynb` = `notebook`, `trial.json` = `summary`). There is one
+    notebook per skill; submitting replaces it. The tested skill-version snapshot (for the stale
+    flag) is taken server-side. Requires a contributor+ role. Run this right after a sandbox trial
+    so the result shows on the skill's page in the dashboard."""
+    body = {
+        "notebook": notebook,
+        "summary": summary or {},
+        "scenario": scenario,
+        "task_group": task_group,
+    }
+    return _authed_call("PUT", f"/api/skills/{skill_id}/notebook", json=body)
 
 
 # --- Task Review context (peer-review handoff developer <-> lead) ------------------------------

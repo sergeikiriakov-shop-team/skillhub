@@ -25,6 +25,7 @@ from .evaluation import Evaluation
 from .recommendation import Recommendation
 from .rubric_weight import RubricWeight
 from .skill import Skill, SkillVersion
+from .skill_notebook import SkillNotebook
 
 __all__ = [
     "Skill",
@@ -34,6 +35,7 @@ __all__ = [
     "SkillCategory",
     "Recommendation",
     "RubricWeight",
+    "SkillNotebook",
     "SkillEmbedding",
     "EMBEDDING_DIM",
     "FORMAT_CLAUDE_SKILL",

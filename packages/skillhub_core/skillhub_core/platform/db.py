@@ -37,6 +37,7 @@ def init_db() -> None:
     _apply_column_migrations()
     _seed_categories()
     _seed_rubric_weights()
+    _seed_skill_notebooks()
     _bootstrap_admin()
 
 
@@ -116,6 +117,43 @@ def _seed_rubric_weights() -> None:
         session.commit()
         if repository.recompute_overall_scores(session):
             session.commit()
+
+
+def _seed_skill_notebooks() -> None:
+    """Attach the recorded green-loop sandbox trial to the ``green-loop`` skill on first boot, so
+    the Trials view has a real example immediately. Best-effort + idempotent: a no-op if the skill
+    is absent or already has a notebook, and it never breaks boot."""
+    import json
+    from pathlib import Path
+
+    from ..skills import repository
+    from ..skills.models import Skill
+
+    seed_dir = Path(__file__).resolve().parents[1] / "skills" / "seed_data"
+    nb_file = seed_dir / "green_loop_trial.ipynb"
+    sum_file = seed_dir / "green_loop_trial.json"
+    try:
+        if not nb_file.exists():
+            return
+        notebook = json.loads(nb_file.read_text(encoding="utf-8"))
+        summary = json.loads(sum_file.read_text(encoding="utf-8")) if sum_file.exists() else {}
+        with SessionLocal() as session:
+            skill = session.query(Skill).filter(Skill.name == "green-loop").first()
+            if skill is None or repository.get_skill_notebook(session, skill.id) is not None:
+                return
+            row = repository.upsert_skill_notebook(
+                session,
+                skill_id=skill.id,
+                scenario=str(summary.get("scenario") or "green_loop_understand"),
+                task_group=summary.get("task_group") or "green-loop",
+                notebook=notebook,
+                summary=summary,
+                created_by_user_id=None,
+            )
+            if row is not None:
+                session.commit()
+    except Exception as exc:  # never let demo seeding break boot
+        print(f"skill-notebook seed skipped: {exc}")
 
 
 @contextmanager

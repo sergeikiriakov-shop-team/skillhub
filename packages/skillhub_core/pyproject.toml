@@ -30,6 +30,11 @@ dev = [
 where = ["."]
 include = ["skillhub_core*"]
 
+[tool.setuptools.package-data]
+# Ship the demo trial notebook fixtures (non-Python data) inside the wheel so the first-boot seed
+# can attach the green-loop sandbox trial to the catalog.
+"skillhub_core.skills.seed_data" = ["*.ipynb", "*.json"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

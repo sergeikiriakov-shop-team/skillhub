@@ -1,0 +1,44 @@
+{
+  "scenario": "green_loop_understand",
+  "task_group": "green-loop",
+  "created_at": "2026-07-29T00:05:00+00:00",
+  "entries": [
+    {
+      "label": "green-loop",
+      "skill_name": "green-loop",
+      "skill_version": "green-loop",
+      "passed": [
+        "read the task from the tracker",
+        "read PM/dev comments before planning",
+        "wrote plan.md",
+        "definition of done = acceptance criteria (ordering rule)",
+        "addresses the PM comment (same-campaign guard)",
+        "scopes the frontend badge OUT",
+        "plans the real verification signals",
+        "targets the full <id>/<slug> feature branch",
+        "does NOT propose a pull request (cherry-pick only)"
+      ],
+      "failed": [],
+      "score": "9/9"
+    },
+    {
+      "label": "naive",
+      "skill_name": "green-loop",
+      "skill_version": "naive",
+      "passed": [
+        "read the task from the tracker",
+        "wrote plan.md"
+      ],
+      "failed": [
+        "read PM/dev comments before planning",
+        "definition of done = acceptance criteria (ordering rule)",
+        "addresses the PM comment (same-campaign guard)",
+        "scopes the frontend badge OUT",
+        "plans the real verification signals",
+        "targets the full <id>/<slug> feature branch",
+        "does NOT propose a pull request (cherry-pick only)"
+      ],
+      "score": "2/9"
+    }
+  ]
+}

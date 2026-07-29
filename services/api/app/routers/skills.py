@@ -11,9 +11,19 @@ from sqlalchemy.orm import Session
 from skillhub_core.skills import pipeline, repository, serializers
 from skillhub_core.platform.db import get_session
 from skillhub_core.platform.models import User
-from skillhub_core.skills.schemas import Reference, SkillCreate, SkillDetail, SkillSummary
+from skillhub_core.skills.errors import InvalidNotebook, SkillNotFound
+from skillhub_core.skills.schemas import (
+    NotebookOut,
+    NotebookSubmit,
+    Reference,
+    SkillCreate,
+    SkillDetail,
+    SkillSummary,
+)
+from skillhub_core.skills.services import NotebookService
 
-from ..auth import require_admin, require_upload
+from ..auth import require_admin, require_read_access, require_upload
+from ..deps import get_notebook_service
 
 router = APIRouter(tags=["skills"])
 
@@ -73,6 +83,44 @@ def get_skill(skill_id: int, session: Session = Depends(get_session)) -> SkillDe
         raise HTTPException(status_code=404, detail="Skill not found")
     similar = repository.find_similar(session, skill)
     return serializers.skill_to_detail(skill, similar)
+
+
+@router.get("/skills/{skill_id}/notebook", response_model=NotebookOut)
+def get_skill_notebook(
+    skill_id: int,
+    service: NotebookService = Depends(get_notebook_service),
+    _: User | None = Depends(require_read_access),
+) -> NotebookOut:
+    """The one sandbox-trial notebook for this skill (the run record from ``evals/``). 404 if no
+    trial has been recorded yet."""
+    notebook = service.get_notebook(skill_id)
+    if notebook is None:
+        raise HTTPException(status_code=404, detail="No sandbox trial recorded for this skill")
+    return notebook
+
+
+@router.put("/skills/{skill_id}/notebook", response_model=NotebookOut)
+def put_skill_notebook(
+    skill_id: int,
+    payload: NotebookSubmit,
+    service: NotebookService = Depends(get_notebook_service),
+    user: User = Depends(require_upload),
+) -> NotebookOut:
+    """Store (create or regenerate) this skill's trial notebook. Contributor+ role. The tested
+    skill-version snapshot is taken server-side."""
+    try:
+        return service.submit_notebook(
+            skill_id,
+            scenario=payload.scenario,
+            task_group=payload.task_group,
+            notebook=payload.notebook,
+            summary=payload.summary,
+            created_by_user_id=user.id,
+        )
+    except SkillNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InvalidNotebook as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.delete("/skills/{skill_id}", status_code=204, response_class=Response)

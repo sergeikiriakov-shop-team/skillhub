@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from .assessment import AssessmentIn
 from .evaluation import CategorizationResult, CategoryAssignment, EvaluationResult
+from .notebook import NotebookOut, NotebookSubmit
 from .parsed import ParsedSkill, Reference
 from .recommendation import RecommendationIn, RecommendationOut, RecommendationStatusUpdate
 from .rubric import RubricOut, WeightsUpdate
@@ -29,6 +30,8 @@ __all__ = [
     "AssessmentIn",
     "RubricOut",
     "WeightsUpdate",
+    "NotebookOut",
+    "NotebookSubmit",
     "ReferenceIn",
     "SkillCreate",
     "StatsOut",

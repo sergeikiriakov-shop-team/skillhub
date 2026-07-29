@@ -7,8 +7,8 @@ rest of the Skills context (and later Reviews/Platform) follows."""
 
 from __future__ import annotations
 
-from .errors import InvalidWeights
-from .interfaces import RubricRepository
+from .errors import InvalidNotebook, InvalidWeights, SkillNotFound
+from .interfaces import NotebookRepository, RubricRepository
 from .rubric import (
     CATEGORIZATION_RULES,
     RUBRIC_CALIBRATION,
@@ -20,7 +20,7 @@ from .rubric import (
     SYNTHESIS_PROMPT,
     SYNTHESIS_STRATEGY,
 )
-from .schemas import EvaluationResult, RubricOut
+from .schemas import EvaluationResult, NotebookOut, RubricOut
 
 _DIMENSION_KEYS = {d["key"] for d in RUBRIC_DIMENSIONS}
 
@@ -63,3 +63,43 @@ class RubricService:
         rescored = self._rubric.recompute_overall_scores()
         self._rubric.commit()
         return {"weights": saved, "rescored": rescored}
+
+
+class NotebookService:
+    """Serves and stores the one sandbox-trial notebook attached to each skill. A run either reuses
+    the stored notebook or regenerates it (the developer decides before running); this service just
+    returns the current one or upserts a fresh one (validate → persist → commit)."""
+
+    def __init__(self, notebooks: NotebookRepository) -> None:
+        self._notebooks = notebooks
+
+    def get_notebook(self, skill_id: int) -> NotebookOut | None:
+        row = self._notebooks.get(skill_id)
+        return NotebookOut(**row) if row is not None else None
+
+    def submit_notebook(
+        self,
+        skill_id: int,
+        *,
+        scenario: str,
+        task_group: str | None,
+        notebook: dict,
+        summary: dict,
+        created_by_user_id: int | None,
+    ) -> NotebookOut:
+        """Store (create/replace) a skill's trial notebook. Raises :class:`SkillNotFound` if the
+        skill does not exist and :class:`InvalidNotebook` on a payload that is not a notebook."""
+        if not isinstance(notebook, dict) or not notebook.get("cells"):
+            raise InvalidNotebook("notebook must be an nbformat object with a non-empty `cells` list")
+        row = self._notebooks.upsert(
+            skill_id=skill_id,
+            scenario=scenario,
+            task_group=task_group,
+            notebook=notebook,
+            summary=summary if isinstance(summary, dict) else {},
+            created_by_user_id=created_by_user_id,
+        )
+        if row is None:
+            raise SkillNotFound(f"skill {skill_id} does not exist")
+        self._notebooks.commit()
+        return NotebookOut(**row)

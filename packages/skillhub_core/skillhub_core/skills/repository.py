@@ -17,6 +17,7 @@ from .models import (
     Skill,
     SkillCategory,
     SkillEmbedding,
+    SkillNotebook,
     SkillVersion,
 )
 from .parsing import compute_hash
@@ -275,6 +276,82 @@ def recompute_overall_scores(session: Session) -> int:
             updated += 1
     session.flush()
     return updated
+
+
+# ---------------------------------------------------------------------------
+# Skill sandbox notebooks (one per skill; the run record from evals/)
+# ---------------------------------------------------------------------------
+
+
+def _current_content_hash(skill: Skill | None) -> tuple[str | None, int | None]:
+    version = skill.latest_version if skill else None
+    if version is None:
+        return None, None
+    return version.content_hash, version.version_no
+
+
+def _notebook_to_dict(nb: SkillNotebook, current_hash: str | None) -> dict:
+    creator = nb.creator
+    return {
+        "skill_id": nb.skill_id,
+        "scenario": nb.scenario,
+        "task_group": nb.task_group,
+        "notebook": nb.notebook or {},
+        "summary": nb.summary or {},
+        "tested_content_hash": nb.tested_content_hash,
+        "tested_version_no": nb.tested_version_no,
+        "created_by": (creator.name or creator.email) if creator else None,
+        "created_at": nb.created_at,
+        "updated_at": nb.updated_at,
+        # Stale = the skill's content moved on since this trial was run.
+        "stale": bool(
+            nb.tested_content_hash and current_hash and nb.tested_content_hash != current_hash
+        ),
+    }
+
+
+def get_skill_notebook(session: Session, skill_id: int) -> dict | None:
+    """The one sandbox-trial notebook for a skill (plain data, with a computed ``stale`` flag), or
+    None if no trial has been recorded."""
+    nb = session.get(SkillNotebook, skill_id)
+    if nb is None:
+        return None
+    current_hash, _ = _current_content_hash(get_skill(session, skill_id))
+    return _notebook_to_dict(nb, current_hash)
+
+
+def upsert_skill_notebook(
+    session: Session,
+    *,
+    skill_id: int,
+    scenario: str,
+    task_group: str | None,
+    notebook: dict,
+    summary: dict,
+    created_by_user_id: int | None,
+) -> dict | None:
+    """Create or replace a skill's trial notebook (flush only; the caller owns the commit).
+    Snapshots the skill's current content hash + version so staleness can be shown later. Returns
+    None when the skill does not exist."""
+    skill = get_skill(session, skill_id)
+    if skill is None:
+        return None
+    current_hash, version_no = _current_content_hash(skill)
+    row = session.get(SkillNotebook, skill_id)
+    if row is None:
+        row = SkillNotebook(skill_id=skill_id)
+        session.add(row)
+    row.scenario = scenario
+    row.task_group = task_group
+    row.notebook = notebook
+    row.summary = summary
+    row.tested_content_hash = current_hash
+    row.tested_version_no = version_no
+    if created_by_user_id is not None:
+        row.created_by_user_id = created_by_user_id
+    session.flush()
+    session.refresh(row)
+    return _notebook_to_dict(row, current_hash)
 
 
 def task_groups(session: Session) -> list[dict]:

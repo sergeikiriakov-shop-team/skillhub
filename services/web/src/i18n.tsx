@@ -162,6 +162,18 @@ const en: Dict = {
   "meth.weightsAdminHint":
     "You are an admin: edit the weights below and save. Every skill's overall score recomputes " +
     "from its dimension scores under the new weights.",
+  "trial.title": "Sandbox trial",
+  "trial.subtitle":
+    "The live Claude Code ran this skill against a fake service; the harness scored what it did.",
+  "trial.none": "No sandbox trial recorded yet.",
+  "trial.noneHint": "Run one with the sandbox-eval skill in Claude Code, then it appears here.",
+  "trial.stale": "skill changed since this run — regenerate",
+  "trial.fresh": "current",
+  "trial.scenario": "Scenario: {name}",
+  "trial.ranBy": "run by {who}",
+  "trial.scorecard": "Scorecard",
+  "trial.viewNotebook": "Run notebook",
+  "trial.evidence": "Evidence, not proof — skill runs are non-deterministic.",
   "meth.calibrationTitle": "Score calibration (0–10)",
   "meth.band": "Band",
   "meth.label": "Label",
@@ -375,6 +387,18 @@ const ru: Dict = {
   "meth.weightsAdminHint":
     "Вы админ: измените веса ниже и сохраните. Общий балл каждого скилла пересчитается из его " +
     "покритериальных баллов по новым весам.",
+  "trial.title": "Тест в песочнице",
+  "trial.subtitle":
+    "Живой Claude Code прогнал этот скилл против фейкового сервиса; харнесс оценил, что он сделал.",
+  "trial.none": "Прогонов в песочнице ещё не было.",
+  "trial.noneHint": "Запустите скилл sandbox-eval в Claude Code — результат появится здесь.",
+  "trial.stale": "скилл изменился после прогона — пересоздайте",
+  "trial.fresh": "актуально",
+  "trial.scenario": "Сценарий: {name}",
+  "trial.ranBy": "запустил: {who}",
+  "trial.scorecard": "Результаты",
+  "trial.viewNotebook": "Ноутбук прогона",
+  "trial.evidence": "Это свидетельство, а не доказательство — прогоны недетерминированы.",
   "meth.calibrationTitle": "Калибровка баллов (0–10)",
   "meth.band": "Диапазон",
   "meth.label": "Метка",

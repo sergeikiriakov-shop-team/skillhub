@@ -23,3 +23,26 @@ class RubricRepository(Protocol):
     def commit(self) -> None:
         """Commit the current unit of work (the service owns the transaction boundary)."""
         ...
+
+
+class NotebookRepository(Protocol):
+    """Persistence for the one sandbox-trial notebook attached to each skill."""
+
+    def get(self, skill_id: int) -> dict | None:
+        """The skill's notebook as plain data (with a computed ``stale`` flag), or None."""
+        ...
+
+    def upsert(
+        self,
+        *,
+        skill_id: int,
+        scenario: str,
+        task_group: str | None,
+        notebook: dict,
+        summary: dict,
+        created_by_user_id: int | None,
+    ) -> dict | None:
+        """Create/replace the skill's notebook; None if the skill does not exist."""
+        ...
+
+    def commit(self) -> None: ...

@@ -12,3 +12,11 @@ class SkillsError(Exception):
 
 class InvalidWeights(SkillsError):
     """A rubric-weights update failed validation (unknown dimension, negative, or all-zero)."""
+
+
+class SkillNotFound(SkillsError):
+    """An operation referenced a skill id that does not exist (the API maps it to 404)."""
+
+
+class InvalidNotebook(SkillsError):
+    """A submitted trial notebook failed validation (not a notebook / no cells)."""
