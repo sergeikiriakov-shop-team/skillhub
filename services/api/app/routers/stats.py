@@ -1,17 +1,17 @@
-"""Aggregate statistics for the read-only dashboard (open)."""
+"""Aggregate statistics for the read-only dashboard (open). Thin HTTP layer over ``CatalogService``."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
 
-from skillhub_core.skills import repository
-from skillhub_core.platform.db import get_session
 from skillhub_core.skills.schemas import StatsOut
+from skillhub_core.skills.services import CatalogService
+
+from ..deps import get_catalog_service
 
 router = APIRouter(tags=["stats"])
 
 
 @router.get("/stats", response_model=StatsOut)
-def get_stats(session: Session = Depends(get_session)) -> StatsOut:
-    return StatsOut(**repository.stats(session))
+def get_stats(service: CatalogService = Depends(get_catalog_service)) -> StatsOut:
+    return service.stats()

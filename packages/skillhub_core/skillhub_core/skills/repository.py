@@ -242,6 +242,26 @@ def get_taxonomy(session: Session) -> list[dict]:
     ]
 
 
+def category_infos(session: Session) -> list[dict]:
+    """The taxonomy with per-category distinct skill counts (for the /categories listing)."""
+    counts = dict(
+        session.execute(
+            select(SkillCategory.category_id, func.count(func.distinct(SkillCategory.skill_id)))
+            .group_by(SkillCategory.category_id)
+        ).all()
+    )
+    categories = session.scalars(select(Category).order_by(Category.id)).all()
+    return [
+        {
+            "key": c.key,
+            "label": c.label,
+            "description": c.description,
+            "skill_count": int(counts.get(c.id, 0)),
+        }
+        for c in categories
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Rubric weights (admin-managed; drive the server-computed overall score)
 # ---------------------------------------------------------------------------

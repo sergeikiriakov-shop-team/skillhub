@@ -10,9 +10,18 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from ..platform.models import User
-from . import pipeline, repository, serializers
+from . import embeddings, pipeline, repository, serializers
 from .errors import DuplicateSkill
-from .schemas import RecommendationOut, Reference, SkillDetail, SkillSummary
+from .schemas import (
+    CategoryInfo,
+    RecommendationOut,
+    Reference,
+    SearchHit,
+    SkillDetail,
+    SkillSummary,
+    StatsOut,
+    TaskGroupInfo,
+)
 
 
 class SqlRubricRepository:
@@ -157,6 +166,34 @@ class SqlRecommendationRepository:
 
     def commit(self) -> None:
         self._session.commit()
+
+
+class SqlCatalogRepository:
+    """``CatalogRepository`` backed by SQLAlchemy (+ the embedding model for semantic search)."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def search(self, query: str, limit: int) -> list[SearchHit]:
+        vector = embeddings.embed(query)
+        if vector is not None:
+            hits = repository.semantic_search(self._session, vector, limit=limit)
+            return [
+                SearchHit(skill=serializers.skill_to_summary(s), similarity=round(sim, 4))
+                for s, sim in hits
+            ]
+        # Fallback: plain name/author match when embeddings are unavailable.
+        skills = repository.list_skills(self._session, search=query)[:limit]
+        return [SearchHit(skill=serializers.skill_to_summary(s)) for s in skills]
+
+    def stats(self) -> StatsOut:
+        return StatsOut(**repository.stats(self._session))
+
+    def task_groups(self) -> list[TaskGroupInfo]:
+        return [TaskGroupInfo(**g) for g in repository.task_groups(self._session)]
+
+    def categories(self) -> list[CategoryInfo]:
+        return [CategoryInfo(**c) for c in repository.category_infos(self._session)]
 
 
 class SqlNotebookRepository:

@@ -4,6 +4,7 @@ from ``skillhub_core.skills.schemas`` unchanged."""
 from __future__ import annotations
 
 from .assessment import AssessmentIn
+from .catalog import CategoryInfo, SearchHit, TaskGroupInfo
 from .evaluation import CategorizationResult, CategoryAssignment, EvaluationResult
 from .notebook import NotebookOut, NotebookSubmit
 from .parsed import ParsedSkill, Reference
@@ -44,4 +45,7 @@ __all__ = [
     "RecommendationIn",
     "RecommendationStatusUpdate",
     "RecommendationOut",
+    "SearchHit",
+    "TaskGroupInfo",
+    "CategoryInfo",
 ]

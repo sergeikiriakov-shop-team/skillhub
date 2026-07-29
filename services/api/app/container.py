@@ -10,6 +10,7 @@ from __future__ import annotations
 from dependency_injector import containers, providers
 
 from skillhub_core.skills.repositories import (
+    SqlCatalogRepository,
     SqlEvaluationRepository,
     SqlNotebookRepository,
     SqlRecommendationRepository,
@@ -17,6 +18,7 @@ from skillhub_core.skills.repositories import (
     SqlSkillRepository,
 )
 from skillhub_core.skills.services import (
+    CatalogService,
     EvaluationService,
     IngestService,
     NotebookService,
@@ -33,6 +35,7 @@ class Container(containers.DeclarativeContainer):
     skill_repository = providers.Factory(SqlSkillRepository)
     evaluation_repository = providers.Factory(SqlEvaluationRepository)
     recommendation_repository = providers.Factory(SqlRecommendationRepository)
+    catalog_repository = providers.Factory(SqlCatalogRepository)
 
     # Services: Factory — their repositories are supplied at call time.
     rubric_service = providers.Factory(RubricService)
@@ -41,3 +44,4 @@ class Container(containers.DeclarativeContainer):
     ingest_service = providers.Factory(IngestService)
     evaluation_service = providers.Factory(EvaluationService)
     recommendation_service = providers.Factory(RecommendationService)
+    catalog_service = providers.Factory(CatalogService)

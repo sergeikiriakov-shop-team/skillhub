@@ -17,6 +17,7 @@ from .errors import (
     SkillNotFound,
 )
 from .interfaces import (
+    CatalogRepository,
     EvaluationRepository,
     NotebookRepository,
     RecommendationRepository,
@@ -35,13 +36,17 @@ from .rubric import (
     SYNTHESIS_STRATEGY,
 )
 from .schemas import (
+    CategoryInfo,
     EvaluationOut,
     EvaluationResult,
     NotebookOut,
     RecommendationOut,
     Reference,
+    SearchHit,
     SkillDetail,
     SkillSummary,
+    StatsOut,
+    TaskGroupInfo,
 )
 
 _DIMENSION_KEYS = {d["key"] for d in RUBRIC_DIMENSIONS}
@@ -237,3 +242,23 @@ class RecommendationService:
             raise RecommendationNotFound(f"recommendation {rec_id} not found")
         self._recs.commit()
         return rec
+
+
+class CatalogService:
+    """Read-only catalog queries (search / stats / task-groups / categories). No transaction
+    boundary — a thin seam over the repository so routers stay free of the session and query module."""
+
+    def __init__(self, catalog: CatalogRepository) -> None:
+        self._catalog = catalog
+
+    def search(self, query: str, limit: int = 20) -> list[SearchHit]:
+        return self._catalog.search(query, limit)
+
+    def stats(self) -> StatsOut:
+        return self._catalog.stats()
+
+    def task_groups(self) -> list[TaskGroupInfo]:
+        return self._catalog.task_groups()
+
+    def categories(self) -> list[CategoryInfo]:
+        return self._catalog.categories()

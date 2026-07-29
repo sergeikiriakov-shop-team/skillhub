@@ -10,11 +10,15 @@ from typing import Protocol
 
 from ..platform.models import User
 from .schemas import (
+    CategoryInfo,
     EvaluationOut,
     RecommendationOut,
     Reference,
+    SearchHit,
     SkillDetail,
     SkillSummary,
+    StatsOut,
+    TaskGroupInfo,
 )
 
 
@@ -122,3 +126,16 @@ class RecommendationRepository(Protocol):
         ...
 
     def commit(self) -> None: ...
+
+
+class CatalogRepository(Protocol):
+    """Read-only catalog queries: semantic/text search, dashboard stats, task-group and category
+    listings. All return API DTOs."""
+
+    def search(self, query: str, limit: int) -> list[SearchHit]: ...
+
+    def stats(self) -> StatsOut: ...
+
+    def task_groups(self) -> list[TaskGroupInfo]: ...
+
+    def categories(self) -> list[CategoryInfo]: ...
