@@ -19,13 +19,19 @@ from ...platform.models import Base
 
 
 class SkillNotebook(Base):
-    """One sandbox-trial notebook per skill (PK = ``skill_id``; regenerating overwrites it)."""
+    """One sandbox-trial notebook per (skill, MODEL): the run record produced by a specific
+    executing model. The composite PK ``(skill_id, model)`` means a trial under Opus 4.8 and one
+    under Opus 5 are separate rows — so effectiveness can be compared per model. Regenerating a
+    trial for the same (skill, model) overwrites that row."""
 
     __tablename__ = "skill_notebooks"
 
     skill_id: Mapped[int] = mapped_column(
         ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True
     )
+    # The executing/running model this trial was produced by (its self-reported id), e.g.
+    # ``claude-opus-5``. Part of the key: effectiveness is measured per model.
+    model: Mapped[str] = mapped_column(String(60), primary_key=True, default="")
     scenario: Mapped[str] = mapped_column(String(120), default="")
     task_group: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # The nbformat 4.5 notebook (cells) and the compact scorecard (trial.json entries), as emitted

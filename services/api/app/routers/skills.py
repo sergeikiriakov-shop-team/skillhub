@@ -16,6 +16,7 @@ from skillhub_core.skills.schemas import (
     Reference,
     SkillCreate,
     SkillDetail,
+    SkillFitOut,
     SkillSummary,
 )
 from skillhub_core.skills.services import IngestService, NotebookService, SkillService
@@ -76,15 +77,27 @@ def get_skill(skill_id: int, service: SkillService = Depends(get_skill_service))
 @router.get("/skills/{skill_id}/notebook", response_model=NotebookOut)
 def get_skill_notebook(
     skill_id: int,
+    model: str | None = None,
     service: NotebookService = Depends(get_notebook_service),
     _: User | None = Depends(require_read_access),
 ) -> NotebookOut:
-    """The one sandbox-trial notebook for this skill (the run record from ``evals/``). 404 if no
-    trial has been recorded yet."""
-    notebook = service.get_notebook(skill_id)
+    """A sandbox-trial notebook for this skill (the run record from ``evals/``). ``model`` selects
+    the executing model's trial; omitted, returns the best-scoring model's. 404 if none recorded."""
+    notebook = service.get_notebook(skill_id, model)
     if notebook is None:
         raise HTTPException(status_code=404, detail="No sandbox trial recorded for this skill")
     return notebook
+
+
+@router.get("/skills/{skill_id}/notebooks", response_model=SkillFitOut)
+def get_skill_fit(
+    skill_id: int,
+    service: NotebookService = Depends(get_notebook_service),
+    _: User | None = Depends(require_read_access),
+) -> SkillFitOut:
+    """The skill's effectiveness-by-model matrix (which models it was trialed under, the score per
+    model, and the best model). Models with no trial are absent — the gaps to fill."""
+    return service.get_matrix(skill_id)
 
 
 @router.put("/skills/{skill_id}/notebook", response_model=NotebookOut)
@@ -99,6 +112,7 @@ def put_skill_notebook(
     try:
         return service.submit_notebook(
             skill_id,
+            model=payload.model,
             scenario=payload.scenario,
             task_group=payload.task_group,
             notebook=payload.notebook,

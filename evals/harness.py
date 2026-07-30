@@ -211,11 +211,15 @@ def _ab_matrix_text(results: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def emit_notebook(scenario: Scenario, run_dir: Path, workspace: Path, created_at: str) -> dict:
+def emit_notebook(
+    scenario: Scenario, run_dir: Path, workspace: Path, created_at: str, model: str = ""
+) -> dict:
     """Build a Jupyter notebook (.ipynb, nbformat 4.5) that *is* the trial's run record, plus a
     compact ``trial.json`` for the store. Pure stdlib ``json`` — no Jupyter runtime needed to
-    produce it. The notebook holds: the task, the fake-service routes, the recorded call trace, each
-    skill version's scorecard + the plan it produced, and the A/B matrix."""
+    produce it. ``model`` = the executing model that produced the trial (its self-reported id), so
+    the store records effectiveness per model. The notebook holds: the task, the fake-service
+    routes + source, the recorded call trace, each skill version's scorecard + the plan it
+    produced, and the A/B matrix."""
     calls = load_calls(run_dir)
     results = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(run_dir.glob("result-*.json"))]
 
@@ -224,6 +228,7 @@ def emit_notebook(scenario: Scenario, run_dir: Path, workspace: Path, created_at
         _md(
             f"# Skill trial — {scenario.name}\n\n"
             f"- **Task group:** {scenario.task_group or '(none)'}\n"
+            f"- **Executing model:** {model or '(unspecified)'}\n"
             f"- **Scenario:** {scenario.description}\n"
             f"- **Created:** {created_at}\n\n"
             f"> Sandbox trial: the live Claude Code ran the skill against a *fake service* + a temp "
@@ -304,6 +309,7 @@ def emit_notebook(scenario: Scenario, run_dir: Path, workspace: Path, created_at
             "skillhub_trial": {
                 "scenario": scenario.name,
                 "task_group": scenario.task_group,
+                "model": model,
                 "created_at": created_at,
             }
         },
@@ -316,6 +322,7 @@ def emit_notebook(scenario: Scenario, run_dir: Path, workspace: Path, created_at
             {
                 "scenario": scenario.name,
                 "task_group": scenario.task_group,
+                "model": model,
                 "created_at": created_at,
                 "entries": entries,
             },
@@ -348,6 +355,7 @@ def main() -> None:
     pn.add_argument("--run-dir", required=True)
     pn.add_argument("--workspace", required=True)
     pn.add_argument("--created-at", default="", help="ISO timestamp; pass one for a reproducible record")
+    pn.add_argument("--model", default="", help="executing model id that produced the trial, e.g. claude-opus-5")
 
     args = parser.parse_args()
     if args.cmd == "setup":
@@ -362,7 +370,7 @@ def main() -> None:
             from datetime import datetime, timezone
 
             created_at = datetime.now(timezone.utc).isoformat()
-        emit_notebook(load_scenario(args.scenario), Path(args.run_dir), Path(args.workspace), created_at)
+        emit_notebook(load_scenario(args.scenario), Path(args.run_dir), Path(args.workspace), created_at, args.model)
 
 
 if __name__ == "__main__":

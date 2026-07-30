@@ -39,23 +39,28 @@ class RubricRepository(Protocol):
 
 
 class NotebookRepository(Protocol):
-    """Persistence for the one sandbox-trial notebook attached to each skill."""
+    """Persistence for the sandbox-trial notebooks attached to a skill, one per executing model."""
 
-    def get(self, skill_id: int) -> dict | None:
-        """The skill's notebook as plain data (with a computed ``stale`` flag), or None."""
+    def get(self, skill_id: int, model: str) -> dict | None:
+        """The (skill, model) notebook as plain data (with a computed ``stale`` flag), or None."""
+        ...
+
+    def list_for_skill(self, skill_id: int) -> list[dict]:
+        """Every model's trial for the skill (the effectiveness matrix), best-model first."""
         ...
 
     def upsert(
         self,
         *,
         skill_id: int,
+        model: str,
         scenario: str,
         task_group: str | None,
         notebook: dict,
         summary: dict,
         created_by_user_id: int | None,
     ) -> dict | None:
-        """Create/replace the skill's notebook; None if the skill does not exist."""
+        """Create/replace the (skill, model) notebook; None if the skill does not exist."""
         ...
 
     def commit(self) -> None: ...

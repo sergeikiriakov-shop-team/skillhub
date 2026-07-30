@@ -296,13 +296,25 @@ def list_recommendations(status: str | None = None) -> Any:
 
 
 @mcp.tool()
-def get_skill_notebook(skill_id: int) -> Any:
-    """Get the skill's ONE sandbox-trial notebook (the run record from the `evals/` harness): the
-    `notebook` (nbformat cells), the `summary` scorecard, and `stale` (true once the skill changed
-    since the trial ran). Returns `{error: 404}` if no trial has been recorded. Call this before a
-    sandbox run to decide reuse vs. regenerate: if a fresh (non-stale) notebook exists and the
-    developer did not ask to regenerate, reuse it instead of running again."""
-    return _read_call("GET", f"/api/skills/{skill_id}/notebook")
+def get_skill_notebook(skill_id: int, model: str | None = None) -> Any:
+    """Get a sandbox-trial notebook for the skill (the run record from the `evals/` harness): the
+    `notebook` (nbformat cells), the `summary` scorecard, `model` (executing model), `effectiveness`
+    (0..1 best pass-rate) and `stale` (true once the skill changed since the trial ran). Trials are
+    per (skill, MODEL): pass `model` to get that model's trial; omit it to get the best-scoring
+    model's. Returns `{error: 404}` if none recorded. Call before a sandbox run to decide reuse vs.
+    regenerate for YOUR model: if a fresh (non-stale) trial exists for your model and the developer
+    did not ask to regenerate, reuse it."""
+    params = {"model": model} if model else None
+    return _read_call("GET", f"/api/skills/{skill_id}/notebook", params=params)
+
+
+@mcp.tool()
+def get_skill_fit(skill_id: int) -> Any:
+    """Get the skill's effectiveness-by-MODEL matrix: `best_model` and, per model trialed, its
+    `effectiveness` (0..1), `scenario` and `stale`. Models with no trial are absent — those are the
+    gaps to fill (e.g. "not yet trialed under claude-opus-5"). Use to see which model a skill suits
+    best and which models still need a trial run."""
+    return _read_call("GET", f"/api/skills/{skill_id}/notebooks")
 
 
 # --- auth ---------------------------------------------------------------------------------------
@@ -405,16 +417,20 @@ def set_recommendation_status(rec_id: int, status: str) -> Any:
 def submit_skill_notebook(
     skill_id: int,
     notebook: dict,
+    model: str,
     summary: dict | None = None,
     scenario: str = "",
     task_group: str | None = None,
 ) -> Any:
-    """Store (create or REGENERATE) the skill's one sandbox-trial notebook — the run record the
-    `evals/` harness emits (`trial.ipynb` = `notebook`, `trial.json` = `summary`). There is one
-    notebook per skill; submitting replaces it. The tested skill-version snapshot (for the stale
-    flag) is taken server-side. Requires a contributor+ role. Run this right after a sandbox trial
-    so the result shows on the skill's page in the dashboard."""
+    """Store (create or REGENERATE) a sandbox-trial notebook for the skill — the run record the
+    `evals/` harness emits (`trial.ipynb` = `notebook`, `trial.json` = `summary`). Trials are per
+    (skill, MODEL): pass `model` = the EXECUTING model that produced this trial (your own exact
+    model id, e.g. `claude-opus-5`); submitting replaces that model's trial only, leaving other
+    models' trials intact. The tested skill-version snapshot (for the stale flag) is taken
+    server-side. Requires a contributor+ role. Run right after a sandbox trial so the result shows
+    in the skill's effectiveness-by-model matrix on the dashboard."""
     body = {
+        "model": model,
         "notebook": notebook,
         "summary": summary or {},
         "scenario": scenario,

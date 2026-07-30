@@ -77,6 +77,13 @@ def _apply_column_migrations() -> None:
         "ALTER TABLE skill_versions ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES users(id)",
         "ALTER TABLE skills DROP CONSTRAINT IF EXISTS uq_skill_identity",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_skills_name ON skills (name)",
+        # Sandbox trials are now per (skill, MODEL): widen the notebook key from skill_id alone to
+        # (skill_id, model). Backfill any pre-existing single-per-skill row as the model it was run
+        # under (the seeded green-loop trial was produced on Opus 4.8). Idempotent.
+        "ALTER TABLE skill_notebooks ADD COLUMN IF NOT EXISTS model VARCHAR(60) NOT NULL DEFAULT ''",
+        "UPDATE skill_notebooks SET model='claude-opus-4-8' WHERE model=''",
+        "ALTER TABLE skill_notebooks DROP CONSTRAINT IF EXISTS skill_notebooks_pkey",
+        "ALTER TABLE skill_notebooks ADD PRIMARY KEY (skill_id, model)",
     ]
     with engine.begin() as conn:
         for stmt in statements:
@@ -138,11 +145,13 @@ def _seed_skill_notebooks() -> None:
             return
         notebook = json.loads(nb_file.read_text(encoding="utf-8"))
         summary = json.loads(sum_file.read_text(encoding="utf-8")) if sum_file.exists() else {}
+        # The seeded green-loop trial was produced on Opus 4.8; trials are keyed per (skill, model).
+        model = str(summary.get("model") or "claude-opus-4-8")
         with SessionLocal() as session:
             skill = session.query(Skill).filter(Skill.name == "green-loop").first()
             if skill is None:
                 return
-            existing = session.get(SkillNotebook, skill.id)
+            existing = session.get(SkillNotebook, (skill.id, model))
             if existing is not None:
                 # Leave a user-submitted notebook alone; only refresh the seed-owned demo, and only
                 # when the shipped fixture actually changed.
@@ -151,6 +160,7 @@ def _seed_skill_notebooks() -> None:
             row = repository.upsert_skill_notebook(
                 session,
                 skill_id=skill.id,
+                model=model,
                 scenario=str(summary.get("scenario") or "green_loop_understand"),
                 task_group=summary.get("task_group") or "green-loop",
                 notebook=notebook,

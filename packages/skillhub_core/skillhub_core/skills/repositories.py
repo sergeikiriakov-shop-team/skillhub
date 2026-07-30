@@ -319,14 +319,28 @@ def _current_content_hash(skill: Skill | None) -> tuple[str | None, int | None]:
     return version.content_hash, version.version_no
 
 
+def _effectiveness(summary: dict | None) -> float | None:
+    """The skill's effectiveness for this trial = the best pass-rate across the scorecard entries
+    (0..1). The winning entry is the skill itself; baselines score lower. None if no scored entry."""
+    best: float | None = None
+    for entry in (summary or {}).get("entries", []):
+        total = len(entry.get("passed", [])) + len(entry.get("failed", []))
+        if total:
+            rate = len(entry.get("passed", [])) / total
+            best = rate if best is None else max(best, rate)
+    return round(best, 4) if best is not None else None
+
+
 def _notebook_to_dict(nb: SkillNotebook, current_hash: str | None) -> dict:
     creator = nb.creator
     return {
         "skill_id": nb.skill_id,
+        "model": nb.model,
         "scenario": nb.scenario,
         "task_group": nb.task_group,
         "notebook": nb.notebook or {},
         "summary": nb.summary or {},
+        "effectiveness": _effectiveness(nb.summary),
         "tested_content_hash": nb.tested_content_hash,
         "tested_version_no": nb.tested_version_no,
         "created_by": (creator.name or creator.email) if creator else None,
@@ -339,36 +353,50 @@ def _notebook_to_dict(nb: SkillNotebook, current_hash: str | None) -> dict:
     }
 
 
-def get_skill_notebook(session: Session, skill_id: int) -> dict | None:
-    """The one sandbox-trial notebook for a skill (plain data, with a computed ``stale`` flag), or
-    None if no trial has been recorded."""
-    nb = session.get(SkillNotebook, skill_id)
+def get_skill_notebook(session: Session, skill_id: int, model: str) -> dict | None:
+    """The sandbox-trial notebook for a (skill, model) pair (plain data, with a computed ``stale``
+    flag), or None if no trial has been recorded for that model."""
+    nb = session.get(SkillNotebook, (skill_id, model))
     if nb is None:
         return None
     current_hash, _ = _current_content_hash(get_skill(session, skill_id))
     return _notebook_to_dict(nb, current_hash)
 
 
+def list_skill_notebooks(session: Session, skill_id: int) -> list[dict]:
+    """Every model's trial for a skill (the effectiveness matrix), best-model first."""
+    rows = list(
+        session.scalars(select(SkillNotebook).where(SkillNotebook.skill_id == skill_id)).all()
+    )
+    if not rows:
+        return []
+    current_hash, _ = _current_content_hash(get_skill(session, skill_id))
+    out = [_notebook_to_dict(nb, current_hash) for nb in rows]
+    out.sort(key=lambda d: (d["effectiveness"] is not None, d["effectiveness"] or 0), reverse=True)
+    return out
+
+
 def upsert_skill_notebook(
     session: Session,
     *,
     skill_id: int,
+    model: str,
     scenario: str,
     task_group: str | None,
     notebook: dict,
     summary: dict,
     created_by_user_id: int | None,
 ) -> dict | None:
-    """Create or replace a skill's trial notebook (flush only; the caller owns the commit).
+    """Create or replace the (skill, model) trial notebook (flush only; the caller owns the commit).
     Snapshots the skill's current content hash + version so staleness can be shown later. Returns
     None when the skill does not exist."""
     skill = get_skill(session, skill_id)
     if skill is None:
         return None
     current_hash, version_no = _current_content_hash(skill)
-    row = session.get(SkillNotebook, skill_id)
+    row = session.get(SkillNotebook, (skill_id, model))
     if row is None:
-        row = SkillNotebook(skill_id=skill_id)
+        row = SkillNotebook(skill_id=skill_id, model=model)
         session.add(row)
     row.scenario = scenario
     row.task_group = task_group
@@ -786,13 +814,17 @@ class SqlNotebookRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def get(self, skill_id: int) -> dict | None:
-        return get_skill_notebook(self._session, skill_id)
+    def get(self, skill_id: int, model: str) -> dict | None:
+        return get_skill_notebook(self._session, skill_id, model)
+
+    def list_for_skill(self, skill_id: int) -> list[dict]:
+        return list_skill_notebooks(self._session, skill_id)
 
     def upsert(
         self,
         *,
         skill_id: int,
+        model: str,
         scenario: str,
         task_group: str | None,
         notebook: dict,
@@ -802,6 +834,7 @@ class SqlNotebookRepository:
         return upsert_skill_notebook(
             self._session,
             skill_id=skill_id,
+            model=model,
             scenario=scenario,
             task_group=task_group,
             notebook=notebook,
