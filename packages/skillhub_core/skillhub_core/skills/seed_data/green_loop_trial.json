@@ -1,6 +1,7 @@
 {
   "scenario": "green_loop_understand",
   "task_group": "green-loop",
+  "model": "claude-opus-4-8",
   "created_at": "2026-07-29T00:05:00+00:00",
   "entries": [
     {
