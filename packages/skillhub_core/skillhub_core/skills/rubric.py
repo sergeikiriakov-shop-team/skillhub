@@ -186,3 +186,49 @@ SYNTHESIS_PROMPT = (
     "into the same `task_group` and submit it for evaluation via the standard assessment flow.\n\n"
     "BASE SKILL.md:\n{winner_body}"
 )
+
+# ── Trial-result judging: the empirical, per-model layer ──────────────────────────────────────
+# The rubric above grades a SKILL.md as AUTHORED (model-agnostic). This block grades the RESULT of a
+# sandbox TRIAL — the artifact a given model actually produced when it RAN the skill — so the quality
+# criteria apply to the OUTCOME, per model, not to the skill in the abstract. A blind PANEL of judges
+# scores each artifact; the per-(skill, model) headline is the panel MEDIAN, and the objective keyword
+# scorecard is a CEILING on it (the checks are the gate). Stored per (skill × model); the highest is
+# the skill's best model. Bump RESULT_JUDGE_VERSION when any part of this changes.
+RESULT_JUDGE_VERSION = "1"
+
+RESULT_JUDGE_INSTRUCTIONS = (
+    "You are grading the ARTIFACT a model produced in a sandbox trial (e.g. the plan.md it wrote), "
+    "NOT the skill's SKILL.md in the abstract. Judge how well THIS output executed the task against "
+    "the criteria below, using the same 0-10 calibration as the skill rubric; be strict and "
+    "discriminating, reserving 9-10 for genuinely exemplary results. Grade BLIND — you are not told "
+    "which model produced which artifact. Score every dimension for every artifact and give a "
+    "one-line reason per artifact naming a concrete strength or gap."
+)
+
+# Applied to the trial OUTPUT (mirrors EvaluationResult's dimensions, re-aimed at a result).
+RESULT_JUDGE_DIMENSIONS: list[dict] = [
+    {"key": "completeness", "description": "Captures every real task requirement, incl. buried/edge ones; nothing required missing."},
+    {"key": "correctness", "description": "The specifics are right — ordering, edge cases, dependencies, the actual decisions."},
+    {"key": "scope_discipline", "description": "Invents nothing; excludes withdrawn / out-of-scope items; no over-engineering."},
+    {"key": "process_fidelity", "description": "Follows the skill's own procedure and guardrails (branching, safety, pipeline, delivery)."},
+    {"key": "clarity", "description": "Clear, well-organized, actionable, appropriately concise."},
+]
+
+# The panel: several models grade each artifact blind; the score is the MEDIAN of their overalls (and,
+# per dimension, the median of their dimension scores) — robust to one outlier judge, so a weak or
+# self-preferring judge cannot swing the result. Aggregation is fixed here so it is identical for all.
+RESULT_JUDGE_PANEL: dict = {
+    "judges": ["claude-opus-4-8", "claude-sonnet-5", "claude-haiku-4-5"],
+    "aggregate": "median",
+}
+
+RESULT_JUDGE_PROTOCOL = (
+    "1. The developer's live Claude Code runs the skill under a target model in the sandbox; the "
+    "harness records the artifact + the objective keyword scorecard. 2. Each panel judge grades the "
+    "artifact BLIND (artifacts labelled A/B/C; the judge is not told the model) on the dimensions "
+    "above. 3. result_grade for (skill, model) = the MEDIAN of the panel's overalls; each dimension = "
+    "the median of that dimension across judges. 4. effectiveness (0..1) = result_grade/10 CAPPED by "
+    "the objective pass-rate — a run that skipped required mechanics cannot score above what it "
+    "actually did (the checks are the gate). 5. Stored per (skill × model); the highest-effectiveness "
+    "model is the skill's best_model, and models with no trial are gaps in the re-eval queue."
+)

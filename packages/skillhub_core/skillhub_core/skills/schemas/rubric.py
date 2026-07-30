@@ -23,6 +23,13 @@ class RubricOut(BaseModel):
     synthesis_strategy: str = ""
     synthesis_algorithm: list[dict] = Field(default_factory=list)
     synthesis_prompt: str = ""
+    # The empirical, per-model layer: how a TRIAL RESULT (the artifact a model produced) is graded by
+    # the blind judge panel — so the same criteria apply to outcomes per model, not just to SKILL.md.
+    result_judge_version: str = ""
+    result_judge_instructions: str = ""
+    result_judge_dimensions: list[dict] = Field(default_factory=list)
+    result_judge_panel: dict = Field(default_factory=dict)
+    result_judge_protocol: str = ""
 
 
 class WeightsUpdate(BaseModel):

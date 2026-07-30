@@ -21,8 +21,11 @@ class NotebookSubmit(BaseModel):
 
 
 class NotebookOut(BaseModel):
-    """A stored (skill, model) trial notebook. ``effectiveness`` (0..1) = best scorecard pass-rate;
-    ``stale`` = the skill changed since the run."""
+    """A stored (skill, model) trial notebook. ``effectiveness`` (0..1) is the combined headline:
+    the judge panel's ``result_grade``/10 capped by the objective scorecard (``objective_rate``);
+    for older ungraded trials it is just ``objective_rate``. ``dimensions`` = the panel-median
+    per-criterion grades; ``panel`` = the individual judge votes. ``stale`` = the skill changed
+    since the run."""
 
     skill_id: int
     model: str = ""
@@ -31,6 +34,10 @@ class NotebookOut(BaseModel):
     notebook: dict
     summary: dict
     effectiveness: float | None = None
+    result_grade: float | None = None
+    objective_rate: float | None = None
+    dimensions: dict | None = None
+    panel: list[dict] | None = None
     tested_version_no: int | None = None
     stale: bool = False
     created_by: str | None = None
@@ -39,11 +46,16 @@ class NotebookOut(BaseModel):
 
 
 class NotebookModelSummary(BaseModel):
-    """One model's trial in the effectiveness matrix (without the heavy notebook payload)."""
+    """One model's trial in the effectiveness matrix (without the heavy notebook payload). Carries
+    the combined ``effectiveness`` plus its two components — the judge ``result_grade`` (0..10) and
+    the objective ``objective_rate`` (0..1) gate — and the panel-median ``dimensions`` breakdown."""
 
     model: str
     scenario: str
     effectiveness: float | None = None
+    result_grade: float | None = None
+    objective_rate: float | None = None
+    dimensions: dict | None = None
     stale: bool = False
     created_by: str | None = None
     created_at: datetime | None = None

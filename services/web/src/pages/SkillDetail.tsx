@@ -517,6 +517,36 @@ function effColor(v: number | null | undefined): string {
   return "red";
 }
 
+// Short labels for the judge-panel dimensions (technical, shown as-is in both locales).
+const DIM_SHORT: Record<string, string> = {
+  completeness: "compl",
+  correctness: "correct",
+  scope_discipline: "scope",
+  process_fidelity: "process",
+  clarity: "clarity",
+};
+
+// The panel-median grade per criterion; the weakest (and genuinely low) one is flagged red.
+function DimBreakdown({ dims }: { dims: Record<string, number> | null | undefined }) {
+  if (!dims) return null;
+  const keys = Object.keys(DIM_SHORT).filter((k) => k in dims);
+  if (keys.length === 0) return null;
+  const min = Math.min(...keys.map((k) => dims[k]));
+  return (
+    <Group gap={8} wrap="wrap" mt={4}>
+      {keys.map((k) => {
+        const v = dims[k];
+        const weak = v === min && v < 7;
+        return (
+          <Text key={k} fz={10} ff="monospace" c={weak ? "red" : "dimmed"} fw={weak ? 700 : 400}>
+            {DIM_SHORT[k]} {v}
+          </Text>
+        );
+      })}
+    </Group>
+  );
+}
+
 function ModelMatrix({
   fit,
   activeModel,
@@ -529,12 +559,16 @@ function ModelMatrix({
   const { t } = useI18n();
   return (
     <div>
-      <Text size="sm" fw={600} mb={4}>
+      <Text size="sm" fw={600} mb={2}>
         {t("trial.byModel")}
+      </Text>
+      <Text fz={11} c="dimmed" mb={6}>
+        {t("trial.byModelHint")}
       </Text>
       <Stack gap={6}>
         {fit.entries.map((e) => {
           const pct = e.effectiveness != null ? Math.round(e.effectiveness * 100) : null;
+          const gatePct = e.objective_rate != null ? Math.round(e.objective_rate * 100) : null;
           const active = e.model === activeModel;
           return (
             <Paper
@@ -549,7 +583,7 @@ function ModelMatrix({
                 background: active ? "var(--mantine-color-blue-light)" : undefined,
               }}
             >
-              <Group justify="space-between" wrap="nowrap" gap="sm">
+              <Group justify="space-between" wrap="nowrap" gap="sm" mb={4}>
                 <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
                   <Text ff="monospace" size="sm" fw={active ? 700 : 500} truncate>
                     {e.model}
@@ -565,18 +599,34 @@ function ModelMatrix({
                     </Badge>
                   )}
                 </Group>
-                <Group gap={8} wrap="nowrap" style={{ width: 170 }}>
-                  <Progress
-                    value={pct ?? 0}
-                    color={effColor(e.effectiveness)}
-                    size="sm"
-                    style={{ flex: 1 }}
-                  />
-                  <Text size="xs" ff="monospace" w={38} ta="right" fw={600}>
+                {e.result_grade != null ? (
+                  <Text size="sm" ff="monospace" fw={700} c={effColor(e.result_grade / 10)}>
+                    {e.result_grade.toFixed(1)}
+                    <Text span fz={10} c="dimmed">
+                      {" "}
+                      / 10
+                    </Text>
+                  </Text>
+                ) : (
+                  <Text size="sm" ff="monospace" fw={700} c={effColor(e.effectiveness)}>
                     {pct != null ? `${pct}%` : "—"}
                   </Text>
-                </Group>
+                )}
               </Group>
+              <Group gap={8} wrap="nowrap">
+                <Progress
+                  value={pct ?? 0}
+                  color={effColor(e.effectiveness)}
+                  size="sm"
+                  style={{ flex: 1 }}
+                />
+                {gatePct != null && (
+                  <Text fz={10} ff="monospace" c="dimmed" w={62} ta="right">
+                    {t("trial.gateLabel", { v: String(gatePct) })}
+                  </Text>
+                )}
+              </Group>
+              <DimBreakdown dims={e.dimensions} />
             </Paper>
           );
         })}

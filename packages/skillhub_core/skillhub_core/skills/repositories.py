@@ -319,9 +319,10 @@ def _current_content_hash(skill: Skill | None) -> tuple[str | None, int | None]:
     return version.content_hash, version.version_no
 
 
-def _effectiveness(summary: dict | None) -> float | None:
-    """The skill's effectiveness for this trial = the best pass-rate across the scorecard entries
-    (0..1). The winning entry is the skill itself; baselines score lower. None if no scored entry."""
+def _objective_rate(summary: dict | None) -> float | None:
+    """The OBJECTIVE (quantitative) signal: the best keyword-scorecard pass-rate across the entries
+    (0..1) — did the run actually do the required mechanics. The winning entry is the skill itself;
+    baselines score lower. None if no scored entry. This is the GATE (a ceiling on effectiveness)."""
     best: float | None = None
     for entry in (summary or {}).get("entries", []):
         total = len(entry.get("passed", [])) + len(entry.get("failed", []))
@@ -329,6 +330,32 @@ def _effectiveness(summary: dict | None) -> float | None:
             rate = len(entry.get("passed", [])) / total
             best = rate if best is None else max(best, rate)
     return round(best, 4) if best is not None else None
+
+
+def _result_grade(summary: dict | None) -> float | None:
+    """The QUALITY signal: the judge PANEL's median grade of the trial artifact (0..10), applied to
+    what the model actually produced — not to the SKILL.md in the abstract. ``None`` for older,
+    ungraded trials. The judge strategy (dimensions, panel, protocol) lives server-side in
+    ``rubric.py`` so every developer's grading uses one algorithm."""
+    grade = (summary or {}).get("result_grade")
+    try:
+        return float(grade) if grade is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _effectiveness(summary: dict | None) -> float | None:
+    """Per-model effectiveness (0..1) — the combined headline. When the trial artifact has been
+    graded by the judge panel, the headline is the panel-median grade / 10; but the objective
+    scorecard is a CEILING — a run that only completed part of the required mechanics cannot score
+    above that pass-rate however good the prose (checks = the gate). Falls back to the plain
+    objective pass-rate for older, ungraded trials."""
+    objective = _objective_rate(summary)
+    grade = _result_grade(summary)
+    if grade is not None:
+        graded = grade / 10.0
+        return round(min(graded, objective) if objective is not None else graded, 4)
+    return objective
 
 
 def _notebook_to_dict(nb: SkillNotebook, current_hash: str | None) -> dict:
@@ -341,6 +368,10 @@ def _notebook_to_dict(nb: SkillNotebook, current_hash: str | None) -> dict:
         "notebook": nb.notebook or {},
         "summary": nb.summary or {},
         "effectiveness": _effectiveness(nb.summary),
+        "result_grade": _result_grade(nb.summary),
+        "objective_rate": _objective_rate(nb.summary),
+        "dimensions": (nb.summary or {}).get("dimensions"),
+        "panel": (nb.summary or {}).get("panel"),
         "tested_content_hash": nb.tested_content_hash,
         "tested_version_no": nb.tested_version_no,
         "created_by": (creator.name or creator.email) if creator else None,

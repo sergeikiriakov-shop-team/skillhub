@@ -205,6 +205,13 @@ export interface SkillNotebook {
   notebook: { cells?: NotebookCell[]; [k: string]: unknown };
   summary: TrialSummary;
   effectiveness: number | null;
+  // The two components behind effectiveness: the judge panel's median grade (0..10) and the
+  // objective keyword pass-rate (0..1) that caps it. ``dimensions`` = panel-median per criterion;
+  // ``panel`` = the individual blind judge votes. Null for older, ungraded trials.
+  result_grade: number | null;
+  objective_rate: number | null;
+  dimensions: Record<string, number> | null;
+  panel: JudgeVote[] | null;
   tested_version_no: number | null;
   stale: boolean;
   created_by: string | null;
@@ -212,11 +219,22 @@ export interface SkillNotebook {
   updated_at: string | null;
 }
 
+// One blind judge's vote on a trial artifact.
+export interface JudgeVote {
+  judge: string;
+  overall: number;
+  dimensions?: Record<string, number>;
+  note?: string;
+}
+
 // One row of the effectiveness-by-model matrix (no heavy notebook payload).
 export interface NotebookModelSummary {
   model: string;
   scenario: string;
   effectiveness: number | null;
+  result_grade: number | null;
+  objective_rate: number | null;
+  dimensions: Record<string, number> | null;
   stale: boolean;
   created_by: string | null;
   created_at: string | null;

@@ -29,6 +29,11 @@ from .interfaces import (
 )
 from .rubric import (
     CATEGORIZATION_RULES,
+    RESULT_JUDGE_DIMENSIONS,
+    RESULT_JUDGE_INSTRUCTIONS,
+    RESULT_JUDGE_PANEL,
+    RESULT_JUDGE_PROTOCOL,
+    RESULT_JUDGE_VERSION,
     RUBRIC_CALIBRATION,
     RUBRIC_DIMENSIONS,
     RUBRIC_INSTRUCTIONS,
@@ -79,6 +84,11 @@ class RubricService:
             synthesis_strategy=SYNTHESIS_STRATEGY,
             synthesis_algorithm=SYNTHESIS_ALGORITHM,
             synthesis_prompt=SYNTHESIS_PROMPT,
+            result_judge_version=RESULT_JUDGE_VERSION,
+            result_judge_instructions=RESULT_JUDGE_INSTRUCTIONS,
+            result_judge_dimensions=RESULT_JUDGE_DIMENSIONS,
+            result_judge_panel=RESULT_JUDGE_PANEL,
+            result_judge_protocol=RESULT_JUDGE_PROTOCOL,
         )
 
     def set_weights(self, weights: dict[str, float]) -> dict:
@@ -125,6 +135,9 @@ class NotebookService:
                 model=r["model"],
                 scenario=r["scenario"],
                 effectiveness=r["effectiveness"],
+                result_grade=r.get("result_grade"),
+                objective_rate=r.get("objective_rate"),
+                dimensions=r.get("dimensions"),
                 stale=r["stale"],
                 created_by=r["created_by"],
                 created_at=r["created_at"],
