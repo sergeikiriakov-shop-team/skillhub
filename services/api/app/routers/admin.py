@@ -1,14 +1,14 @@
-"""Admin: manage users and roles. Admin-only. This is where an admin marks who may evaluate."""
+"""Admin: manage users and roles. Admin-only. This is where an admin marks who may evaluate.
+
+Thin HTTP layer over ``UserAdminService`` (injected via the DI container); the service owns role
+validation + the commit and raises domain errors mapped to HTTP status here."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from skillhub_core.platform import auth as core_auth
-from skillhub_core.platform.db import get_session
-from skillhub_core.platform.models import ROLES, User
+from skillhub_core.platform.errors import InvalidRole, UserNotFound
+from skillhub_core.platform.models import User
 from skillhub_core.platform.schemas import (
     ReviewerUpdate,
     RoleUpdate,
@@ -16,61 +16,59 @@ from skillhub_core.platform.schemas import (
     UserCreated,
     UserOut,
 )
+from skillhub_core.platform.services import UserAdminService
 
 from ..auth import require_admin
+from ..deps import get_user_admin_service
 
 router = APIRouter(tags=["admin"], prefix="/admin")
 
 
-def _out(u: User) -> UserOut:
-    return UserOut(id=u.id, name=u.name, role=u.role, is_reviewer=u.is_reviewer, created_at=u.created_at)
-
-
 @router.get("/users", response_model=list[UserOut])
-def list_users(session: Session = Depends(get_session), _: User = Depends(require_admin)):
-    return [_out(u) for u in session.scalars(select(User).order_by(User.id)).all()]
+def list_users(
+    service: UserAdminService = Depends(get_user_admin_service),
+    _: User = Depends(require_admin),
+) -> list[UserOut]:
+    return service.list_users()
 
 
 @router.post("/users", response_model=UserCreated, status_code=201)
 def create_user(
-    payload: UserCreate, session: Session = Depends(get_session), _: User = Depends(require_admin)
-):
-    if payload.role not in ROLES:
-        raise HTTPException(status_code=400, detail=f"role must be one of {ROLES}")
-    user, token = core_auth.create_user(session, name=payload.name, role=payload.role)
-    session.commit()
-    return UserCreated(id=user.id, name=user.name, role=user.role, created_at=user.created_at, token=token)
+    payload: UserCreate,
+    service: UserAdminService = Depends(get_user_admin_service),
+    _: User = Depends(require_admin),
+) -> UserCreated:
+    try:
+        return service.create_user(name=payload.name, role=payload.role)
+    except InvalidRole as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/users/{user_id}/role", response_model=UserOut)
 def set_role(
     user_id: int,
     payload: RoleUpdate,
-    session: Session = Depends(get_session),
+    service: UserAdminService = Depends(get_user_admin_service),
     _: User = Depends(require_admin),
-):
+) -> UserOut:
     """Change a user's role — e.g. promote to 'evaluator' so they may submit assessments."""
-    if payload.role not in ROLES:
-        raise HTTPException(status_code=400, detail=f"role must be one of {ROLES}")
-    user = session.get(User, user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    user.role = payload.role
-    session.commit()
-    return _out(user)
+    try:
+        return service.set_role(user_id, payload.role)
+    except InvalidRole as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except UserNotFound as exc:
+        raise HTTPException(status_code=404, detail="User not found") from exc
 
 
 @router.post("/users/{user_id}/reviewer", response_model=UserOut)
 def set_reviewer(
     user_id: int,
     payload: ReviewerUpdate,
-    session: Session = Depends(get_session),
+    service: UserAdminService = Depends(get_user_admin_service),
     _: User = Depends(require_admin),
-):
+) -> UserOut:
     """Grant/revoke the reviewer (lead) capability for the Task Review context."""
-    user = session.get(User, user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    user.is_reviewer = payload.is_reviewer
-    session.commit()
-    return _out(user)
+    try:
+        return service.set_reviewer(user_id, payload.is_reviewer)
+    except UserNotFound as exc:
+        raise HTTPException(status_code=404, detail="User not found") from exc
