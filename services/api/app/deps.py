@@ -10,6 +10,7 @@ from fastapi import Depends
 from sqlalchemy.orm import Session
 
 from skillhub_core.platform.db import get_session
+from skillhub_core.reviews.services import ReviewService
 from skillhub_core.skills.services import (
     CatalogService,
     EvaluationService,
@@ -53,3 +54,7 @@ def get_recommendation_service(session: Session = Depends(get_session)) -> Recom
 
 def get_catalog_service(session: Session = Depends(get_session)) -> CatalogService:
     return container.catalog_service(catalog=container.catalog_repository(session=session))
+
+
+def get_review_service(session: Session = Depends(get_session)) -> ReviewService:
+    return container.review_service(reviews=container.review_repository(session=session))
