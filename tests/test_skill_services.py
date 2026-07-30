@@ -16,7 +16,13 @@ from skillhub_core.skills.errors import (
     RecommendationNotFound,
     SkillNotFound,
 )
-from skillhub_core.skills.services import IngestService, RecommendationService, SkillService
+from skillhub_core.skills.repositories import _effectiveness
+from skillhub_core.skills.services import (
+    IngestService,
+    RecommendationService,
+    RubricService,
+    SkillService,
+)
 
 
 _OUTCOME = {
@@ -90,6 +96,42 @@ def test_delete_missing_raises_and_does_not_commit():
     with pytest.raises(SkillNotFound):
         SkillService(repo).delete_skill(5)
     assert repo.committed is False
+
+
+class FakeRubricRepo:
+    def get_taxonomy(self):
+        return [{"key": "data-access", "label": "Data access"}]
+
+    def get_weights(self):
+        return {"trigger_quality": 2.0, "completeness": 2.0}
+
+
+def test_get_rubric_serves_strategy_and_judge_panel():
+    """Regression: get_rubric must build a valid RubricOut (a dropped import once made it 500),
+    and it must serve the server-side trial-result judge strategy (panel + dimensions)."""
+    out = RubricService(FakeRubricRepo()).get_rubric()
+    assert out.rubric_version and out.result_judge_version
+    assert out.result_judge_panel["aggregate"] == "median"
+    assert [d["key"] for d in out.result_judge_dimensions] == [
+        "completeness", "correctness", "scope_discipline", "process_fidelity", "clarity"
+    ]
+
+
+def _summary(grade=None, passed=0, failed=0):
+    s = {"entries": [{"passed": ["x"] * passed, "failed": ["y"] * failed}]}
+    if grade is not None:
+        s["result_grade"] = grade
+    return s
+
+
+def test_effectiveness_is_grade_over_ten_capped_by_the_objective_gate():
+    # graded: grade/10 when the mechanics gate is fully passed …
+    assert _effectiveness(_summary(grade=9.0, passed=13, failed=0)) == 0.9
+    # … but the objective pass-rate is a ceiling (a partial run can't score above what it did)
+    assert _effectiveness(_summary(grade=8.0, passed=5, failed=5)) == 0.5
+    # ungraded (older trials) fall back to the objective pass-rate unchanged
+    assert _effectiveness(_summary(passed=11, failed=2)) == 0.8462
+    assert _effectiveness({}) is None
 
 
 def test_ingest_new_name_duplicate_raises():

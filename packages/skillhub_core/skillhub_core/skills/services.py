@@ -52,6 +52,7 @@ from .schemas import (
     ParsedSkill,
     RecommendationOut,
     Reference,
+    RubricOut,
     SearchHit,
     SkillDetail,
     SkillFitOut,
