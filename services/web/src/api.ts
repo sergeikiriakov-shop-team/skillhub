@@ -199,15 +199,33 @@ export interface NotebookCell {
 
 export interface SkillNotebook {
   skill_id: number;
+  model: string;
   scenario: string;
   task_group: string | null;
   notebook: { cells?: NotebookCell[]; [k: string]: unknown };
   summary: TrialSummary;
+  effectiveness: number | null;
   tested_version_no: number | null;
   stale: boolean;
   created_by: string | null;
   created_at: string | null;
   updated_at: string | null;
+}
+
+// One row of the effectiveness-by-model matrix (no heavy notebook payload).
+export interface NotebookModelSummary {
+  model: string;
+  scenario: string;
+  effectiveness: number | null;
+  stale: boolean;
+  created_by: string | null;
+  created_at: string | null;
+}
+
+export interface SkillFit {
+  skill_id: number;
+  best_model: string | null;
+  entries: NotebookModelSummary[];
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -235,15 +253,19 @@ export const api = {
     return request<SkillSummary[]>(`/skills${qs ? `?${qs}` : ""}`);
   },
   getSkill: (id: number) => request<SkillDetail>(`/skills/${id}`),
-  // One sandbox-trial notebook per skill; null when no trial has been recorded (404).
-  getSkillNotebook: async (id: number): Promise<SkillNotebook | null> => {
+  // A sandbox-trial notebook for a skill; ``model`` selects the executing model's trial (omitted =
+  // best-scoring model). null when no trial has been recorded (404).
+  getSkillNotebook: async (id: number, model?: string): Promise<SkillNotebook | null> => {
+    const qs = model ? `?model=${encodeURIComponent(model)}` : "";
     try {
-      return await request<SkillNotebook>(`/skills/${id}/notebook`);
+      return await request<SkillNotebook>(`/skills/${id}/notebook${qs}`);
     } catch (err) {
       if (err instanceof Error && err.message.startsWith("404")) return null;
       throw err;
     }
   },
+  // The skill's effectiveness-by-model matrix (best_model + per-model score; empty entries = none).
+  getSkillFit: (id: number) => request<SkillFit>(`/skills/${id}/notebooks`),
   createSkill: (payload: SkillCreate) =>
     request<SkillDetail>("/skills", { method: "POST", body: JSON.stringify(payload) }),
   deleteSkill: (id: number) => request<void>(`/skills/${id}`, { method: "DELETE" }),

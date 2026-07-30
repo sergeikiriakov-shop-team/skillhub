@@ -14,15 +14,17 @@ import {
   List,
   Loader,
   Paper,
+  Progress,
   Stack,
   Text,
   Title,
 } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
-import type { NotebookCell, SkillNotebook, TrialEntry } from "../api";
+import type { NotebookCell, SkillFit, SkillNotebook, TrialEntry } from "../api";
 import { ScoreBadge, ScoreBreakdown } from "../components/Score";
 import { useI18n } from "../i18n";
 import { KIND_COLOR } from "./Recommendations";
@@ -40,9 +42,17 @@ export default function SkillDetail() {
     queryKey: ["recommendations"],
     queryFn: api.listRecommendations,
   });
+  // Effectiveness-by-model matrix; the viewer defaults to the best model, overridable by clicking.
+  const { data: fit } = useQuery({
+    queryKey: ["skill-fit", skillId],
+    queryFn: () => api.getSkillFit(skillId),
+  });
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const activeModel = selectedModel ?? fit?.best_model ?? null;
   const { data: notebook } = useQuery({
-    queryKey: ["skill-notebook", skillId],
-    queryFn: () => api.getSkillNotebook(skillId),
+    queryKey: ["skill-notebook", skillId, activeModel],
+    queryFn: () => api.getSkillNotebook(skillId, activeModel ?? undefined),
+    enabled: !!activeModel,
   });
 
   if (isLoading) {
@@ -150,7 +160,12 @@ export default function SkillDetail() {
               </Card>
             )}
 
-            <SandboxTrial notebook={notebook} />
+            <SandboxTrial
+              fit={fit}
+              notebook={notebook}
+              activeModel={activeModel}
+              onSelectModel={setSelectedModel}
+            />
           </Grid.Col>
 
           {/* Right: install + evaluation + similar */}
@@ -495,10 +510,96 @@ function NotebookCells({ cells }: { cells: NotebookCell[] }) {
   );
 }
 
-function SandboxTrial({ notebook }: { notebook?: SkillNotebook | null }) {
+function effColor(v: number | null | undefined): string {
+  if (v == null) return "gray";
+  if (v >= 0.8) return "teal";
+  if (v >= 0.5) return "yellow";
+  return "red";
+}
+
+function ModelMatrix({
+  fit,
+  activeModel,
+  onSelectModel,
+}: {
+  fit: SkillFit;
+  activeModel: string | null;
+  onSelectModel: (m: string) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <div>
+      <Text size="sm" fw={600} mb={4}>
+        {t("trial.byModel")}
+      </Text>
+      <Stack gap={6}>
+        {fit.entries.map((e) => {
+          const pct = e.effectiveness != null ? Math.round(e.effectiveness * 100) : null;
+          const active = e.model === activeModel;
+          return (
+            <Paper
+              key={e.model}
+              withBorder
+              radius="sm"
+              p="xs"
+              onClick={() => onSelectModel(e.model)}
+              style={{
+                cursor: "pointer",
+                borderColor: active ? "var(--mantine-color-blue-5)" : undefined,
+                background: active ? "var(--mantine-color-blue-light)" : undefined,
+              }}
+            >
+              <Group justify="space-between" wrap="nowrap" gap="sm">
+                <Group gap={6} wrap="nowrap" style={{ minWidth: 0 }}>
+                  <Text ff="monospace" size="sm" fw={active ? 700 : 500} truncate>
+                    {e.model}
+                  </Text>
+                  {e.model === fit.best_model && (
+                    <Badge size="xs" color="blue" variant="light">
+                      {t("trial.best")}
+                    </Badge>
+                  )}
+                  {e.stale && (
+                    <Badge size="xs" color="orange" variant="light">
+                      {t("trial.stale")}
+                    </Badge>
+                  )}
+                </Group>
+                <Group gap={8} wrap="nowrap" style={{ width: 170 }}>
+                  <Progress
+                    value={pct ?? 0}
+                    color={effColor(e.effectiveness)}
+                    size="sm"
+                    style={{ flex: 1 }}
+                  />
+                  <Text size="xs" ff="monospace" w={38} ta="right" fw={600}>
+                    {pct != null ? `${pct}%` : "—"}
+                  </Text>
+                </Group>
+              </Group>
+            </Paper>
+          );
+        })}
+      </Stack>
+    </div>
+  );
+}
+
+function SandboxTrial({
+  fit,
+  notebook,
+  activeModel,
+  onSelectModel,
+}: {
+  fit?: SkillFit | null;
+  notebook?: SkillNotebook | null;
+  activeModel: string | null;
+  onSelectModel: (m: string) => void;
+}) {
   const { t } = useI18n();
   const cells = notebook?.notebook?.cells ?? [];
   const entries = notebook?.summary?.entries ?? [];
+  const hasTrials = !!fit && fit.entries.length > 0;
   return (
     <Card withBorder radius="md" padding="md" mt="md">
       <Group justify="space-between" align="center" mb="xs" wrap="nowrap">
@@ -512,7 +613,7 @@ function SandboxTrial({ notebook }: { notebook?: SkillNotebook | null }) {
       <Text size="sm" c="dimmed" mb="sm">
         {t("trial.subtitle")}
       </Text>
-      {!notebook ? (
+      {!hasTrials ? (
         <Alert color="gray" variant="light">
           <Text size="sm">{t("trial.none")}</Text>
           <Text size="xs" c="dimmed" mt={4}>
@@ -521,16 +622,23 @@ function SandboxTrial({ notebook }: { notebook?: SkillNotebook | null }) {
         </Alert>
       ) : (
         <Stack gap="sm">
-          <Group gap="md">
-            <Text size="xs" c="dimmed">
-              {t("trial.scenario", { name: notebook.scenario })}
-            </Text>
-            {notebook.created_by && (
+          <ModelMatrix fit={fit!} activeModel={activeModel} onSelectModel={onSelectModel} />
+
+          {notebook && (
+            <Group gap="md">
               <Text size="xs" c="dimmed">
-                {t("trial.ranBy", { who: notebook.created_by })}
+                {t("trial.viewingModel", { model: notebook.model })}
               </Text>
-            )}
-          </Group>
+              <Text size="xs" c="dimmed">
+                {t("trial.scenario", { name: notebook.scenario })}
+              </Text>
+              {notebook.created_by && (
+                <Text size="xs" c="dimmed">
+                  {t("trial.ranBy", { who: notebook.created_by })}
+                </Text>
+              )}
+            </Group>
+          )}
 
           {entries.length > 0 && (
             <div>
@@ -566,7 +674,7 @@ function SandboxTrial({ notebook }: { notebook?: SkillNotebook | null }) {
             </div>
           )}
 
-          {cells.length > 0 && (
+          {notebook && cells.length > 0 && (
             <div>
               <Text size="sm" fw={600} mb={2}>
                 {t("trial.notebookFile")} · {notebook.scenario || "trial"}.ipynb
