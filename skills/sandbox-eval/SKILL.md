@@ -58,13 +58,43 @@ Then **A/B**: `python -m evals.harness compare --run-dir $RUN` → a side-by-sid
 Report which version passed more checks and where they differ; that is the empirical evidence
 (complementing the SkillHub rubric score).
 
-## Record it to SkillHub (one notebook per skill)
-1. **Emit the run record**: `python -m evals.harness notebook <scenario> --run-dir $RUN --workspace $WS`
-   → writes `$RUN/trial.ipynb` (the notebook) + `$RUN/trial.json` (the scorecard).
-2. **Store it** so it shows on the skill's page: `submit_skill_notebook(skill_id, notebook=<trial.ipynb
-   JSON>, summary=<trial.json JSON>, scenario="<scenario>", task_group="<group>")`. This upserts the
-   one notebook for that skill (regenerating overwrites it); the server snapshots the tested version
-   so the UI flags it `stale` once the skill changes. Requires a contributor+ role (`authenticate`).
+## Grade the RESULT with the judge panel (the per-model quality score)
+The scorecard above is the **objective gate** — did the run do the required mechanics (a quantitative
+pass/fail). The **headline per-model number is a QUALITY grade of the artifact the run produced**,
+scoring the same rubric criteria against the RESULT, not against the SKILL.md in the abstract. The
+judging strategy is server-side (one algorithm for everyone) — fetch it once with `get_rubric`, fields
+`result_judge_*`: the `result_judge_dimensions`, the `result_judge_panel` (`judges` + `aggregate:
+median`), and `result_judge_protocol`.
+
+1. **Run the panel, BLIND.** For each judge model in `result_judge_panel.judges`, spawn a subagent set
+   to that model (a `Task`/subagent with a model override — you are one session, the panel is several)
+   and hand it: the task's ground truth (what a correct result must contain, incl. the traps), the
+   `result_judge_dimensions`, and the artifact(s) **labelled A/B/… WITHOUT revealing which skill/model
+   produced which**. Ask each judge for a 0–10 score per dimension + an `overall` + a one-line note per
+   artifact, as JSON. Diverse judges + median mean one weak or self-preferring judge cannot swing it.
+2. **Aggregate = median.** `result_grade` = the median of the panel's `overall`s; each dimension = the
+   median across judges. Keep every judge's vote.
+3. **Effectiveness = `result_grade`/10, CAPPED by the objective pass-rate** — a run that skipped required
+   mechanics can't score above what it actually did (checks = the gate). The server computes this from
+   the summary; you just supply the grade + the checks.
+
+Faithfulness: judge the artifact the run ACTUALLY produced (copy it from `$WS`), keep each model's
+output **verbatim** in the notebook, and record the judge as the model that graded — never touch up a
+plan or invent a vote.
+
+## Record it to SkillHub (one notebook per skill × model)
+1. **Emit the run record**: `python -m evals.harness notebook <scenario> --run-dir $RUN --workspace $WS --model <executing-model-id>`
+   → writes `$RUN/trial.ipynb` (the notebook) + `$RUN/trial.json` (the scorecard). Pass the **executing
+   model id** (the model that RAN the skill, self-reported) so the trial is stored per model.
+2. **Store it** so it shows on the skill's page: `submit_skill_notebook(skill_id, model="<executing-model-id>",
+   notebook=<trial.ipynb JSON>, summary=<summary>, scenario="<scenario>", task_group="<group>")`. Build
+   `summary` from `trial.json` (its `entries` = the objective scorecard) PLUS the panel result:
+   `result_grade` (0–10 median), `dimensions` ({dim: median}), `panel` ([{judge, overall, dimensions,
+   note}, …]) and `result_judge_version` (from the rubric). The skill page then shows the **grade** as the
+   per-model headline, the **mechanics scorecard** as the gate, and the **panel breakdown** (weakest
+   dimension flagged). This upserts the one notebook for that (skill, model); regenerating overwrites it;
+   the server snapshots the tested version so the UI flags it `stale` once the skill changes. Requires a
+   contributor+ role (`authenticate`).
 
 ## Docker option (no local Python)
 Same steps in a container: `docker build -t skillhub-evals evals`, then run each `python -m evals.*`
