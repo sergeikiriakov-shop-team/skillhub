@@ -15,6 +15,7 @@ import {
   Loader,
   Paper,
   Progress,
+  Spoiler,
   Stack,
   Text,
   Title,
@@ -120,17 +121,33 @@ export default function SkillDetail() {
                 {skill.trigger_text}
               </Alert>
             )}
-            <Card withBorder radius="md" padding="md">
+
+            {/* The empirical per-model trial leads — it's the primary signal now. */}
+            <SandboxTrial
+              fit={fit}
+              notebook={notebook}
+              activeModel={activeModel}
+              onSelectModel={setSelectedModel}
+            />
+
+            {/* SKILL.md body — reduced to a preview (Spoiler) so it no longer dominates. */}
+            <Card withBorder radius="md" padding="md" mt="md">
               <Text fw={600} mb="xs">
-                SKILL.md
+                {t("detail.bodyTitle")}
               </Text>
-              <Paper
-                p="sm"
-                bg="var(--mantine-color-default-hover)"
-                style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: 13 }}
+              <Spoiler
+                maxHeight={180}
+                showLabel={t("detail.bodyShowMore")}
+                hideLabel={t("detail.bodyShowLess")}
               >
-                {skill.body_md}
-              </Paper>
+                <Paper
+                  p="sm"
+                  bg="var(--mantine-color-default-hover)"
+                  style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: 13 }}
+                >
+                  {skill.body_md}
+                </Paper>
+              </Spoiler>
             </Card>
 
             {skill.references.length > 0 && (
@@ -159,13 +176,6 @@ export default function SkillDetail() {
                 </Accordion>
               </Card>
             )}
-
-            <SandboxTrial
-              fit={fit}
-              notebook={notebook}
-              activeModel={activeModel}
-              onSelectModel={setSelectedModel}
-            />
           </Grid.Col>
 
           {/* Right: install + evaluation + similar */}
