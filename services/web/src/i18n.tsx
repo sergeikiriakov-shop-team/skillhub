@@ -93,6 +93,8 @@ const en: Dict = {
 
   // score
   "score.notScored": "not scored",
+  "score.notTrialed": "not trialed",
+  "score.effectivenessTitle": "Best sandbox-trial effectiveness ({model})",
   "dim.clarity": "Clarity",
   "dim.trigger_quality": "Trigger quality",
   "dim.completeness": "Completeness",
@@ -333,6 +335,8 @@ const ru: Dict = {
 
   // score
   "score.notScored": "без оценки",
+  "score.notTrialed": "нет прогона",
+  "score.effectivenessTitle": "Лучшая эффективность в sandbox-прогоне ({model})",
   "dim.clarity": "Ясность",
   "dim.trigger_quality": "Качество триггера",
   "dim.completeness": "Полнота",

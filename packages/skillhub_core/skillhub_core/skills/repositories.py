@@ -407,6 +407,28 @@ def list_skill_notebooks(session: Session, skill_id: int) -> list[dict]:
     return out
 
 
+def best_effectiveness_by_skill(
+    session: Session, skill_ids: list[int]
+) -> dict[int, tuple[float, str]]:
+    """Best (effectiveness, model) per skill across all its recorded sandbox trials — the
+    empirical headline the catalog list surfaces instead of the static rubric score. Skills with
+    no trial yet (or no graded/passing entry) are simply absent from the result."""
+    if not skill_ids:
+        return {}
+    rows = list(
+        session.scalars(select(SkillNotebook).where(SkillNotebook.skill_id.in_(skill_ids))).all()
+    )
+    best: dict[int, tuple[float, str]] = {}
+    for nb in rows:
+        eff = _effectiveness(nb.summary)
+        if eff is None:
+            continue
+        current = best.get(nb.skill_id)
+        if current is None or eff > current[0]:
+            best[nb.skill_id] = (eff, nb.model)
+    return best
+
+
 def upsert_skill_notebook(
     session: Session,
     *,
@@ -663,7 +685,10 @@ class SqlSkillRepository:
 
     def list(self, *, search: str | None, category: str | None, evaluated: bool | None) -> list[SkillSummary]:
         skills = list_skills(self._session, search=search, category=category, evaluated=evaluated)
-        return [serializers.skill_to_summary(s) for s in skills]
+        best_effectiveness = best_effectiveness_by_skill(self._session, [s.id for s in skills])
+        return [
+            serializers.skill_to_summary(s, best_effectiveness.get(s.id)) for s in skills
+        ]
 
     def get(self, skill_id: int) -> SkillDetail | None:
         skill = get_skill(self._session, skill_id)
@@ -821,13 +846,21 @@ class SqlCatalogRepository:
         vector = embeddings.embed(query)
         if vector is not None:
             hits = semantic_search(self._session, vector, limit=limit)
+            best_effectiveness = best_effectiveness_by_skill(self._session, [s.id for s, _ in hits])
             return [
-                SearchHit(skill=serializers.skill_to_summary(s), similarity=round(sim, 4))
+                SearchHit(
+                    skill=serializers.skill_to_summary(s, best_effectiveness.get(s.id)),
+                    similarity=round(sim, 4),
+                )
                 for s, sim in hits
             ]
         # Fallback: plain name/author match when embeddings are unavailable.
         skills = list_skills(self._session, search=query)[:limit]
-        return [SearchHit(skill=serializers.skill_to_summary(s)) for s in skills]
+        best_effectiveness = best_effectiveness_by_skill(self._session, [s.id for s in skills])
+        return [
+            SearchHit(skill=serializers.skill_to_summary(s, best_effectiveness.get(s.id)))
+            for s in skills
+        ]
 
     def stats(self) -> StatsOut:
         return StatsOut(**stats(self._session))

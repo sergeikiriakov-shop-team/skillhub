@@ -60,6 +60,12 @@ class SkillSummary(BaseModel):
     categories: list[CategoryOut]
     task_group: str | None = None
     updated_at: datetime
+    # Empirical headline from the sandbox-trial matrix (0..1) — the best (skill, model)
+    # effectiveness recorded across all trials, i.e. what the skill actually does under its best
+    # model, judge-panel graded and gated by the objective scorecard. None if never trialed; the
+    # static rubric `overall_score` above is a structural/doc score and is not the same signal.
+    best_effectiveness: float | None = None
+    best_effectiveness_model: str | None = None
 
 
 class SkillVersionInfo(BaseModel):

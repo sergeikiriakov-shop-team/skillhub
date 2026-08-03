@@ -1,4 +1,4 @@
-import { Badge, Group, Progress, Stack, Text } from "@mantine/core";
+import { Badge, Group, Progress, Stack, Text, Tooltip } from "@mantine/core";
 import { useI18n } from "../i18n";
 
 export function scoreColor(value: number | null | undefined): string {
@@ -22,6 +22,40 @@ export function ScoreBadge({ value, size = "md" }: { value: number | null; size?
     <Badge color={scoreColor(value)} variant="filled" size={size}>
       {value.toFixed(1)} / 10
     </Badge>
+  );
+}
+
+// The empirical headline: best (skill, model) effectiveness (0..1) across the sandbox-trial
+// matrix — judge-panel graded, gated by the objective scorecard. Same color bands as ScoreBadge
+// (0..1 <-> 0..10) so the two read consistently wherever both appear.
+export function EffectivenessBadge({
+  value,
+  model,
+  size = "md",
+}: {
+  value: number | null;
+  model?: string | null;
+  size?: string;
+}) {
+  const { t } = useI18n();
+  if (value == null) {
+    return (
+      <Badge color="gray" variant="light" size={size}>
+        {t("score.notTrialed")}
+      </Badge>
+    );
+  }
+  const badge = (
+    <Badge color={scoreColor(value * 10)} variant="filled" size={size}>
+      {Math.round(value * 100)}%
+    </Badge>
+  );
+  return model ? (
+    <Tooltip label={t("score.effectivenessTitle", { model })} withArrow>
+      {badge}
+    </Tooltip>
+  ) : (
+    badge
   );
 }
 

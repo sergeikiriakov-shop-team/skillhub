@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, SkillSummary } from "../api";
-import { ScoreBadge } from "../components/Score";
+import { EffectivenessBadge } from "../components/Score";
 import { useI18n } from "../i18n";
 import type { TFunc } from "../i18n";
 
@@ -29,7 +29,11 @@ function SkillCard({ skill, similarity }: { skill: SkillSummary; similarity?: nu
         <Text fw={600} truncate>
           {skill.name}
         </Text>
-        <ScoreBadge value={skill.overall_score} size="sm" />
+        <EffectivenessBadge
+          value={skill.best_effectiveness}
+          model={skill.best_effectiveness_model}
+          size="sm"
+        />
       </Group>
       <Text size="xs" c="dimmed" mb="xs">
         {t("catalog.by", { author: skill.author ?? t("catalog.unknownAuthor") })}

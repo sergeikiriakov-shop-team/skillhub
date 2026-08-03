@@ -71,8 +71,11 @@ def _categories(skill: Skill) -> list[CategoryOut]:
     return out
 
 
-def skill_to_summary(skill: Skill) -> SkillSummary:
+def skill_to_summary(
+    skill: Skill, best_effectiveness: tuple[float, str] | None = None
+) -> SkillSummary:
     version = skill.latest_version
+    effectiveness, effectiveness_model = best_effectiveness or (None, None)
     return SkillSummary(
         id=skill.id,
         name=skill.name,
@@ -86,6 +89,8 @@ def skill_to_summary(skill: Skill) -> SkillSummary:
         categories=_categories(skill),
         task_group=skill.task_group,
         updated_at=skill.updated_at,
+        best_effectiveness=effectiveness,
+        best_effectiveness_model=effectiveness_model,
     )
 
 

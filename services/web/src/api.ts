@@ -40,6 +40,12 @@ export interface SkillSummary {
   categories: Category[];
   task_group: string | null;
   updated_at: string;
+  // Empirical headline from the sandbox-trial matrix (0..1): the best (skill, model)
+  // effectiveness across all recorded trials — judge-panel graded, gated by the objective
+  // scorecard. null if the skill has never been trialed. This is a different, more accurate
+  // signal than the static rubric `overall_score` above.
+  best_effectiveness: number | null;
+  best_effectiveness_model: string | null;
 }
 
 export interface SkillVersionInfo {
