@@ -635,6 +635,48 @@ function ModelMatrix({
   );
 }
 
+// The individual blind judge votes behind the panel-median grade (each judge's overall + note).
+function JudgePanel({ notebook }: { notebook: SkillNotebook }) {
+  const { t } = useI18n();
+  const panel = notebook.panel;
+  if (!panel || panel.length === 0) return null;
+  const grade = notebook.result_grade;
+  return (
+    <div>
+      <Text size="sm" fw={600} mb={2}>
+        {t("trial.panel")}
+      </Text>
+      <Text fz={11} c="dimmed" mb={6}>
+        {t("trial.panelHint", { grade: grade != null ? grade.toFixed(1) : "—", n: String(panel.length) })}
+      </Text>
+      {notebook.dimensions && <DimBreakdown dims={notebook.dimensions} />}
+      <Stack gap={6} mt={6}>
+        {panel.map((v, i) => (
+          <Paper key={`${v.judge}-${i}`} withBorder radius="sm" p="xs">
+            <Group justify="space-between" wrap="nowrap" gap="sm" mb={v.note ? 3 : 0}>
+              <Text ff="monospace" size="xs" fw={500} truncate>
+                {v.judge}
+              </Text>
+              <Text size="sm" ff="monospace" fw={700} c={effColor((v.overall ?? 0) / 10)}>
+                {v.overall.toFixed(1)}
+                <Text span fz={10} c="dimmed">
+                  {" "}
+                  / 10
+                </Text>
+              </Text>
+            </Group>
+            {v.note && (
+              <Text fz={11} c="dimmed">
+                {v.note}
+              </Text>
+            )}
+          </Paper>
+        ))}
+      </Stack>
+    </div>
+  );
+}
+
 function SandboxTrial({
   fit,
   notebook,
@@ -689,6 +731,8 @@ function SandboxTrial({
               )}
             </Group>
           )}
+
+          {notebook && <JudgePanel notebook={notebook} />}
 
           {entries.length > 0 && (
             <div>
