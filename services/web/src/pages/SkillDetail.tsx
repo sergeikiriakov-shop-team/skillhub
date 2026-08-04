@@ -85,6 +85,9 @@ export default function SkillDetail() {
         (skill.task_group != null && r.scope === skill.task_group) ||
         (r.scope != null && catKeys.has(r.scope))),
   );
+  // Same "improve" highlight the catalog card shows, at a glance in the header — the fuller
+  // list (any kind) is still below in the improvements card.
+  const openImproveCount = improvements.filter((r) => r.kind === "improve").length;
 
   return (
     <Container size="xl">
@@ -94,6 +97,11 @@ export default function SkillDetail() {
             <Group gap="sm">
               <Title order={2}>{skill.name}</Title>
               <ScoreBadge value={skill.overall_score} />
+              {openImproveCount > 0 && (
+                <Badge color={KIND_COLOR.improve} variant="filled">
+                  {t("catalog.openImprove", { n: openImproveCount })}
+                </Badge>
+              )}
             </Group>
             <Text c="dimmed" size="sm">
               {t("detail.meta", {
