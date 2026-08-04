@@ -245,9 +245,18 @@ export default function SkillDetail() {
                               )}
                             </CopyButton>
                           </Group>
-                          <Code block style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>
+                          <Paper
+                            p="xs"
+                            bg="var(--mantine-color-default-hover)"
+                            style={{
+                              whiteSpace: "pre-wrap",
+                              overflowWrap: "anywhere",
+                              fontFamily: "monospace",
+                              fontSize: 12,
+                            }}
+                          >
                             {r.suggested_action}
-                          </Code>
+                          </Paper>
                         </>
                       )}
                     </Paper>
