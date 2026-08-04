@@ -146,7 +146,11 @@ def _contributors(skill: Skill) -> list[str]:
     return list(seen.keys())
 
 
-def skill_to_detail(skill: Skill, similar: list[tuple[Skill, float]] | None = None) -> SkillDetail:
+def skill_to_detail(
+    skill: Skill,
+    similar: list[tuple[Skill, float]] | None = None,
+    open_improve_count: int = 0,
+) -> SkillDetail:
     version = skill.latest_version
     evaluation = version.latest_evaluation if version else None
     return SkillDetail(
@@ -162,6 +166,7 @@ def skill_to_detail(skill: Skill, similar: list[tuple[Skill, float]] | None = No
         categories=_categories(skill),
         task_group=skill.task_group,
         updated_at=skill.updated_at,
+        open_improve_count=open_improve_count,
         estimated_tokens=_estimated_tokens(skill),
         trigger_text=version.trigger_text if version else None,
         body_md=version.body_md if version else "",

@@ -721,7 +721,10 @@ class SqlSkillRepository:
         skill = get_skill(self._session, skill_id)
         if skill is None:
             return None
-        return serializers.skill_to_detail(skill, find_similar(self._session, skill))
+        open_improve = open_improve_count_by_skill(self._session, [skill.name])
+        return serializers.skill_to_detail(
+            skill, find_similar(self._session, skill), open_improve.get(skill.name, 0)
+        )
 
     # --- ingest primitives (orchestrated by IngestService) ---
     def embed(self, text: str) -> list[float] | None:

@@ -85,9 +85,10 @@ export default function SkillDetail() {
         (skill.task_group != null && r.scope === skill.task_group) ||
         (r.scope != null && catKeys.has(r.scope))),
   );
-  // Same "improve" highlight the catalog card shows, at a glance in the header — the fuller
-  // list (any kind) is still below in the improvements card.
-  const openImproveCount = improvements.filter((r) => r.kind === "improve").length;
+  // Same "improve" highlight the catalog card shows, at a glance in the header — sourced from
+  // the skill's own field (server-computed, same data as the catalog) rather than the client-side
+  // `improvements` match below, so it doesn't depend on a second, independently-failable fetch.
+  const openImproveCount = skill.open_improve_count;
 
   return (
     <Container size="xl">
