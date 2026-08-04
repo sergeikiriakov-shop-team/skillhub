@@ -20,6 +20,12 @@ import { api, SkillSummary } from "../api";
 import { EffectivenessBadge } from "../components/Score";
 import { useI18n } from "../i18n";
 import type { TFunc } from "../i18n";
+import { KIND_COLOR } from "./Recommendations";
+
+// ~4 chars/token, the same rough heuristic the server used to produce the estimate.
+function formatTokens(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
 
 function SkillCard({ skill, similarity }: { skill: SkillSummary; similarity?: number | null }) {
   const { t } = useI18n();
@@ -38,11 +44,18 @@ function SkillCard({ skill, similarity }: { skill: SkillSummary; similarity?: nu
       <Text size="xs" c="dimmed" mb="xs">
         {t("catalog.by", { author: skill.author ?? t("catalog.unknownAuthor") })}
         {similarity != null && ` · ${t("catalog.match", { pct: (similarity * 100).toFixed(0) })}`}
+        {skill.estimated_tokens != null &&
+          ` · ${t("catalog.tokensApprox", { n: formatTokens(skill.estimated_tokens) })}`}
       </Text>
       <Text size="sm" lineClamp={3} mb="sm">
         {skill.description || t("catalog.noDescription")}
       </Text>
       <Group gap={4}>
+        {skill.open_improve_count > 0 && (
+          <Badge color={KIND_COLOR.improve} variant="filled" size="sm">
+            {t("catalog.openImprove", { n: skill.open_improve_count })}
+          </Badge>
+        )}
         {skill.categories.slice(0, 3).map((c) => (
           <Badge key={c.key} variant="light" size="sm">
             {c.label}

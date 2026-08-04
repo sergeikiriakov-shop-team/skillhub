@@ -87,6 +87,8 @@ const en: Dict = {
   "catalog.unknownAuthor": "unknown",
   "catalog.match": "{pct}% match",
   "catalog.noDescription": "No description.",
+  "catalog.openImprove": "🛠 {n} improve suggestion(s)",
+  "catalog.tokensApprox": "~{n} tok",
   "stats.skills": "Skills",
   "stats.evaluated": "Evaluated",
   "stats.avgScore": "Avg score",
@@ -198,6 +200,7 @@ const en: Dict = {
   "meth.synthesisTitle": "Synthesizing the ideal skill",
   "meth.synthesisPromptNote":
     "Synthesis prompt (filled in per group and run by every developer's Claude Code):",
+  "meth.recommendationTitle": "Proposing catalog changes",
 
   // skill detail
   "detail.notFound": "Skill not found.",
@@ -329,6 +332,8 @@ const ru: Dict = {
   "catalog.unknownAuthor": "неизвестен",
   "catalog.match": "совпадение {pct}%",
   "catalog.noDescription": "Без описания.",
+  "catalog.openImprove": "🛠 предложений улучшить: {n}",
+  "catalog.tokensApprox": "~{n} ток.",
   "stats.skills": "Скиллов",
   "stats.evaluated": "Оценено",
   "stats.avgScore": "Средний балл",
@@ -440,6 +445,7 @@ const ru: Dict = {
   "meth.synthesisTitle": "Синтез идеального скилла",
   "meth.synthesisPromptNote":
     "Промпт синтеза (заполняется по группе и выполняется в Claude Code каждого разработчика):",
+  "meth.recommendationTitle": "Как предлагаются изменения каталога",
 
   // skill detail
   "detail.notFound": "Скилл не найден.",

@@ -47,6 +47,22 @@ def evaluation_to_out(evaluation: Evaluation) -> EvaluationOut:
     )
 
 
+_CHARS_PER_TOKEN = 4  # standard rough heuristic (English/code mix); a size proxy, not a measurement.
+
+
+def _estimated_tokens(skill: Skill) -> int | None:
+    """Rough context-token cost of loading this skill: SKILL.md (raw_content, i.e. frontmatter +
+    body) plus every references/* file, via the ~4-chars-per-token heuristic. None if there is no
+    version to measure."""
+    version = skill.latest_version
+    if version is None:
+        return None
+    chars = len(version.raw_content or "")
+    for ref in version.references or []:
+        chars += len(ref.get("content", "") if isinstance(ref, dict) else "")
+    return chars // _CHARS_PER_TOKEN
+
+
 def _overall_score(skill: Skill) -> float | None:
     version = skill.latest_version
     if version is None:
@@ -72,7 +88,9 @@ def _categories(skill: Skill) -> list[CategoryOut]:
 
 
 def skill_to_summary(
-    skill: Skill, best_effectiveness: tuple[float, str] | None = None
+    skill: Skill,
+    best_effectiveness: tuple[float, str] | None = None,
+    open_improve_count: int = 0,
 ) -> SkillSummary:
     version = skill.latest_version
     effectiveness, effectiveness_model = best_effectiveness or (None, None)
@@ -91,6 +109,8 @@ def skill_to_summary(
         updated_at=skill.updated_at,
         best_effectiveness=effectiveness,
         best_effectiveness_model=effectiveness_model,
+        open_improve_count=open_improve_count,
+        estimated_tokens=_estimated_tokens(skill),
     )
 
 
@@ -142,6 +162,7 @@ def skill_to_detail(skill: Skill, similar: list[tuple[Skill, float]] | None = No
         categories=_categories(skill),
         task_group=skill.task_group,
         updated_at=skill.updated_at,
+        estimated_tokens=_estimated_tokens(skill),
         trigger_text=version.trigger_text if version else None,
         body_md=version.body_md if version else "",
         skill_md=_canonical_skill_md(skill),

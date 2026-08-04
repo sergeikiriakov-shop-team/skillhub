@@ -187,6 +187,32 @@ SYNTHESIS_PROMPT = (
     "BASE SKILL.md:\n{winner_body}"
 )
 
+# How the curator (any developer's Claude Code, via add_recommendation) proposes catalog changes.
+# Deliberately broader than SELECTION_STRATEGY/SYNTHESIS_STRATEGY above, which govern the NARROW,
+# mechanical procedure once 2+ skills already share a task_group. This governs the earlier,
+# judgment-heavy step of noticing that a change is worth proposing at all.
+RECOMMENDATION_STRATEGY = (
+    "A recommendation is not limited to structural comparison (shared prose, duplicated examples, "
+    "missing progressive disclosure, near-identical SKILL.md text). Judge by what a skill is FOR, "
+    "not only by what its SKILL.md happens to say: two skills can be worth merging, splitting, or "
+    "synthesizing together even with near-zero textual overlap if they serve the same underlying "
+    "GOAL (the business outcome a user is actually trying to reach) or overlap in DOMAIN / sphere of "
+    "activity (the part of the business they operate in — e.g. checkout, logistics, invoicing, code "
+    "review, QA) — a shared goal or domain is real evidence even when the wording is unrelated. "
+    "Concretely: (1) `dedup`/`merge` when two skills solve the same goal via different mechanisms, "
+    "not only when their text repeats; (2) `split` when one skill's trigger actually spans several "
+    "distinct goals or domains, so a user of one sub-goal has to read past the others; (3) "
+    "`synthesize` also covers PROACTIVELY proposing a brand-new skill for a goal or domain the "
+    "catalog has no skill for at all — this is broader than the narrow graft-an-ideal-from-a-2+-"
+    "member-task_group procedure in SYNTHESIS_STRATEGY, which only fires once such a group exists; "
+    "(4) `improve` extends past doc structure to a skill that is well-written but pointed at the "
+    "wrong goal, missing a step a real trial exposed, or scoped narrower than the domain it should "
+    "cover. Every recommendation still needs a concrete, checkable rationale — a shared consumer, a "
+    "sandbox-trial finding, adjacent-but-non-overlapping task_group slugs pointing at one underlying "
+    "job, or an explicit gap a user or trial surfaced — a thematic hunch with no evidence is not "
+    "enough to propose a catalog change."
+)
+
 # ── Trial-result judging: the empirical, per-model layer ──────────────────────────────────────
 # The rubric above grades a SKILL.md as AUTHORED (model-agnostic). This block grades the RESULT of a
 # sandbox TRIAL — the artifact a given model actually produced when it RAN the skill — so the quality

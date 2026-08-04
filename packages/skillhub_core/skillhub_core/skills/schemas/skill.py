@@ -66,6 +66,13 @@ class SkillSummary(BaseModel):
     # static rubric `overall_score` above is a structural/doc score and is not the same signal.
     best_effectiveness: float | None = None
     best_effectiveness_model: str | None = None
+    # Open (proposed/accepted) `improve`-kind curator recommendations naming this skill — a
+    # concrete, actionable suggestion, distinct from the score/effectiveness signals above.
+    open_improve_count: int = 0
+    # Rough context-token cost of LOADING this skill (SKILL.md + all references/*), estimated via
+    # the standard ~4-chars-per-token heuristic — not a measured trial cost, just a size proxy so
+    # a much heavier skill doesn't look free next to a lean one. None if the skill has no content.
+    estimated_tokens: int | None = None
 
 
 class SkillVersionInfo(BaseModel):

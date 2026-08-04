@@ -29,6 +29,7 @@ from .interfaces import (
 )
 from .rubric import (
     CATEGORIZATION_RULES,
+    RECOMMENDATION_STRATEGY,
     RESULT_JUDGE_DIMENSIONS,
     RESULT_JUDGE_INSTRUCTIONS,
     RESULT_JUDGE_PANEL,
@@ -83,6 +84,7 @@ class RubricService:
             categorization_rules=CATEGORIZATION_RULES,
             selection_strategy=SELECTION_STRATEGY,
             synthesis_strategy=SYNTHESIS_STRATEGY,
+            recommendation_strategy=RECOMMENDATION_STRATEGY,
             synthesis_algorithm=SYNTHESIS_ALGORITHM,
             synthesis_prompt=SYNTHESIS_PROMPT,
             result_judge_version=RESULT_JUDGE_VERSION,

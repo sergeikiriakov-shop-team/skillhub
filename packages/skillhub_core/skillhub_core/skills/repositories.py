@@ -429,6 +429,29 @@ def best_effectiveness_by_skill(
     return best
 
 
+def open_improve_count_by_skill(session: Session, skill_names: list[str]) -> dict[str, int]:
+    """Count of OPEN (proposed/accepted) `improve`-kind curator recommendations naming each skill
+    in `targets` — surfaced on the catalog card so an outstanding suggestion isn't buried on the
+    separate Recommendations page. Keyed by skill NAME (targets store names, not ids)."""
+    if not skill_names:
+        return {}
+    names = set(skill_names)
+    rows = list(
+        session.scalars(
+            select(Recommendation).where(
+                Recommendation.status.in_(["proposed", "accepted"]),
+                Recommendation.kind == "improve",
+            )
+        ).all()
+    )
+    counts: dict[str, int] = {}
+    for rec in rows:
+        for target in rec.targets or []:
+            if target in names:
+                counts[target] = counts.get(target, 0) + 1
+    return counts
+
+
 def upsert_skill_notebook(
     session: Session,
     *,
@@ -686,8 +709,12 @@ class SqlSkillRepository:
     def list(self, *, search: str | None, category: str | None, evaluated: bool | None) -> list[SkillSummary]:
         skills = list_skills(self._session, search=search, category=category, evaluated=evaluated)
         best_effectiveness = best_effectiveness_by_skill(self._session, [s.id for s in skills])
+        open_improve = open_improve_count_by_skill(self._session, [s.name for s in skills])
         return [
-            serializers.skill_to_summary(s, best_effectiveness.get(s.id)) for s in skills
+            serializers.skill_to_summary(
+                s, best_effectiveness.get(s.id), open_improve.get(s.name, 0)
+            )
+            for s in skills
         ]
 
     def get(self, skill_id: int) -> SkillDetail | None:
@@ -847,9 +874,12 @@ class SqlCatalogRepository:
         if vector is not None:
             hits = semantic_search(self._session, vector, limit=limit)
             best_effectiveness = best_effectiveness_by_skill(self._session, [s.id for s, _ in hits])
+            open_improve = open_improve_count_by_skill(self._session, [s.name for s, _ in hits])
             return [
                 SearchHit(
-                    skill=serializers.skill_to_summary(s, best_effectiveness.get(s.id)),
+                    skill=serializers.skill_to_summary(
+                        s, best_effectiveness.get(s.id), open_improve.get(s.name, 0)
+                    ),
                     similarity=round(sim, 4),
                 )
                 for s, sim in hits
@@ -857,8 +887,13 @@ class SqlCatalogRepository:
         # Fallback: plain name/author match when embeddings are unavailable.
         skills = list_skills(self._session, search=query)[:limit]
         best_effectiveness = best_effectiveness_by_skill(self._session, [s.id for s in skills])
+        open_improve = open_improve_count_by_skill(self._session, [s.name for s in skills])
         return [
-            SearchHit(skill=serializers.skill_to_summary(s, best_effectiveness.get(s.id)))
+            SearchHit(
+                skill=serializers.skill_to_summary(
+                    s, best_effectiveness.get(s.id), open_improve.get(s.name, 0)
+                )
+            )
             for s in skills
         ]
 

@@ -46,6 +46,10 @@ export interface SkillSummary {
   // signal than the static rubric `overall_score` above.
   best_effectiveness: number | null;
   best_effectiveness_model: string | null;
+  // Open (proposed/accepted) `improve`-kind curator recommendations naming this skill.
+  open_improve_count: number;
+  // Rough context-token cost of loading this skill (SKILL.md + references), ~4 chars/token.
+  estimated_tokens: number | null;
 }
 
 export interface SkillVersionInfo {
@@ -178,6 +182,7 @@ export interface Rubric {
   synthesis_strategy: string;
   synthesis_algorithm: { step: string; detail: string }[];
   synthesis_prompt: string;
+  recommendation_strategy: string;
 }
 
 // --- Sandbox trial notebook (one per skill) ---

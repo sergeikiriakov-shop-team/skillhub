@@ -21,6 +21,7 @@ class RubricOut(BaseModel):
     categorization_rules: str = ""
     selection_strategy: str = ""
     synthesis_strategy: str = ""
+    recommendation_strategy: str = ""
     synthesis_algorithm: list[dict] = Field(default_factory=list)
     synthesis_prompt: str = ""
     # The empirical, per-model layer: how a TRIAL RESULT (the artifact a model produced) is graded by

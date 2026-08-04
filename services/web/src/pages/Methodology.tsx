@@ -243,6 +243,10 @@ export default function Methodology() {
             </>
           )}
         </Section>
+
+        <Section title={t("meth.recommendationTitle")}>
+          <Text size="sm">{r.recommendation_strategy}</Text>
+        </Section>
       </Stack>
     </Container>
   );
