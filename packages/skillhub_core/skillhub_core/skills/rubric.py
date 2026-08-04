@@ -210,7 +210,12 @@ RECOMMENDATION_STRATEGY = (
     "cover. Every recommendation still needs a concrete, checkable rationale — a shared consumer, a "
     "sandbox-trial finding, adjacent-but-non-overlapping task_group slugs pointing at one underlying "
     "job, or an explicit gap a user or trial surfaced — a thematic hunch with no evidence is not "
-    "enough to propose a catalog change."
+    "enough to propose a catalog change. When an `improve` recommendation is about one specific spot "
+    "in that skill's own body (add an example under a section, tighten one step), set `anchor` to the "
+    "EXACT text of the SKILL.md heading it attaches to (from `section_headings`) — it then renders "
+    "inline right after that section on the skill's page, not just in a side list. Leave `anchor` "
+    "unset for anything not tied to one existing heading in one skill (merge/dedup/synthesize, or an "
+    "improve that doesn't map to a current section)."
 )
 
 # ── Trial-result judging: the empirical, per-model layer ──────────────────────────────────────

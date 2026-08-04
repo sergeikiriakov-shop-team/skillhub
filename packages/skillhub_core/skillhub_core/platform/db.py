@@ -84,6 +84,8 @@ def _apply_column_migrations() -> None:
         "UPDATE skill_notebooks SET model='claude-opus-4-8' WHERE model=''",
         "ALTER TABLE skill_notebooks DROP CONSTRAINT IF EXISTS skill_notebooks_pkey",
         "ALTER TABLE skill_notebooks ADD PRIMARY KEY (skill_id, model)",
+        # Inline body-anchor for `improve` recommendations (which SKILL.md heading they attach to).
+        "ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS anchor VARCHAR(200)",
     ]
     with engine.begin() as conn:
         for stmt in statements:

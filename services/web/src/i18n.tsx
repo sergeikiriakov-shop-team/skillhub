@@ -223,6 +223,7 @@ const en: Dict = {
   "detail.installNote":
     "Claude Code fetches it and writes SKILL.md (+ references) into .claude/skills/{name}/.",
   "detail.improvements": "Available improvements ({count})",
+  "detail.insertHere": "Suggested addition",
 
   // auth
   "auth.signIn": "Sign in with GitHub",
@@ -468,6 +469,7 @@ const ru: Dict = {
   "detail.installNote":
     "Claude Code скачает его и запишет SKILL.md (+ references) в .claude/skills/{name}/.",
   "detail.improvements": "Доступные улучшения ({count})",
+  "detail.insertHere": "Предложенное добавление",
 
   // auth
   "auth.signIn": "Войти через GitHub",

@@ -23,6 +23,9 @@ class Recommendation(Base):
     rationale: Mapped[str] = mapped_column(Text, default="")
     scope: Mapped[str | None] = mapped_column(String(120), nullable=True)  # category / task_group / skill
     targets: Mapped[list] = mapped_column(JSONB, default=list)  # skill names/ids or group keys involved
+    # For kind="improve": the exact SKILL.md heading text this suggestion attaches to, so the skill
+    # detail page can render it inline right after that section instead of only in a side list.
+    anchor: Mapped[str | None] = mapped_column(String(200), nullable=True)
     suggested_action: Mapped[str] = mapped_column(Text, default="")  # a runnable instruction for Claude Code
     status: Mapped[str] = mapped_column(String(20), default="proposed", index=True)  # see REC_STATUSES
     created_by: Mapped[str | None] = mapped_column(String(200), nullable=True)

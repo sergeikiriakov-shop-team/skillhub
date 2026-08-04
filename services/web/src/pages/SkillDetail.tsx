@@ -75,6 +75,11 @@ export default function SkillDetail() {
   const improvements = skill.open_recommendations;
   const openImproveCount = skill.open_improve_count;
 
+  // improve-kind recs pinned to one SKILL.md heading render inline right after that section
+  // (see bodySegments below) instead of only in the side "improvements" card.
+  const anchoredImprovements = improvements.filter((r) => r.kind === "improve" && r.anchor);
+  const bodySegments = splitBodyByHeading(skill.body_md);
+
   return (
     <Container size="xl">
       <Stack gap="md">
@@ -134,13 +139,56 @@ export default function SkillDetail() {
                 showLabel={t("detail.bodyShowMore")}
                 hideLabel={t("detail.bodyShowLess")}
               >
-                <Paper
-                  p="sm"
-                  bg="var(--mantine-color-default-hover)"
-                  style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: 13 }}
-                >
-                  {skill.body_md}
-                </Paper>
+                {bodySegments.map((seg, i) => {
+                  const markers = seg.heading
+                    ? anchoredImprovements.filter(
+                        (r) => r.anchor!.trim().toLowerCase() === seg.heading!.toLowerCase(),
+                      )
+                    : [];
+                  return (
+                    <div key={i}>
+                      <Paper
+                        p="sm"
+                        bg="var(--mantine-color-default-hover)"
+                        style={{ whiteSpace: "pre-wrap", fontFamily: "monospace", fontSize: 13 }}
+                      >
+                        {seg.text}
+                      </Paper>
+                      {markers.map((r) => (
+                        <Paper
+                          key={r.id}
+                          withBorder
+                          radius="sm"
+                          p="sm"
+                          my={4}
+                          style={{
+                            borderColor: "var(--mantine-color-indigo-4)",
+                            borderStyle: "dashed",
+                            background: "var(--mantine-color-indigo-light)",
+                          }}
+                        >
+                          <Group gap="xs" mb={4} wrap="nowrap">
+                            <Badge color={KIND_COLOR.improve} variant="filled" size="sm">
+                              {t("detail.insertHere")}
+                            </Badge>
+                            <Text size="sm" fw={600}>
+                              {r.title}
+                            </Text>
+                          </Group>
+                          {r.suggested_action && (
+                            <Text
+                              size="xs"
+                              ff="monospace"
+                              style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+                            >
+                              {r.suggested_action}
+                            </Text>
+                          )}
+                        </Paper>
+                      ))}
+                    </div>
+                  );
+                })}
               </Spoiler>
             </Card>
 
@@ -381,6 +429,33 @@ export default function SkillDetail() {
       </Stack>
     </Container>
   );
+}
+
+// --- SKILL.md body, split at headings so an anchored improve-recommendation can render inline
+// right after the section it attaches to, instead of only in the side "improvements" card. -----
+
+interface BodySegment {
+  heading: string | null; // heading text (no #'s), or null for the preamble before any heading
+  text: string; // this segment's raw lines, including its own heading line if any
+}
+
+function splitBodyByHeading(bodyMd: string): BodySegment[] {
+  const lines = bodyMd.split("\n");
+  const segments: BodySegment[] = [];
+  let heading: string | null = null;
+  let buf: string[] = [];
+  for (const line of lines) {
+    const m = /^#{1,6}\s+(.*)/.exec(line);
+    if (m) {
+      if (buf.length) segments.push({ heading, text: buf.join("\n") });
+      heading = m[1].trim();
+      buf = [line];
+    } else {
+      buf.push(line);
+    }
+  }
+  if (buf.length) segments.push({ heading, text: buf.join("\n") });
+  return segments;
 }
 
 // --- Sandbox trial (one notebook per skill) --------------------------------------------------

@@ -22,6 +22,12 @@ class RecommendationIn(BaseModel):
     suggested_action: str = Field(
         default="", description="A runnable instruction a developer's Claude Code can execute."
     )
+    anchor: str | None = Field(
+        default=None,
+        description="For kind=improve: the exact SKILL.md heading text (e.g. 'Workflow') this "
+        "suggestion attaches to, so it renders inline in the skill's body right after that "
+        "section. Omit for recommendations not tied to one spot in one skill's body.",
+    )
 
 
 class RecommendationStatusUpdate(BaseModel):
@@ -36,6 +42,7 @@ class RecommendationOut(BaseModel):
     scope: str | None
     targets: list[str]
     suggested_action: str
+    anchor: str | None = None
     status: str
     created_by: str | None
     created_at: datetime

@@ -156,6 +156,7 @@ def _recommendation_to_out(rec: Recommendation) -> RecommendationOut:
         scope=rec.scope,
         targets=rec.targets or [],
         suggested_action=rec.suggested_action,
+        anchor=rec.anchor,
         status=rec.status,
         created_by=rec.created_by,
         created_at=rec.created_at,

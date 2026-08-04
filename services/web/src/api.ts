@@ -66,6 +66,7 @@ export interface Recommendation {
   scope: string | null;
   targets: string[];
   suggested_action: string;
+  anchor: string | null;
   status: string;
   created_by: string | null;
   created_at: string;

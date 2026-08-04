@@ -390,12 +390,18 @@ def add_recommendation(
     scope: str | None = None,
     targets: list[str] | None = None,
     suggested_action: str = "",
+    anchor: str | None = None,
 ) -> Any:
     """Propose a catalog change so it is stored and shown on the dashboard for a developer to run
     later. `kind`: synthesize|split|improve|merge|dedup|delete|other (`improve` = upgrade/restructure
     ONE skill in place — move detail into references/, add examples, tighten the trigger, progressive
     disclosure — without splitting it). `scope`: a category/task_group/skill. `suggested_action`: a
-    runnable instruction. Requires a contributor+ role."""
+    runnable instruction. `anchor`: for `improve` recs about ONE specific spot in that skill's body,
+    the EXACT text of the SKILL.md heading it attaches to (get it from `get_skill`'s
+    `section_headings`, e.g. "Workflow") — this renders the suggestion inline right after that
+    section on the skill's page instead of only in a side list. Omit for recs not tied to one heading
+    (e.g. merge/dedup/synthesize, or an improve that doesn't map to an existing section). Requires a
+    contributor+ role."""
     body = {
         "kind": kind,
         "title": title,
@@ -403,6 +409,7 @@ def add_recommendation(
         "scope": scope,
         "targets": targets or [],
         "suggested_action": suggested_action,
+        "anchor": anchor,
     }
     return _authed_call("POST", "/api/recommendations", json=body)
 
