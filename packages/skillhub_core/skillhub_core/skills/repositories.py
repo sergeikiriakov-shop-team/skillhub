@@ -452,6 +452,30 @@ def open_improve_count_by_skill(session: Session, skill_names: list[str]) -> dic
     return counts
 
 
+def open_recommendations_for_skill(session: Session, skill: Skill) -> list[Recommendation]:
+    """Every OPEN (proposed/accepted) recommendation applying to THIS skill: it is a named target,
+    or the scope matches the skill's name / task_group / one of its categories. Mirrors the
+    matching the skill-detail page used to do client-side against a second /recommendations
+    fetch — computed here so it rides along with the single skill fetch instead."""
+    cat_keys = {sc.category.key for sc in skill.categories if sc.category is not None}
+    rows = list(
+        session.scalars(
+            select(Recommendation).where(Recommendation.status.in_(["proposed", "accepted"]))
+        ).all()
+    )
+    matches = []
+    for rec in rows:
+        targets = rec.targets or []
+        if (
+            skill.name in targets
+            or rec.scope == skill.name
+            or (skill.task_group is not None and rec.scope == skill.task_group)
+            or (rec.scope is not None and rec.scope in cat_keys)
+        ):
+            matches.append(rec)
+    return matches
+
+
 def upsert_skill_notebook(
     session: Session,
     *,
@@ -721,10 +745,8 @@ class SqlSkillRepository:
         skill = get_skill(self._session, skill_id)
         if skill is None:
             return None
-        open_improve = open_improve_count_by_skill(self._session, [skill.name])
-        return serializers.skill_to_detail(
-            skill, find_similar(self._session, skill), open_improve.get(skill.name, 0)
-        )
+        open_recs = open_recommendations_for_skill(self._session, skill)
+        return serializers.skill_to_detail(skill, find_similar(self._session, skill), open_recs)
 
     # --- ingest primitives (orchestrated by IngestService) ---
     def embed(self, text: str) -> list[float] | None:

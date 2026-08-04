@@ -93,6 +93,7 @@ export interface SkillDetail extends SkillSummary {
   latest_evaluation: Evaluation | null;
   similar: SimilarSkill[];
   similar_warning: { skill_id: number; name: string; similarity: number } | null;
+  open_recommendations: Recommendation[];
 }
 
 export interface SearchHit {

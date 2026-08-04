@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from . import adapters
 from ..platform.models import User
-from .models import Evaluation, Skill, SkillVersion
+from .models import Evaluation, Recommendation, Skill, SkillVersion
 from .schemas import (
     CategoryOut,
     EvaluationOut,
     ParsedSkill,
+    RecommendationOut,
     ReferenceIn,
     SimilarSkill,
     SkillDetail,
@@ -146,13 +147,30 @@ def _contributors(skill: Skill) -> list[str]:
     return list(seen.keys())
 
 
+def _recommendation_to_out(rec: Recommendation) -> RecommendationOut:
+    return RecommendationOut(
+        id=rec.id,
+        kind=rec.kind,
+        title=rec.title,
+        rationale=rec.rationale,
+        scope=rec.scope,
+        targets=rec.targets or [],
+        suggested_action=rec.suggested_action,
+        status=rec.status,
+        created_by=rec.created_by,
+        created_at=rec.created_at,
+        updated_at=rec.updated_at,
+    )
+
+
 def skill_to_detail(
     skill: Skill,
     similar: list[tuple[Skill, float]] | None = None,
-    open_improve_count: int = 0,
+    open_recommendations: list[Recommendation] | None = None,
 ) -> SkillDetail:
     version = skill.latest_version
     evaluation = version.latest_evaluation if version else None
+    open_recs = open_recommendations or []
     return SkillDetail(
         id=skill.id,
         name=skill.name,
@@ -166,7 +184,8 @@ def skill_to_detail(
         categories=_categories(skill),
         task_group=skill.task_group,
         updated_at=skill.updated_at,
-        open_improve_count=open_improve_count,
+        open_improve_count=sum(1 for r in open_recs if r.kind == "improve"),
+        open_recommendations=[_recommendation_to_out(r) for r in open_recs],
         estimated_tokens=_estimated_tokens(skill),
         trigger_text=version.trigger_text if version else None,
         body_md=version.body_md if version else "",

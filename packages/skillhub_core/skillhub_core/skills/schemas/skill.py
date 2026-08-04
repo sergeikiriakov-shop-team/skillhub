@@ -6,6 +6,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from .recommendation import RecommendationOut
+
 
 class ReferenceIn(BaseModel):
     path: str
@@ -99,6 +101,11 @@ class SkillDetail(SkillSummary):
     latest_evaluation: EvaluationOut | None
     similar: list["SimilarSkill"] = Field(default_factory=list)
     similar_warning: dict | None = None  # set only on upload when a similar skill exists
+    # Every OPEN (proposed/accepted) curator recommendation applying to this skill (named as a
+    # target, or its scope matches the skill's name / task_group / one of its categories) —
+    # computed server-side, in the SAME request as the skill itself, so the page doesn't depend on
+    # a second, independently-failable /recommendations fetch to show them.
+    open_recommendations: list[RecommendationOut] = Field(default_factory=list)
 
 
 class SimilarSkill(BaseModel):

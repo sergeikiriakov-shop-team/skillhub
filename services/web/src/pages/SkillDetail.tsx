@@ -39,10 +39,6 @@ export default function SkillDetail() {
     queryKey: ["skill", skillId],
     queryFn: () => api.getSkill(skillId),
   });
-  const { data: allRecs } = useQuery({
-    queryKey: ["recommendations"],
-    queryFn: api.listRecommendations,
-  });
   // Effectiveness-by-model matrix; the viewer defaults to the best model, overridable by clicking.
   const { data: fit } = useQuery({
     queryKey: ["skill-fit", skillId],
@@ -74,20 +70,9 @@ export default function SkillDetail() {
   const evalr = skill.latest_evaluation;
   const installPhrase = t("detail.installPhrase", { name: skill.name });
 
-  // Open recommendations that apply to THIS skill: it is a named target, or the scope matches the
-  // skill's name / task_group / one of its categories.
-  const catKeys = new Set(skill.categories.map((c) => c.key));
-  const improvements = (allRecs ?? []).filter(
-    (r) =>
-      (r.status === "proposed" || r.status === "accepted") &&
-      (r.targets.includes(skill.name) ||
-        r.scope === skill.name ||
-        (skill.task_group != null && r.scope === skill.task_group) ||
-        (r.scope != null && catKeys.has(r.scope))),
-  );
-  // Same "improve" highlight the catalog card shows, at a glance in the header — sourced from
-  // the skill's own field (server-computed, same data as the catalog) rather than the client-side
-  // `improvements` match below, so it doesn't depend on a second, independently-failable fetch.
+  // Open recommendations that apply to THIS skill — server-computed in the same response as the
+  // skill itself, so this doesn't depend on a second, independently-failable /recommendations fetch.
+  const improvements = skill.open_recommendations;
   const openImproveCount = skill.open_improve_count;
 
   return (
