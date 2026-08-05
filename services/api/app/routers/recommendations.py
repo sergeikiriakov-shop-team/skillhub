@@ -21,9 +21,11 @@ router = APIRouter(tags=["recommendations"])
 
 @router.get("/recommendations", response_model=list[RecommendationOut])
 def list_recommendations(
-    status: str | None = None, service: RecommendationService = Depends(get_recommendation_service)
+    status: str | None = None,
+    target_kind: str | None = None,
+    service: RecommendationService = Depends(get_recommendation_service),
 ) -> list[RecommendationOut]:
-    return service.list(status)
+    return service.list(status, target_kind)
 
 
 @router.post("/recommendations", response_model=RecommendationOut, status_code=201)

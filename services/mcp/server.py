@@ -289,10 +289,91 @@ def get_stats() -> Any:
 
 
 @mcp.tool()
-def list_recommendations(status: str | None = None) -> Any:
+def list_recommendations(status: str | None = None, target_kind: str | None = None) -> Any:
     """List curator recommendations (proposed catalog changes: synthesize/split/improve/merge/dedup/delete).
-    Optionally filter by status: proposed|accepted|done|dismissed."""
-    return _read_call("GET", "/api/recommendations", params={"status": status} if status else None)
+    Optionally filter by status: proposed|accepted|done|dismissed, and by `target_kind`:
+    `skill` (about a SKILL.md) or `mcp` (about an MCP server's tool surface)."""
+    params = {k: v for k, v in {"status": status, "target_kind": target_kind}.items() if v}
+    return _read_call("GET", "/api/recommendations", params=params or None)
+
+
+@mcp.tool()
+def list_mcp_servers(search: str | None = None, family: str | None = None) -> Any:
+    """List catalogued MCP SERVERS (a separate catalog from skills): each with its tool count,
+    rubric score, open-improve count and the estimated token cost of merely having its tools
+    available. Optionally filter by a name/description substring or by `family` (the group of
+    sibling entries exposing the same surface against different environments, e.g. prod/dev/heap)."""
+    params = {k: v for k, v in {"search": search, "family": family}.items() if v}
+    return _read_call("GET", "/api/mcp", params=params or None)
+
+
+@mcp.tool()
+def get_mcp_server(server_id: int) -> Any:
+    """Get one catalogued MCP server: its full introspected tool surface (each tool's name,
+    description, parameter schema and required params), its latest evaluation, its version history
+    (where schema drift shows up), and every open recommendation about it."""
+    return _read_call("GET", f"/api/mcp/{server_id}")
+
+
+@mcp.tool()
+def get_mcp_rubric() -> Any:
+    """Fetch the MCP evaluation strategy — the shared algorithm for scoring an MCP server's TOOL
+    SURFACE (distinct from the skills rubric): `instructions`, `dimensions` (schema_precision,
+    tool_clarity, discoverability, result_shape, safety, token_economy), `weights`, `calibration`
+    anchors, the `evaluation_schema`, the `recommendation_strategy` and the
+    `introspection_protocol`. Fetch this before introspecting or scoring an MCP server."""
+    return _read_call("GET", "/api/mcp/rubric")
+
+
+@mcp.tool()
+def upload_mcp_server(
+    name: str,
+    tools: list[dict],
+    description: str = "",
+    label: str | None = None,
+    transport: str = "stdio",
+    family: str | None = None,
+) -> Any:
+    """Catalogue an MCP server by INTROSPECTING one you are already connected to.
+
+    SkillHub never connects out to a third-party MCP server and holds no credentials for one — YOU
+    are the introspection mechanism. Enumerate the tool surface you can actually see for this
+    server and pass it as `tools`: one entry per tool, each `{name, description, input_schema}`,
+    where `name` is the exact callable name, `description` is the tool's own description verbatim,
+    and `input_schema` is its parameter JSON Schema verbatim.
+
+    Read all of this from the LIVE connected server — never from a skill's `references/tools.md`,
+    a README, or memory. The entire point of this catalog is to expose where documentation and the
+    real schema have drifted apart, and transcribing the docs would launder exactly the discrepancy
+    you are trying to find. Do not summarize, retype or "tidy" a schema, and do not fill in a
+    missing description with what you assume the tool probably does: an empty description or an
+    untyped parameter is a real finding the rubric scores.
+
+    `name` is the server entry's name (e.g. `beliani-db-schema-prod`). Re-submitting an existing
+    name adds a new VERSION, so drift is visible in the history; an unchanged manifest is a no-op.
+    `family` groups sibling entries (e.g. `beliani-db-schema` for the prod/dev/heap trio).
+    Requires a contributor+ role."""
+    body = {
+        "name": name,
+        "description": description,
+        "label": label,
+        "transport": transport,
+        "family": family,
+        "tools": tools,
+    }
+    return _authed_call("POST", "/api/mcp", json=body)
+
+
+@mcp.tool()
+def submit_mcp_assessment(server_id: int, evaluation: dict, model: str = "claude-code") -> Any:
+    """Submit a completed assessment of an MCP server's tool surface. `evaluation` must match the
+    MCP rubric schema (schema_precision, tool_clarity, discoverability, result_shape, safety,
+    token_economy as 0-10 ints, plus overall 0-10, strengths[], weaknesses[], rationale). Fetch
+    `get_mcp_rubric` first and score against ITS dimensions — these are not the skills dimensions.
+    Score only what the manifest actually contains. Requires a contributor+ role."""
+    return _authed_call(
+        "POST", f"/api/mcp/{server_id}/assessment", json={"evaluation": evaluation, "model": model}
+    )
 
 
 @mcp.tool()
@@ -391,18 +472,26 @@ def add_recommendation(
     targets: list[str] | None = None,
     suggested_action: str = "",
     anchor: str | None = None,
+    target_kind: str = "skill",
 ) -> Any:
     """Propose a catalog change so it is stored and shown on the dashboard for a developer to run
     later. `kind`: synthesize|split|improve|merge|dedup|delete|other (`improve` = upgrade/restructure
     ONE skill in place — move detail into references/, add examples, tighten the trigger, progressive
     disclosure — without splitting it). `scope`: a category/task_group/skill. `suggested_action`: a
-    runnable instruction. `anchor`: for `improve` recs about ONE specific spot in that skill's body,
-    the EXACT text of the SKILL.md heading it attaches to (get it from `get_skill`'s
-    `section_headings`, e.g. "Workflow") — this renders the suggestion inline right after that
-    section on the skill's page instead of only in a side list. Omit for recs not tied to one heading
-    (e.g. merge/dedup/synthesize, or an improve that doesn't map to an existing section). Requires a
-    contributor+ role."""
+    runnable instruction.
+
+    `target_kind`: which catalog this is about — `skill` (default, a SKILL.md) or `mcp` (an MCP
+    server's tool surface, where targets/scope name servers). Cross-catalog findings are fine on
+    either side.
+
+    `anchor`: for `improve` recs about ONE specific spot, the EXACT text it attaches to — a SKILL.md
+    heading from `get_skill`'s `section_headings` (e.g. "Workflow") when target_kind=skill, or an
+    exact tool name from `get_mcp_server`'s `tools` (e.g. "find_columns") when target_kind=mcp. This
+    renders the suggestion inline right at that spot on the detail page instead of only in a side
+    list. Omit for recs not tied to one spot (e.g. merge/dedup/synthesize, or an improve about the
+    surface as a whole). Requires a contributor+ role."""
     body = {
+        "target_kind": target_kind,
         "kind": kind,
         "title": title,
         "rationale": rationale,

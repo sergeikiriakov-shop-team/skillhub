@@ -21,6 +21,7 @@ from .routers import (
     auth,
     categories,
     evaluations,
+    mcp,
     oauth,
     recommendations,
     reviews,
@@ -73,6 +74,8 @@ app.include_router(stats.router, prefix="/api", dependencies=_gated)
 app.include_router(admin.router, prefix="/api", dependencies=_gated)
 # Task Review context (peer-review handoff between developers and the lead).
 app.include_router(reviews.router, prefix="/api", dependencies=_gated)
+# MCP context (catalogued MCP servers, scored on their own tool-surface rubric).
+app.include_router(mcp.router, prefix="/api", dependencies=_gated)
 
 
 @app.get("/api/health")

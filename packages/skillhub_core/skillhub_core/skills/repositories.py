@@ -439,6 +439,7 @@ def open_improve_count_by_skill(session: Session, skill_names: list[str]) -> dic
     rows = list(
         session.scalars(
             select(Recommendation).where(
+                Recommendation.target_kind == "skill",
                 Recommendation.status.in_(["proposed", "accepted"]),
                 Recommendation.kind == "improve",
             )
@@ -460,7 +461,10 @@ def open_recommendations_for_skill(session: Session, skill: Skill) -> list[Recom
     cat_keys = {sc.category.key for sc in skill.categories if sc.category is not None}
     rows = list(
         session.scalars(
-            select(Recommendation).where(Recommendation.status.in_(["proposed", "accepted"]))
+            select(Recommendation).where(
+                Recommendation.target_kind == "skill",
+                Recommendation.status.in_(["proposed", "accepted"]),
+            )
         ).all()
     )
     matches = []
@@ -545,10 +549,14 @@ def task_groups(session: Session) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def list_recommendations(session: Session, status: str | None = None) -> list[Recommendation]:
+def list_recommendations(
+    session: Session, status: str | None = None, target_kind: str | None = None
+) -> list[Recommendation]:
     stmt = select(Recommendation).order_by(Recommendation.created_at.desc())
     if status:
         stmt = stmt.where(Recommendation.status == status)
+    if target_kind:
+        stmt = stmt.where(Recommendation.target_kind == target_kind)
     return list(session.scalars(stmt).all())
 
 
@@ -864,10 +872,12 @@ class SqlRecommendationRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def list(self, status: str | None) -> list[RecommendationOut]:
+    def list(
+        self, status: str | None, target_kind: str | None = None
+    ) -> list[RecommendationOut]:
         return [
             RecommendationOut.model_validate(r, from_attributes=True)
-            for r in list_recommendations(self._session, status=status)
+            for r in list_recommendations(self._session, status=status, target_kind=target_kind)
         ]
 
     def create(self, payload: dict, created_by: str | None) -> RecommendationOut:

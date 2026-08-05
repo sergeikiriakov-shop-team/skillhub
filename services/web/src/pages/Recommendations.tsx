@@ -32,9 +32,14 @@ const STATUS_COLOR: Record<string, string> = {
   dismissed: "gray",
 };
 
-const STATUS_ORDER: Record<string, number> = { proposed: 0, accepted: 1, done: 2, dismissed: 3 };
+export const STATUS_ORDER: Record<string, number> = {
+  proposed: 0,
+  accepted: 1,
+  done: 2,
+  dismissed: 3,
+};
 
-function RecommendationCard({ r }: { r: Recommendation }) {
+export function RecommendationCard({ r }: { r: Recommendation }) {
   const { t } = useI18n();
   const resolved = r.status === "done" || r.status === "dismissed";
   return (
@@ -56,6 +61,11 @@ function RecommendationCard({ r }: { r: Recommendation }) {
       </Text>
 
       <Group gap="xs" mb="sm">
+        {r.anchor && (
+          <Badge size="sm" variant="filled" color="indigo" ff="monospace" styles={{ label: { textTransform: "none" } }}>
+            {r.anchor}
+          </Badge>
+        )}
         {r.scope && (
           <Badge size="sm" variant="outline" styles={{ label: { textTransform: "none" } }}>
             {t("rec.scope", { v: r.scope })}
@@ -98,9 +108,11 @@ function RecommendationCard({ r }: { r: Recommendation }) {
 
 export default function Recommendations() {
   const { t } = useI18n();
+  // Scoped to the skills catalog: MCP recommendations live under /mcp/recommendations, so the two
+  // sections don't bleed into each other.
   const { data, isLoading } = useQuery({
-    queryKey: ["recommendations"],
-    queryFn: api.listRecommendations,
+    queryKey: ["recommendations", "skill"],
+    queryFn: () => api.listRecommendations("skill"),
   });
 
   if (isLoading) {

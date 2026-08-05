@@ -29,10 +29,23 @@ DEFAULT_CATEGORIES: list[dict[str, str]] = [
 ]
 
 
+def _register_models() -> None:
+    """Import every context's models so ``create_all`` sees all tables.
+
+    ``create_all`` only knows the tables registered on ``Base`` by an *import*, so this must not be
+    left to whatever the entry point happens to pull in — the API imports its routers (and thus
+    everything), but the seed CLI does not, and a missing table would then break the migrations
+    that follow. Imported for the side effect only."""
+    from ..mcp import models as mcp_models  # noqa: F401
+    from ..reviews import models as review_models  # noqa: F401
+    from ..skills import models as skill_models  # noqa: F401
+
+
 def init_db() -> None:
     """Create the pgvector extension, all tables and seed default categories (idempotent)."""
     with engine.begin() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    _register_models()
     Base.metadata.create_all(engine)
     _apply_column_migrations()
     _seed_categories()
@@ -86,6 +99,11 @@ def _apply_column_migrations() -> None:
         "ALTER TABLE skill_notebooks ADD PRIMARY KEY (skill_id, model)",
         # Inline body-anchor for `improve` recommendations (which SKILL.md heading they attach to).
         "ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS anchor VARCHAR(200)",
+        # MCP catalog: recommendations now serve two catalogs. Existing rows are all about skills.
+        "ALTER TABLE recommendations ADD COLUMN IF NOT EXISTS target_kind VARCHAR(10) "
+        "NOT NULL DEFAULT 'skill'",
+        "CREATE INDEX IF NOT EXISTS ix_recommendations_target_kind ON recommendations (target_kind)",
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_mcp_servers_name ON mcp_servers (name)",
     ]
     with engine.begin() as conn:
         for stmt in statements:

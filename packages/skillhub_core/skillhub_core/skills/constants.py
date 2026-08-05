@@ -20,6 +20,9 @@ SYNTHESIZED_AUTHOR = "SkillHub (synthesized)"
 # - delete: retire a skill   - other: anything else
 REC_KINDS = ("synthesize", "split", "improve", "merge", "dedup", "delete", "other")
 REC_STATUSES = ("proposed", "accepted", "done", "dismissed")
+# Which catalog a recommendation is about. One table serves both, so a cross-catalog finding
+# ("this skill duplicates what that MCP tool already does") stays expressible.
+REC_TARGET_KINDS = ("skill", "mcp")
 
 # The originating client format. Claude Code is canonical; the rest are adapters.
 FORMAT_CLAUDE_SKILL = "claude_skill"

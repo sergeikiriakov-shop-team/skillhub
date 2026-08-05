@@ -10,6 +10,11 @@ from pydantic import BaseModel, Field
 class RecommendationIn(BaseModel):
     """A proposed catalog change, submitted by the curator (Claude Code)."""
 
+    target_kind: str = Field(
+        default="skill",
+        description="Which catalog this is about: `skill` (default) or `mcp`. An `mcp` "
+        "recommendation's targets/scope name MCP servers, and its `anchor` is a tool name.",
+    )
     kind: str = Field(description="One of: synthesize | split | merge | dedup | delete | other.")
     title: str = Field(description="Short human-readable title of the recommendation.")
     rationale: str = Field(default="", description="Why this is worth doing.")
@@ -24,9 +29,10 @@ class RecommendationIn(BaseModel):
     )
     anchor: str | None = Field(
         default=None,
-        description="For kind=improve: the exact SKILL.md heading text (e.g. 'Workflow') this "
-        "suggestion attaches to, so it renders inline in the skill's body right after that "
-        "section. Omit for recommendations not tied to one spot in one skill's body.",
+        description="For kind=improve: the exact spot this suggestion attaches to, so it renders "
+        "inline right there instead of only in a side list — a SKILL.md heading text (e.g. "
+        "'Workflow') when target_kind=skill, or an exact tool name (e.g. 'find_columns') when "
+        "target_kind=mcp. Omit for recommendations not tied to one spot.",
     )
 
 
@@ -36,6 +42,7 @@ class RecommendationStatusUpdate(BaseModel):
 
 class RecommendationOut(BaseModel):
     id: int
+    target_kind: str = "skill"
     kind: str
     title: str
     rationale: str

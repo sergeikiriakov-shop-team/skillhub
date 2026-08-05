@@ -18,13 +18,17 @@ class Recommendation(Base):
     __tablename__ = "recommendations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Which catalog this recommendation is about. One table serves both so a cross-catalog finding
+    # ("this skill duplicates what that MCP tool already does") stays expressible.
+    target_kind: Mapped[str] = mapped_column(String(10), default="skill", index=True)  # skill | mcp
     kind: Mapped[str] = mapped_column(String(20), index=True)  # see REC_KINDS
     title: Mapped[str] = mapped_column(String(300))
     rationale: Mapped[str] = mapped_column(Text, default="")
     scope: Mapped[str | None] = mapped_column(String(120), nullable=True)  # category / task_group / skill
     targets: Mapped[list] = mapped_column(JSONB, default=list)  # skill names/ids or group keys involved
-    # For kind="improve": the exact SKILL.md heading text this suggestion attaches to, so the skill
-    # detail page can render it inline right after that section instead of only in a side list.
+    # For kind="improve": the exact spot this suggestion attaches to — a SKILL.md heading for
+    # target_kind="skill", a tool name for target_kind="mcp" — so the detail page can render it
+    # inline right there instead of only in a side list.
     anchor: Mapped[str | None] = mapped_column(String(200), nullable=True)
     suggested_action: Mapped[str] = mapped_column(Text, default="")  # a runnable instruction for Claude Code
     status: Mapped[str] = mapped_column(String(20), default="proposed", index=True)  # see REC_STATUSES

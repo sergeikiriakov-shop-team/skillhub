@@ -69,9 +69,15 @@ const DIMENSION_KEYS = [
   "structure",
 ];
 
-export function ScoreBreakdown({ scores }: { scores: Record<string, number> }) {
+export function ScoreBreakdown({
+  scores,
+  dimensionKeys = DIMENSION_KEYS,
+}: {
+  scores: Record<string, number>;
+  dimensionKeys?: string[];
+}) {
   const { t } = useI18n();
-  const keys = DIMENSION_KEYS.filter((k) => k in scores);
+  const keys = dimensionKeys.filter((k) => k in scores);
   return (
     <Stack gap="xs">
       {keys.map((key) => (

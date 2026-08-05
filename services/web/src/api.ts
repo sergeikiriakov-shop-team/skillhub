@@ -60,6 +60,9 @@ export interface SkillVersionInfo {
 
 export interface Recommendation {
   id: number;
+  // Which catalog this is about: "skill" (a SKILL.md) or "mcp" (an MCP server's tool surface).
+  // For "mcp", `anchor` is an exact tool name rather than a SKILL.md heading.
+  target_kind: string;
   kind: string;
   title: string;
   rationale: string;
@@ -100,6 +103,72 @@ export interface SkillDetail extends SkillSummary {
 export interface SearchHit {
   skill: SkillSummary;
   similarity: number | null;
+}
+
+// --- MCP servers (a separate catalog: a typed tool surface, not a document) ---
+
+export interface McpToolDef {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+  required: string[];
+  param_count: number;
+}
+
+export interface McpVersionInfo {
+  version_no: number;
+  tool_count: number;
+  author: string | null;
+  created_at: string;
+}
+
+export interface McpEvaluation {
+  model: string;
+  rubric_version: string;
+  scores: Record<string, number>;
+  overall_score: number;
+  strengths: string[];
+  weaknesses: string[];
+  rationale: string;
+  created_at: string;
+}
+
+export interface McpServerSummary {
+  id: number;
+  name: string;
+  label: string | null;
+  description: string;
+  transport: string;
+  // Groups sibling entries exposing the same surface against different environments (prod/dev/heap).
+  family: string | null;
+  source_type: string;
+  tool_count: number;
+  overall_score: number | null;
+  rubric_version: string | null;
+  open_improve_count: number;
+  // Rough context cost of merely having these tools available (names + descriptions + schemas).
+  estimated_tokens: number | null;
+  updated_at: string;
+}
+
+export interface McpServerDetail extends McpServerSummary {
+  tools: McpToolDef[];
+  version_no: number;
+  versions: McpVersionInfo[];
+  contributors: string[];
+  latest_evaluation: McpEvaluation | null;
+  open_recommendations: Recommendation[];
+}
+
+export interface McpRubric {
+  rubric_version: string;
+  instructions: string;
+  dimensions: { key: string; description: string }[];
+  weights: Record<string, number>;
+  calibration: { band: string; label: string; meaning: string }[];
+  evaluation_schema: Record<string, unknown>;
+  recommendation_strategy: string;
+  introspection_protocol: string;
 }
 
 export interface Stats {
@@ -301,7 +370,10 @@ export const api = {
     request<SkillDetail>("/skills", { method: "POST", body: JSON.stringify(payload) }),
   deleteSkill: (id: number) => request<void>(`/skills/${id}`, { method: "DELETE" }),
   listCategories: () => request<CategoryInfo[]>("/categories"),
-  listRecommendations: () => request<Recommendation[]>("/recommendations"),
+  listRecommendations: (targetKind?: string) => {
+    const qs = targetKind ? `?target_kind=${encodeURIComponent(targetKind)}` : "";
+    return request<Recommendation[]>(`/recommendations${qs}`);
+  },
   search: (q: string) => request<SearchHit[]>(`/search?q=${encodeURIComponent(q)}`),
   stats: () => request<Stats>("/stats"),
   rubric: () => request<Rubric>("/rubric"),
@@ -310,6 +382,16 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ weights }),
     }),
+  // --- MCP servers ---
+  listMcpServers: (search?: string, family?: string) => {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (family) params.set("family", family);
+    const qs = params.toString();
+    return request<McpServerSummary[]>(`/mcp${qs ? `?${qs}` : ""}`);
+  },
+  getMcpServer: (id: number) => request<McpServerDetail>(`/mcp/${id}`),
+  mcpRubric: () => request<McpRubric>("/mcp/rubric"),
   // --- reviews ---
   listReviews: (opts?: { status?: string; mine?: boolean; queue?: boolean }) => {
     const params = new URLSearchParams();

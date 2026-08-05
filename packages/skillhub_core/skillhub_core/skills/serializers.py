@@ -150,6 +150,7 @@ def _contributors(skill: Skill) -> list[str]:
 def _recommendation_to_out(rec: Recommendation) -> RecommendationOut:
     return RecommendationOut(
         id=rec.id,
+        target_kind=rec.target_kind,
         kind=rec.kind,
         title=rec.title,
         rationale=rec.rationale,

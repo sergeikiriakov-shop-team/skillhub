@@ -8,7 +8,7 @@ rest of the Skills context (and later Reviews/Platform) follows."""
 from __future__ import annotations
 
 from ..platform.models import User
-from .constants import REC_KINDS, REC_STATUSES
+from .constants import REC_KINDS, REC_STATUSES, REC_TARGET_KINDS
 from .errors import (
     DuplicateSkill,
     InvalidNotebook,
@@ -299,12 +299,16 @@ class RecommendationService:
     def __init__(self, recommendations: RecommendationRepository) -> None:
         self._recs = recommendations
 
-    def list(self, status: str | None = None) -> list[RecommendationOut]:
-        return self._recs.list(status)
+    def list(
+        self, status: str | None = None, target_kind: str | None = None
+    ) -> list[RecommendationOut]:
+        return self._recs.list(status, target_kind)
 
     def create(self, payload: dict, *, created_by: str | None) -> RecommendationOut:
         if payload.get("kind") not in REC_KINDS:
             raise InvalidRecommendation(f"kind must be one of {REC_KINDS}")
+        if payload.get("target_kind", "skill") not in REC_TARGET_KINDS:
+            raise InvalidRecommendation(f"target_kind must be one of {REC_TARGET_KINDS}")
         rec = self._recs.create(payload, created_by)
         self._recs.commit()
         return rec

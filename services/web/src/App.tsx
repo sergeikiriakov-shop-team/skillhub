@@ -20,6 +20,10 @@ import Categories from "./pages/Categories";
 import DeviceApprove from "./pages/DeviceApprove";
 import Guide from "./pages/Guide";
 import Home from "./pages/Home";
+import McpCatalog from "./pages/McpCatalog";
+import McpDetail from "./pages/McpDetail";
+import McpMethodology from "./pages/McpMethodology";
+import McpRecommendations from "./pages/McpRecommendations";
 import Methodology from "./pages/Methodology";
 import Recommendations from "./pages/Recommendations";
 import Reviews from "./pages/Reviews";
@@ -153,7 +157,9 @@ export default function App() {
   const gated = readsRequireAuth && !isAuthenticated && path !== "/device";
 
   const isReviews = path === "/reviews" || path.startsWith("/reviews/");
-  const isSkills = !isReviews && path !== "/" && path !== "/device";
+  const isMcp = path === "/mcp" || path.startsWith("/mcp/");
+  // Skills is the catch-all section, so it must exclude every sibling service explicitly.
+  const isSkills = !isReviews && !isMcp && path !== "/" && path !== "/device";
 
   return (
     <AppShell header={{ height: 60 }} padding="md">
@@ -166,6 +172,7 @@ export default function App() {
             {!gated && (
               <Group gap="md" wrap="nowrap">
                 <ServiceLink to="/skills" label={t("nav.skills")} active={isSkills} />
+                <ServiceLink to="/mcp" label={t("nav.mcp")} active={isMcp} />
                 <ServiceLink to="/reviews" label={t("nav.reviews")} active={isReviews} />
               </Group>
             )}
@@ -178,6 +185,13 @@ export default function App() {
                 <NavItem to="/recommendations" label={t("nav.recommendations")} />
                 <NavItem to="/methodology" label={t("nav.methodology")} />
                 <NavItem to="/guide" label={t("nav.guide")} />
+              </Group>
+            )}
+            {!gated && isMcp && (
+              <Group gap="lg" wrap="nowrap" visibleFrom="lg">
+                <NavItem to="/mcp" label={t("nav.catalog")} />
+                <NavItem to="/mcp/recommendations" label={t("nav.recommendations")} />
+                <NavItem to="/mcp/methodology" label={t("nav.methodology")} />
               </Group>
             )}
             <LanguageToggle />
@@ -207,6 +221,11 @@ export default function App() {
             <Route path="/recommendations" element={<Recommendations />} />
             <Route path="/methodology" element={<Methodology />} />
             <Route path="/guide" element={<Guide />} />
+            {/* Static MCP segments before the dynamic :id (v6 ranks them anyway; explicit is clearer). */}
+            <Route path="/mcp" element={<McpCatalog />} />
+            <Route path="/mcp/recommendations" element={<McpRecommendations />} />
+            <Route path="/mcp/methodology" element={<McpMethodology />} />
+            <Route path="/mcp/:id" element={<McpDetail />} />
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/reviews/:id" element={<ReviewDetail />} />
             <Route path="/device" element={<DeviceApprove />} />

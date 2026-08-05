@@ -20,7 +20,67 @@ const en: Dict = {
   "nav.methodology": "Methodology",
   "nav.guide": "Guide",
   "nav.skills": "Skills",
+  "nav.mcp": "MCP",
   "nav.reviews": "Reviews",
+
+  // mcp catalog
+  "mcp.title": "MCP servers",
+  "mcp.subtitle":
+    "Catalogued MCP servers, scored on their tool surface — the typed schemas an agent actually " +
+    "calls, not the prose written about them. Introspected from a live connection, so drift " +
+    "between the docs and the real schema shows up here.",
+  "mcp.searchPlaceholder": "Search by name or description…",
+  "mcp.allFamilies": "All families",
+  "mcp.empty": "No MCP servers catalogued yet. Introspect one from your Claude Code.",
+  "mcp.noDescription": "No description.",
+  "mcp.toolCount": "{n} tools",
+  "mcp.surfaceTokens": "~{n} tok surface",
+  "mcp.notFound": "MCP server not found.",
+  "mcp.meta": "{transport} · v{version} · {tools} tools",
+  "mcp.toolsTitle": "Tool surface",
+  "mcp.toolsHint":
+    "Exactly as introspected from the live server. A required parameter is marked *; an untyped " +
+    "one shows as — rather than being guessed.",
+  "mcp.noTools": "This version records no tools.",
+  "mcp.noToolDescription": "No description — an agent has to guess what this tool is for.",
+  "mcp.paramCount": "{n} params",
+  "mcp.param": "Parameter",
+  "mcp.type": "Type",
+  "mcp.paramDescription": "Description",
+  "mcp.evalTitle": "Tool-surface score",
+  "mcp.notEvaluated": "Not scored against the MCP rubric yet. From your Claude Code:",
+  "mcp.evaluatePhrase": 'Score the "{name}" MCP server against the SkillHub MCP rubric',
+  "mcp.historyTitle": "Introspection history",
+  "mcp.historyHint": "A new version means the tool surface changed — this is where drift surfaces.",
+
+  // mcp recommendations
+  "mcpRec.title": "MCP recommendations",
+  "mcpRec.intro":
+    "Curator findings about MCP servers. One pinned to a specific tool renders inline on that " +
+    "server's page, right under the tool it is about.",
+  "mcpRec.empty": "No MCP recommendations yet.",
+
+  // mcp methodology
+  "mcpMeth.title": "MCP methodology",
+  "mcpMeth.subtitle":
+    "How an MCP server's tool surface is scored. Separate from the skills rubric on purpose: a " +
+    "skill is a document, an MCP server is a typed tool surface, so the failure modes differ.",
+  "mcpMeth.version": "rubric v{version}",
+  "mcpMeth.instructionsTitle": "Instructions to the reviewer",
+  "mcpMeth.dimensionsTitle": "Dimensions & weights",
+  "mcpMeth.dimension": "Dimension",
+  "mcpMeth.weight": "Weight",
+  "mcpMeth.measures": "What it measures",
+  "mcpMeth.calibrationTitle": "Calibration anchors",
+  "mcpMeth.introspectionTitle": "How a server enters the catalog",
+  "mcpMeth.recommendationTitle": "Recommendation strategy",
+
+  // mcp rubric dimensions (labels for ScoreBreakdown)
+  "dim.schema_precision": "Schema precision",
+  "dim.tool_clarity": "Tool clarity",
+  "dim.discoverability": "Discoverability",
+  "dim.result_shape": "Result shape",
+  "dim.token_economy": "Token economy",
 
   // home hub (two service entry points)
   "home.title": "Developer services",
@@ -266,7 +326,69 @@ const ru: Dict = {
   "nav.methodology": "Методология",
   "nav.guide": "Инструкция",
   "nav.skills": "Скиллы",
+  "nav.mcp": "MCP",
   "nav.reviews": "Ревью",
+
+  // каталог mcp
+  "mcp.title": "MCP-серверы",
+  "mcp.subtitle":
+    "Каталог MCP-серверов с оценкой их набора инструментов — типизированных схем, которые агент " +
+    "реально вызывает, а не прозы, написанной о них. Данные снимаются интроспекцией живого " +
+    "подключения, поэтому расхождения между документацией и настоящей схемой видны здесь.",
+  "mcp.searchPlaceholder": "Поиск по имени или описанию…",
+  "mcp.allFamilies": "Все семейства",
+  "mcp.empty": "Пока ни одного MCP-сервера. Снимите интроспекцию из своего Claude Code.",
+  "mcp.noDescription": "Без описания.",
+  "mcp.toolCount": "инструментов: {n}",
+  "mcp.surfaceTokens": "~{n} ток. поверхности",
+  "mcp.notFound": "MCP-сервер не найден.",
+  "mcp.meta": "{transport} · v{version} · инструментов: {tools}",
+  "mcp.toolsTitle": "Набор инструментов",
+  "mcp.toolsHint":
+    "Ровно так, как снято с живого сервера. Обязательный параметр помечен *; параметр без типа " +
+    "показан как — , а не угадан.",
+  "mcp.noTools": "В этой версии инструменты не записаны.",
+  "mcp.noToolDescription": "Без описания — агенту придётся догадываться, для чего этот инструмент.",
+  "mcp.paramCount": "параметров: {n}",
+  "mcp.param": "Параметр",
+  "mcp.type": "Тип",
+  "mcp.paramDescription": "Описание",
+  "mcp.evalTitle": "Оценка набора инструментов",
+  "mcp.notEvaluated": "Ещё не оценён по MCP-рубрике. Из своего Claude Code:",
+  "mcp.evaluatePhrase": "Оцени MCP-сервер «{name}» по MCP-рубрике SkillHub",
+  "mcp.historyTitle": "История интроспекций",
+  "mcp.historyHint":
+    "Новая версия означает, что набор инструментов изменился — именно здесь проявляется дрейф.",
+
+  // рекомендации mcp
+  "mcpRec.title": "Рекомендации по MCP",
+  "mcpRec.intro":
+    "Находки куратора по MCP-серверам. Привязанная к конкретному инструменту показывается прямо " +
+    "на странице сервера — под тем инструментом, о котором она.",
+  "mcpRec.empty": "Пока нет рекомендаций по MCP.",
+
+  // методология mcp
+  "mcpMeth.title": "Методология MCP",
+  "mcpMeth.subtitle":
+    "Как оценивается набор инструментов MCP-сервера. Отделено от рубрики скиллов намеренно: скилл " +
+    "— это документ, а MCP-сервер — типизированный набор инструментов, поэтому и типичные " +
+    "проблемы у них разные.",
+  "mcpMeth.version": "рубрика v{version}",
+  "mcpMeth.instructionsTitle": "Инструкции ревьюеру",
+  "mcpMeth.dimensionsTitle": "Измерения и веса",
+  "mcpMeth.dimension": "Измерение",
+  "mcpMeth.weight": "Вес",
+  "mcpMeth.measures": "Что измеряет",
+  "mcpMeth.calibrationTitle": "Калибровочные ориентиры",
+  "mcpMeth.introspectionTitle": "Как сервер попадает в каталог",
+  "mcpMeth.recommendationTitle": "Стратегия рекомендаций",
+
+  // измерения рубрики mcp (подписи для ScoreBreakdown)
+  "dim.schema_precision": "Точность схемы",
+  "dim.tool_clarity": "Ясность инструментов",
+  "dim.discoverability": "Находимость",
+  "dim.result_shape": "Форма результата",
+  "dim.token_economy": "Экономия токенов",
 
   // home hub (две точки входа в сервисы)
   "home.title": "Сервисы для разработки",

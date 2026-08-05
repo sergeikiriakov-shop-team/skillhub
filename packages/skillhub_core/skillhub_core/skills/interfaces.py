@@ -135,7 +135,9 @@ class EvaluationRepository(Protocol):
 class RecommendationRepository(Protocol):
     """Curator recommendations (proposed catalog changes)."""
 
-    def list(self, status: str | None) -> list[RecommendationOut]: ...
+    def list(
+        self, status: str | None, target_kind: str | None = None
+    ) -> list[RecommendationOut]: ...
 
     def create(self, payload: dict, created_by: str | None) -> RecommendationOut:
         """Create a recommendation (flush only; caller commits)."""
