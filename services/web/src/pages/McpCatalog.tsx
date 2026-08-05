@@ -28,7 +28,7 @@ function formatTokens(n: number): string {
 function McpCard({ server }: { server: McpServerSummary }) {
   const { t } = useI18n();
   return (
-    <Card withBorder padding="md" radius="md" component={Link} to={`/mcp/${server.id}`}>
+    <Card withBorder padding="md" radius="md" component={Link} to={`/servers/${server.id}`}>
       <Group justify="space-between" wrap="nowrap" mb="xs">
         <Text fw={600} ff="monospace" truncate>
           {server.name}
