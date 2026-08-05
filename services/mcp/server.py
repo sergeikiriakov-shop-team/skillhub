@@ -22,10 +22,19 @@ from __future__ import annotations
 import os
 import time
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp.utilities.func_metadata import ArgModelBase
+from pydantic import ConfigDict, Field
+
+# Reject unknown arguments instead of silently swallowing them. FastMCP derives every tool's
+# argument model from this shared base, so setting `extra="forbid"` here does two things at once:
+# each advertised inputSchema gains `additionalProperties: false` (a client can no longer send a
+# misspelled or invented parameter), and Pydantic enforces the same server-side. Must run BEFORE
+# the first @mcp.tool() decoration, because the schema is generated at decoration time.
+ArgModelBase.model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
 
 # --- closed vocabularies, mirrored as Literal so they reach the client as real JSON-Schema enums.
 #
@@ -262,24 +271,48 @@ def list_unevaluated() -> Any:
 
 
 @mcp.tool()
-def list_skills(search: str | None = None, category: str | None = None) -> Any:
-    """List skills, optionally filtered by a name/author substring or a category key."""
+def list_skills(
+    search: Annotated[
+        str | None,
+        Field(
+            description="Literal SUBSTRING match on name/author — not semantic. For "
+            "meaning-based lookup ('something that checks a PR') use `search` instead."
+        ),
+    ] = None,
+    category: Annotated[
+        str | None, Field(description="Exact category key from `list_mcp_servers`-style keys, e.g. 'data-access'.")
+    ] = None,
+) -> Any:
+    """List skills, filtered by a literal name/author substring or an exact category key. Returns
+    the whole catalog when unfiltered — there is no limit parameter, so prefer a filter."""
     params = {k: v for k, v in {"search": search, "category": category}.items() if v}
     return _read_call("GET", "/api/skills", params=params or None)
 
 
 @mcp.tool()
-def get_skill(skill_id: int) -> Any:
+def get_skill(
+    skill_id: Annotated[int, Field(description="Numeric skill id, e.g. from `list_skills` or `search`.")],
+) -> Any:
     """Get one skill with its content, latest evaluation and similar skills. To INSTALL the skill
     into the user's Claude Code, use `skill_md` (the ready-to-write SKILL.md) and `references[]`
     ({path, content}) and write them to `<skills-dir>/<name>/` with your own Write tool — this
-    MCP server runs in a container and cannot touch the user's disk."""
+    MCP server runs in a container and cannot touch the user's disk. Heavy: returns the full
+    SKILL.md plus every reference file inline, with no way to request less."""
     return _read_call("GET", f"/api/skills/{skill_id}")
 
 
 @mcp.tool()
-def search(query: str) -> Any:
-    """Semantic search over skills (by meaning)."""
+def search(
+    query: Annotated[
+        str,
+        Field(
+            description="What the skill should DO, in plain words (e.g. 'review a frontend PR') "
+            "— matched by meaning, so it need not appear in the text."
+        ),
+    ],
+) -> Any:
+    """Find skills by MEANING (vector search over descriptions). Use this when you know the job but
+    not the name; use `list_skills(search=...)` when you know part of the literal name or author."""
     return _read_call("GET", "/api/search", params={"q": query})
 
 
@@ -311,30 +344,47 @@ def get_stats() -> Any:
 
 @mcp.tool()
 def list_recommendations(
-    status: RecStatus | None = None, target_kind: RecTargetKind | None = None
+    status: Annotated[
+        RecStatus | None, Field(description="Lifecycle filter; omit for every status.")
+    ] = None,
+    target_kind: Annotated[
+        RecTargetKind | None,
+        Field(description="`skill` = about a SKILL.md, `mcp` = about a server's tool surface."),
+    ] = None,
 ) -> Any:
-    """List curator recommendations (proposed catalog changes: synthesize/split/improve/merge/dedup/delete).
-    Optionally filter by status: proposed|accepted|done|dismissed, and by `target_kind`:
-    `skill` (about a SKILL.md) or `mcp` (about an MCP server's tool surface)."""
+    """List curator recommendations — proposed catalog changes. Unbounded: returns every match."""
     params = {k: v for k, v in {"status": status, "target_kind": target_kind}.items() if v}
     return _read_call("GET", "/api/recommendations", params=params or None)
 
 
 @mcp.tool()
-def list_mcp_servers(search: str | None = None, family: str | None = None) -> Any:
+def list_mcp_servers(
+    search: Annotated[
+        str | None, Field(description="Substring match on the server name or description.")
+    ] = None,
+    family: Annotated[
+        str | None,
+        Field(
+            description="Exact family slug grouping sibling entries that expose the same surface "
+            "against different environments, e.g. 'beliani-db-schema' for the prod/dev/heap trio."
+        ),
+    ] = None,
+) -> Any:
     """List catalogued MCP SERVERS (a separate catalog from skills): each with its tool count,
     rubric score, open-improve count and the estimated token cost of merely having its tools
-    available. Optionally filter by a name/description substring or by `family` (the group of
-    sibling entries exposing the same surface against different environments, e.g. prod/dev/heap)."""
+    available."""
     params = {k: v for k, v in {"search": search, "family": family}.items() if v}
     return _read_call("GET", "/api/mcp", params=params or None)
 
 
 @mcp.tool()
-def get_mcp_server(server_id: int) -> Any:
+def get_mcp_server(
+    server_id: Annotated[int, Field(description="Numeric server id from `list_mcp_servers`.")],
+) -> Any:
     """Get one catalogued MCP server: its full introspected tool surface (each tool's name,
     description, parameter schema and required params), its latest evaluation, its version history
-    (where schema drift shows up), and every open recommendation about it."""
+    (where schema drift shows up), and every open recommendation about it. Heavy: returns the
+    target's entire surface inline."""
     return _read_call("GET", f"/api/mcp/{server_id}")
 
 
@@ -350,12 +400,34 @@ def get_mcp_rubric() -> Any:
 
 @mcp.tool()
 def upload_mcp_server(
-    name: str,
-    tools: list[dict],
-    description: str = "",
-    label: str | None = None,
-    transport: McpTransport = "stdio",
-    family: str | None = None,
+    name: Annotated[
+        str,
+        Field(
+            description="The server ENTRY name as connected, e.g. 'beliani-db-schema-prod'. "
+            "Re-submitting an existing name adds a version rather than a duplicate."
+        ),
+    ],
+    tools: Annotated[
+        list[dict],
+        Field(
+            description="One entry per tool: {name, description, input_schema}, each copied "
+            "VERBATIM from the live server — not from a README or from memory."
+        ),
+    ],
+    description: Annotated[
+        str, Field(description="What the server is for, in one or two sentences.")
+    ] = "",
+    label: Annotated[str | None, Field(description="Human-friendly display name.")] = None,
+    transport: Annotated[
+        McpTransport, Field(description="How the client reaches it: a local subprocess or remote HTTP.")
+    ] = "stdio",
+    family: Annotated[
+        str | None,
+        Field(
+            description="Slug grouping sibling entries that expose the same surface against "
+            "different environments, e.g. 'beliani-db-schema' for the prod/dev/heap trio."
+        ),
+    ] = None,
 ) -> Any:
     """Catalogue an MCP server by INTROSPECTING one you are already connected to.
 
@@ -372,11 +444,9 @@ def upload_mcp_server(
     missing description with what you assume the tool probably does: an empty description or an
     untyped parameter is a real finding the rubric scores.
 
-    `name` is the server entry's name (e.g. `beliani-db-schema-prod`). Re-submitting an existing
-    name adds a new VERSION, so drift is visible in the history; an unchanged manifest is a no-op.
-    `family` groups sibling entries (e.g. `beliani-db-schema` for the prod/dev/heap trio).
-    Requires a contributor+ role. Unauthorized in stdio mode returns
-    `{action_required: <how to approve>}`."""
+    Re-submitting an existing name adds a new VERSION, so drift is visible in the history; an
+    unchanged manifest is a no-op. Requires a contributor+ role; unauthorized in stdio mode
+    returns `{action_required: <how to approve>}`."""
     body = {
         "name": name,
         "description": description,
@@ -389,33 +459,53 @@ def upload_mcp_server(
 
 
 @mcp.tool()
-def submit_mcp_assessment(server_id: int, evaluation: dict, model: str = "claude-code") -> Any:
-    """Submit a completed assessment of an MCP server's tool surface. `evaluation` must match the
-    MCP rubric schema (schema_precision, tool_clarity, discoverability, result_shape, safety,
-    token_economy as 0-10 ints, plus overall 0-10, strengths[], weaknesses[], rationale). Fetch
-    `get_mcp_rubric` first and score against ITS dimensions — these are not the skills dimensions.
-    Score only what the manifest actually contains. Requires a contributor+ role; unauthorized in
-    stdio mode returns `{action_required: <how to approve>}`."""
+def submit_mcp_assessment(
+    server_id: Annotated[int, Field(description="Numeric server id from `list_mcp_servers`.")],
+    evaluation: Annotated[
+        dict,
+        Field(
+            description="Must match `evaluation_schema` from `get_mcp_rubric` — six 0-10 ints "
+            "(schema_precision, tool_clarity, discoverability, result_shape, safety, "
+            "token_economy) plus overall, strengths[], weaknesses[], rationale. Not constrained "
+            "here on purpose: the dimensions are strategy served live by the rubric endpoint, so "
+            "fetch it rather than trusting this text."
+        ),
+    ],
+    model: Annotated[
+        str, Field(description="Exact id of the model that produced this assessment, e.g. 'claude-opus-5'.")
+    ] = "claude-code",
+) -> Any:
+    """Submit a completed assessment of an MCP server's tool surface. Fetch `get_mcp_rubric` first
+    and score against ITS dimensions — these are not the skills dimensions. Score only what the
+    manifest actually contains. Requires a contributor+ role; unauthorized in stdio mode returns
+    `{action_required: <how to approve>}`."""
     return _authed_call(
         "POST", f"/api/mcp/{server_id}/assessment", json={"evaluation": evaluation, "model": model}
     )
 
 
 @mcp.tool()
-def get_skill_notebook(skill_id: int, model: str | None = None) -> Any:
+def get_skill_notebook(
+    skill_id: Annotated[int, Field(description="Numeric skill id.")],
+    model: Annotated[
+        str | None,
+        Field(description="Which model's trial to fetch; omit for the best-scoring one."),
+    ] = None,
+) -> Any:
     """Get a sandbox-trial notebook for the skill (the run record from the `evals/` harness): the
     `notebook` (nbformat cells), the `summary` scorecard, `model` (executing model), `effectiveness`
-    (0..1 best pass-rate) and `stale` (true once the skill changed since the trial ran). Trials are
-    per (skill, MODEL): pass `model` to get that model's trial; omit it to get the best-scoring
-    model's. Returns `{error: 404}` if none recorded. Call before a sandbox run to decide reuse vs.
-    regenerate for YOUR model: if a fresh (non-stale) trial exists for your model and the developer
-    did not ask to regenerate, reuse it."""
+    (0..1 best pass-rate) and `stale` (true once the skill changed since the trial ran). Returns
+    `{error: 404}` if none recorded. Call before a sandbox run to decide reuse vs. regenerate for
+    YOUR model: if a fresh (non-stale) trial exists for your model and the developer did not ask to
+    regenerate, reuse it. Heavy: returns the whole notebook inline."""
     params = {"model": model} if model else None
     return _read_call("GET", f"/api/skills/{skill_id}/notebook", params=params)
 
 
 @mcp.tool()
-def get_skill_fit(skill_id: int) -> Any:
+def get_skill_fit(
+    skill_id: Annotated[int, Field(description="Numeric skill id.")],
+) -> Any:
     """Get the skill's effectiveness-by-MODEL matrix: `best_model` and, per model trialed, its
     `effectiveness` (0..1), `scenario` and `stale`. Models with no trial are absent — those are the
     gaps to fill (e.g. "not yet trialed under claude-opus-5"). Use to see which model a skill suits
@@ -426,12 +516,18 @@ def get_skill_fit(skill_id: int) -> Any:
 # --- auth ---------------------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Check/obtain authorization for write tools, and report WHICH SkillHub instance this "
+        f"server is bound to — every read and write below goes to {PUBLIC_URL}, a catalog shared "
+        "with the whole team, not a personal scratch copy. In http mode auth is handled by your "
+        "MCP client's OAuth (browser sign-in) before any tool runs, so this just reports status. "
+        "In stdio mode it runs the device flow: returns a verification URL + code to open in a "
+        "browser (sign in with GitHub, approve), caching the token so you normally do this only "
+        "once per machine."
+    )
+)
 def authenticate() -> Any:
-    """Check/obtain authorization for write tools. In http mode auth is handled by your MCP client's
-    OAuth (browser sign-in) before any tool runs — this just reports status. In stdio mode it runs
-    the device flow: returns a verification URL + code to open in a browser (sign in with GitHub,
-    approve), caching the token so you normally do this only once per machine."""
     if TRANSPORT == "http":
         if _http_token():
             return {"ok": True, "detail": "Authorized via OAuth. Write tools are ready."}
@@ -447,14 +543,23 @@ def authenticate() -> Any:
 
 @mcp.tool()
 def upload_skill(
-    content: str,
-    author: str | None = None,
-    source_format: SourceFormat = "claude_skill",
-    references: list[dict] | None = None,
+    content: Annotated[
+        str, Field(description="The raw SKILL.md text, including its YAML frontmatter.")
+    ],
+    author: Annotated[
+        str | None, Field(description="Display author; defaults to your verified identity.")
+    ] = None,
+    source_format: Annotated[
+        SourceFormat, Field(description="Which client's format `content` is written in.")
+    ] = "claude_skill",
+    references: Annotated[
+        list[dict] | None,
+        Field(description="Companion files as {path, content}, e.g. references/tools.md."),
+    ] = None,
 ) -> Any:
-    """Import a skill. `content` is the raw SKILL.md text (with YAML frontmatter). `references`
-    is a list of {path, content}. Requires a contributor+ role (run `authenticate` first if needed);
-    unauthorized in stdio mode returns `{action_required: <how to approve>}` rather than raising.
+    """Import a skill into the shared team catalog. Requires a contributor+ role (run
+    `authenticate` first if needed); unauthorized in stdio mode returns
+    `{action_required: <how to approve>}` rather than raising.
 
     De-duplication: skills are keyed by name — re-uploading an existing name adds a new VERSION of
     that one skill (not a copy), attributed to you. Uploading content IDENTICAL to an existing skill
@@ -472,17 +577,30 @@ def upload_skill(
 
 @mcp.tool()
 def submit_assessment(
-    skill_id: int,
-    evaluation: dict,
-    categorization: dict | None = None,
-    model: str = "claude-code",
+    skill_id: Annotated[int, Field(description="Numeric skill id being scored.")],
+    evaluation: Annotated[
+        dict,
+        Field(
+            description="Must match `evaluation_schema` from `get_rubric` — six 0-10 ints "
+            "(clarity, trigger_quality, completeness, reusability, safety, structure) plus "
+            "overall, strengths[], weaknesses[], rationale. Not constrained here on purpose: the "
+            "dimensions are strategy served live by the rubric endpoint, so fetch it rather than "
+            "trusting this text."
+        ),
+    ],
+    categorization: Annotated[
+        dict | None,
+        Field(
+            description="Optional {primary_category, categories:[{key,confidence}], task_group, "
+            "tags[], summary}. Reuse an existing task_group slug from `list_task_groups`."
+        ),
+    ] = None,
+    model: Annotated[
+        str, Field(description="Exact id of the model that produced this assessment.")
+    ] = "claude-code",
 ) -> Any:
-    """Submit a completed assessment. `evaluation` must match the rubric schema
-    (clarity, trigger_quality, completeness, reusability, safety, structure as 0-10 ints, plus
-    overall 0-10, strengths[], weaknesses[], rationale). `categorization` is optional
-    {primary_category, categories:[{key,confidence}], task_group (a narrow specific-job slug —
-    reuse an existing one from list_task_groups), tags[], summary}. Requires an evaluator role;
-    unauthorized in stdio mode returns `{action_required: <how to approve>}`."""
+    """Submit a completed skill assessment. Requires an evaluator role; unauthorized in stdio mode
+    returns `{action_required: <how to approve>}`."""
     body: dict[str, Any] = {"evaluation": evaluation, "model": model}
     if categorization is not None:
         body["categorization"] = categorization
@@ -491,29 +609,43 @@ def submit_assessment(
 
 @mcp.tool()
 def add_recommendation(
-    kind: RecKind,
-    title: str,
-    rationale: str = "",
-    scope: str | None = None,
-    targets: list[str] | None = None,
-    suggested_action: str = "",
-    anchor: str | None = None,
-    target_kind: RecTargetKind = "skill",
+    kind: Annotated[
+        RecKind,
+        Field(
+            description="`improve` = upgrade ONE entry in place (examples, references/, tighter "
+            "trigger) without splitting it; the rest regroup or retire entries."
+        ),
+    ],
+    title: Annotated[str, Field(description="One line naming the change, not the symptom.")],
+    rationale: Annotated[
+        str,
+        Field(description="The EVIDENCE: what in the manifest/trial/text shows this is real."),
+    ] = "",
+    scope: Annotated[
+        str | None, Field(description="What it applies to: a category, task_group, skill or server.")
+    ] = None,
+    targets: Annotated[
+        list[str] | None, Field(description="Exact names of the skills or servers involved.")
+    ] = None,
+    suggested_action: Annotated[
+        str, Field(description="A runnable instruction another developer's Claude Code can execute.")
+    ] = "",
+    anchor: Annotated[
+        str | None,
+        Field(
+            description="For an `improve` about ONE spot, the EXACT text it attaches to: a heading "
+            "from `get_skill`'s `section_headings` (e.g. 'Workflow'), or a tool name from "
+            "`get_mcp_server`'s `tools` (e.g. 'find_columns'). It then renders inline at that spot "
+            "instead of only in a side list. Omit for anything about the whole entry."
+        ),
+    ] = None,
+    target_kind: Annotated[
+        RecTargetKind,
+        Field(description="Which catalog this is about; cross-catalog findings are fine on either side."),
+    ] = "skill",
 ) -> Any:
     """Propose a catalog change so it is stored and shown on the dashboard for a developer to run
-    later. `improve` = upgrade/restructure ONE skill in place — move detail into references/, add
-    examples, tighten the trigger, progressive disclosure — without splitting it. `scope`: a
-    category/task_group/skill. `suggested_action`: a runnable instruction.
-
-    `target_kind`: which catalog this is about — a SKILL.md, or an MCP server's tool surface (where
-    targets/scope name servers). Cross-catalog findings are fine on either side.
-
-    `anchor`: for `improve` recs about ONE specific spot, the EXACT text it attaches to — a SKILL.md
-    heading from `get_skill`'s `section_headings` (e.g. "Workflow") when target_kind=skill, or an
-    exact tool name from `get_mcp_server`'s `tools` (e.g. "find_columns") when target_kind=mcp. This
-    renders the suggestion inline right at that spot on the detail page instead of only in a side
-    list. Omit for recs not tied to one spot (e.g. merge/dedup/synthesize, or an improve about the
-    surface as a whole). Requires a contributor+ role; unauthorized in stdio mode returns
+    later. Requires a contributor+ role; unauthorized in stdio mode returns
     `{action_required: <how to approve>}`."""
     body = {
         "target_kind": target_kind,
@@ -529,7 +661,13 @@ def add_recommendation(
 
 
 @mcp.tool()
-def set_recommendation_status(rec_id: int, status: RecStatus) -> Any:
+def set_recommendation_status(
+    rec_id: Annotated[int, Field(description="Numeric recommendation id from `list_recommendations`.")],
+    status: Annotated[
+        RecStatus,
+        Field(description="`accepted` = will do, `done` = carried out, `dismissed` = won't do."),
+    ],
+) -> Any:
     """Update a recommendation's status. Shared state: a recommendation may have been filed by
     someone else, and restatusing it (e.g. `dismissed`) is visible to the whole team and is not
     versioned — check `list_recommendations` first if you did not file it. Requires a contributor+
@@ -539,21 +677,32 @@ def set_recommendation_status(rec_id: int, status: RecStatus) -> Any:
 
 @mcp.tool()
 def submit_skill_notebook(
-    skill_id: int,
-    notebook: dict,
-    model: str,
-    summary: dict | None = None,
-    scenario: str = "",
-    task_group: str | None = None,
+    skill_id: Annotated[int, Field(description="Numeric skill the trial was run against.")],
+    notebook: Annotated[
+        dict, Field(description="The nbformat object the harness emits as `trial.ipynb`.")
+    ],
+    model: Annotated[
+        str,
+        Field(
+            description="The EXECUTING model that produced this trial — your own exact id, e.g. "
+            "'claude-opus-5'. Trials are keyed per (skill, model), so this decides which one is "
+            "REPLACED; other models' trials are untouched."
+        ),
+    ],
+    summary: Annotated[
+        dict | None,
+        Field(
+            description="The harness's `trial.json`: objective `entries` plus the judge panel's "
+            "`result_grade`, `dimensions` and `panel`."
+        ),
+    ] = None,
+    scenario: Annotated[str, Field(description="Scenario name the trial ran, e.g. 'green_loop_understand'.")] = "",
+    task_group: Annotated[str | None, Field(description="Task-group slug this trial belongs to.")] = None,
 ) -> Any:
-    """Store (create or REGENERATE) a sandbox-trial notebook for the skill — the run record the
-    `evals/` harness emits (`trial.ipynb` = `notebook`, `trial.json` = `summary`). Trials are per
-    (skill, MODEL): pass `model` = the EXECUTING model that produced this trial (your own exact
-    model id, e.g. `claude-opus-5`); submitting replaces that model's trial only, leaving other
-    models' trials intact. The tested skill-version snapshot (for the stale flag) is taken
-    server-side. Requires a contributor+ role; unauthorized in stdio mode returns
-    `{action_required: <how to approve>}`. Run right after a sandbox trial so the result shows
-    in the skill's effectiveness-by-model matrix on the dashboard."""
+    """Store (create or REGENERATE) a sandbox-trial notebook for the skill. The tested
+    skill-version snapshot (for the stale flag) is taken server-side. Requires a contributor+ role;
+    unauthorized in stdio mode returns `{action_required: <how to approve>}`. Run right after a
+    sandbox trial so the result shows in the skill's effectiveness-by-model matrix."""
     body = {
         "model": model,
         "notebook": notebook,
@@ -569,18 +718,20 @@ def submit_skill_notebook(
 
 @mcp.tool()
 def submit_for_review(
-    task_ref: str,
-    title: str = "",
-    branch: str | None = None,
-    commit_shas: list[str] | None = None,
-    summary: str = "",
-    files: list[str] | None = None,
-    verified_notes: str = "",
+    task_ref: Annotated[str, Field(description="The issue_logs id or link the work belongs to.")],
+    title: Annotated[str, Field(description="Short title for the reviewer's queue.")] = "",
+    branch: Annotated[str | None, Field(description="Branch the reviewer should fetch.")] = None,
+    commit_shas: Annotated[
+        list[str] | None, Field(description="Commits that make up the change.")
+    ] = None,
+    summary: Annotated[str, Field(description="What changed and why.")] = "",
+    files: Annotated[list[str] | None, Field(description="Paths the change touches.")] = None,
+    verified_notes: Annotated[
+        str, Field(description="What you actually checked (php -l / harness / QA) AND what you did not.")
+    ] = "",
 ) -> Any:
     """Submit a deploy-ready Prologistics task for review by the lead. Pass a POINTER to the work —
-    the code stays in git; the reviewer fetches the branch and reviews the real diff. `task_ref` is
-    the issue_logs id/link; `commit_shas`/`files` describe the change; `summary` is what changed and
-    why; `verified_notes` is what you checked (php -l / harness / QA) and what you did not. The single
+    the code stays in git; the reviewer fetches the branch and reviews the real diff. The single
     lead is auto-assigned. Returns the created review (with its id and status); unauthorized in
     stdio mode returns `{action_required: <how to approve>}`."""
     body = {
@@ -599,7 +750,11 @@ def list_review_queue() -> Any:
 
 
 @mcp.tool()
-def list_my_reviews(status: ReviewStatus | None = None) -> Any:
+def list_my_reviews(
+    status: Annotated[
+        ReviewStatus | None, Field(description="Lifecycle filter; omit for all of yours.")
+    ] = None,
+) -> Any:
     """Reviews you authored. The ones needing your action are `changes_requested` (fix +
     `resubmit_review`) and `approved` (`ack_review`)."""
     params = {"mine": "true"}
@@ -609,27 +764,43 @@ def list_my_reviews(status: ReviewStatus | None = None) -> Any:
 
 
 @mcp.tool()
-def get_review(review_id: int) -> Any:
+def get_review(
+    review_id: Annotated[int, Field(description="Numeric review id from a list tool.")],
+) -> Any:
     """Get one review with its full thread (submit -> verdict -> resubmit -> ...), pointer fields
     (task_ref, branch, commit_shas, files), summary and the author's verification notes."""
     return _read_call("GET", f"/api/reviews/{review_id}")
 
 
 @mcp.tool()
-def submit_review_result(review_id: int, verdict: ReviewVerdict, comments: str = "") -> Any:
-    """Lead posts a verdict on a review (`comments` required for `changes_requested`). Requires the
-    reviewer (lead) role; unauthorized in stdio mode returns `{action_required: <how to approve>}`.
-    Only a review awaiting review can be decided."""
+def submit_review_result(
+    review_id: Annotated[int, Field(description="Numeric review id from `list_review_queue`.")],
+    verdict: Annotated[
+        ReviewVerdict, Field(description="`changes_requested` requires `comments`.")
+    ],
+    comments: Annotated[
+        str, Field(description="What must change; required when requesting changes.")
+    ] = "",
+) -> Any:
+    """Lead posts a verdict on a review. Requires the reviewer (lead) role; unauthorized in stdio
+    mode returns `{action_required: <how to approve>}`. Only a review awaiting review can be
+    decided."""
     return _authed_call(
         "POST", f"/api/reviews/{review_id}/result", json={"verdict": verdict, "comments": comments}
     )
 
 
 @mcp.tool()
-def resubmit_review(review_id: int, commit_shas: list[str] | None = None, note: str = "") -> Any:
-    """Author sends a task back for another round after addressing the review comments. Pass the new
-    `commit_shas` and a `note` on what changed. Moves the review back into the lead's queue;
-    unauthorized in stdio mode returns `{action_required: <how to approve>}`."""
+def resubmit_review(
+    review_id: Annotated[int, Field(description="Numeric review id being resubmitted.")],
+    commit_shas: Annotated[
+        list[str] | None, Field(description="The NEW commits added since the verdict.")
+    ] = None,
+    note: Annotated[str, Field(description="What you changed in response to the comments.")] = "",
+) -> Any:
+    """Author sends a task back for another round after addressing the review comments. Moves the
+    review back into the lead's queue; unauthorized in stdio mode returns
+    `{action_required: <how to approve>}`."""
     return _authed_call(
         "POST", f"/api/reviews/{review_id}/resubmit",
         json={"commit_shas": commit_shas or [], "note": note},
@@ -637,7 +808,9 @@ def resubmit_review(review_id: int, commit_shas: list[str] | None = None, note: 
 
 
 @mcp.tool()
-def ack_review(review_id: int) -> Any:
+def ack_review(
+    review_id: Annotated[int, Field(description="Numeric review id you authored.")],
+) -> Any:
     """Author acknowledges the outcome; an approved review is closed (status `done`). Unauthorized
     in stdio mode returns `{action_required: <how to approve>}`."""
     return _authed_call("POST", f"/api/reviews/{review_id}/ack", json={})
