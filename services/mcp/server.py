@@ -22,10 +22,31 @@ from __future__ import annotations
 import os
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+
+# --- closed vocabularies, mirrored as Literal so they reach the client as real JSON-Schema enums.
+#
+# These are DUPLICATED, not imported: this container installs only `mcp` + `httpx` (see Dockerfile),
+# deliberately excluding skillhub_core so the image stays small (no torch). The source of truth is
+# `skillhub_core.skills.constants` (REC_KINDS / REC_STATUSES / REC_TARGET_KINDS / FORMAT_*),
+# `skillhub_core.mcp.models.mcp_server` (TRANSPORTS) and `skillhub_core.reviews.models.review`
+# (REVIEW_STATUSES / VERDICTS) — keep them in step when a vocabulary changes there.
+#
+# Only stable domain vocabularies belong here. Evaluation DIMENSIONS deliberately do NOT: they are
+# strategy, served live from /api/rubric so one algorithm governs every developer, and embedding
+# them would mean a rubric change needs an MCP redeploy.
+RecKind = Literal["synthesize", "split", "improve", "merge", "dedup", "delete", "other"]
+RecStatus = Literal["proposed", "accepted", "done", "dismissed"]
+RecTargetKind = Literal["skill", "mcp"]
+SourceFormat = Literal[
+    "claude_skill", "cursor_mdc", "codex_skill", "copilot_instructions", "generic_md"
+]
+McpTransport = Literal["stdio", "http"]
+ReviewStatus = Literal["submitted", "changes_requested", "approved", "done"]
+ReviewVerdict = Literal["approve", "changes_requested"]
 
 TRANSPORT = os.environ.get("SKILLHUB_MCP_TRANSPORT", "stdio").strip().lower()
 BASE = os.environ.get("SKILLHUB_URL", "http://host.docker.internal:8000").rstrip("/")
@@ -274,7 +295,7 @@ def get_rubric() -> Any:
 
 
 @mcp.tool()
-def list_task_groups(status: str | None = None) -> Any:
+def list_task_groups() -> Any:
     """List the existing narrow task-groups (the specific-job layer below the broad categories),
     with each group's skill count and average score. Call this BEFORE assigning a `task_group` on
     an assessment and REUSE a matching slug, so skills that do the same job cluster together
@@ -289,7 +310,9 @@ def get_stats() -> Any:
 
 
 @mcp.tool()
-def list_recommendations(status: str | None = None, target_kind: str | None = None) -> Any:
+def list_recommendations(
+    status: RecStatus | None = None, target_kind: RecTargetKind | None = None
+) -> Any:
     """List curator recommendations (proposed catalog changes: synthesize/split/improve/merge/dedup/delete).
     Optionally filter by status: proposed|accepted|done|dismissed, and by `target_kind`:
     `skill` (about a SKILL.md) or `mcp` (about an MCP server's tool surface)."""
@@ -331,7 +354,7 @@ def upload_mcp_server(
     tools: list[dict],
     description: str = "",
     label: str | None = None,
-    transport: str = "stdio",
+    transport: McpTransport = "stdio",
     family: str | None = None,
 ) -> Any:
     """Catalogue an MCP server by INTROSPECTING one you are already connected to.
@@ -352,7 +375,8 @@ def upload_mcp_server(
     `name` is the server entry's name (e.g. `beliani-db-schema-prod`). Re-submitting an existing
     name adds a new VERSION, so drift is visible in the history; an unchanged manifest is a no-op.
     `family` groups sibling entries (e.g. `beliani-db-schema` for the prod/dev/heap trio).
-    Requires a contributor+ role."""
+    Requires a contributor+ role. Unauthorized in stdio mode returns
+    `{action_required: <how to approve>}`."""
     body = {
         "name": name,
         "description": description,
@@ -370,7 +394,8 @@ def submit_mcp_assessment(server_id: int, evaluation: dict, model: str = "claude
     MCP rubric schema (schema_precision, tool_clarity, discoverability, result_shape, safety,
     token_economy as 0-10 ints, plus overall 0-10, strengths[], weaknesses[], rationale). Fetch
     `get_mcp_rubric` first and score against ITS dimensions — these are not the skills dimensions.
-    Score only what the manifest actually contains. Requires a contributor+ role."""
+    Score only what the manifest actually contains. Requires a contributor+ role; unauthorized in
+    stdio mode returns `{action_required: <how to approve>}`."""
     return _authed_call(
         "POST", f"/api/mcp/{server_id}/assessment", json={"evaluation": evaluation, "model": model}
     )
@@ -424,12 +449,12 @@ def authenticate() -> Any:
 def upload_skill(
     content: str,
     author: str | None = None,
-    source_format: str = "claude_skill",
+    source_format: SourceFormat = "claude_skill",
     references: list[dict] | None = None,
 ) -> Any:
     """Import a skill. `content` is the raw SKILL.md text (with YAML frontmatter). `references`
-    is a list of {path, content}. `source_format`: claude_skill|cursor_mdc|codex_skill|generic_md.
-    Requires a contributor+ role (run `authenticate` first if needed).
+    is a list of {path, content}. Requires a contributor+ role (run `authenticate` first if needed);
+    unauthorized in stdio mode returns `{action_required: <how to approve>}` rather than raising.
 
     De-duplication: skills are keyed by name — re-uploading an existing name adds a new VERSION of
     that one skill (not a copy), attributed to you. Uploading content IDENTICAL to an existing skill
@@ -456,7 +481,8 @@ def submit_assessment(
     (clarity, trigger_quality, completeness, reusability, safety, structure as 0-10 ints, plus
     overall 0-10, strengths[], weaknesses[], rationale). `categorization` is optional
     {primary_category, categories:[{key,confidence}], task_group (a narrow specific-job slug —
-    reuse an existing one from list_task_groups), tags[], summary}. Requires an evaluator role."""
+    reuse an existing one from list_task_groups), tags[], summary}. Requires an evaluator role;
+    unauthorized in stdio mode returns `{action_required: <how to approve>}`."""
     body: dict[str, Any] = {"evaluation": evaluation, "model": model}
     if categorization is not None:
         body["categorization"] = categorization
@@ -465,31 +491,30 @@ def submit_assessment(
 
 @mcp.tool()
 def add_recommendation(
-    kind: str,
+    kind: RecKind,
     title: str,
     rationale: str = "",
     scope: str | None = None,
     targets: list[str] | None = None,
     suggested_action: str = "",
     anchor: str | None = None,
-    target_kind: str = "skill",
+    target_kind: RecTargetKind = "skill",
 ) -> Any:
     """Propose a catalog change so it is stored and shown on the dashboard for a developer to run
-    later. `kind`: synthesize|split|improve|merge|dedup|delete|other (`improve` = upgrade/restructure
-    ONE skill in place — move detail into references/, add examples, tighten the trigger, progressive
-    disclosure — without splitting it). `scope`: a category/task_group/skill. `suggested_action`: a
-    runnable instruction.
+    later. `improve` = upgrade/restructure ONE skill in place — move detail into references/, add
+    examples, tighten the trigger, progressive disclosure — without splitting it. `scope`: a
+    category/task_group/skill. `suggested_action`: a runnable instruction.
 
-    `target_kind`: which catalog this is about — `skill` (default, a SKILL.md) or `mcp` (an MCP
-    server's tool surface, where targets/scope name servers). Cross-catalog findings are fine on
-    either side.
+    `target_kind`: which catalog this is about — a SKILL.md, or an MCP server's tool surface (where
+    targets/scope name servers). Cross-catalog findings are fine on either side.
 
     `anchor`: for `improve` recs about ONE specific spot, the EXACT text it attaches to — a SKILL.md
     heading from `get_skill`'s `section_headings` (e.g. "Workflow") when target_kind=skill, or an
     exact tool name from `get_mcp_server`'s `tools` (e.g. "find_columns") when target_kind=mcp. This
     renders the suggestion inline right at that spot on the detail page instead of only in a side
     list. Omit for recs not tied to one spot (e.g. merge/dedup/synthesize, or an improve about the
-    surface as a whole). Requires a contributor+ role."""
+    surface as a whole). Requires a contributor+ role; unauthorized in stdio mode returns
+    `{action_required: <how to approve>}`."""
     body = {
         "target_kind": target_kind,
         "kind": kind,
@@ -504,8 +529,11 @@ def add_recommendation(
 
 
 @mcp.tool()
-def set_recommendation_status(rec_id: int, status: str) -> Any:
-    """Update a recommendation's status: proposed|accepted|done|dismissed. Requires a contributor+ role."""
+def set_recommendation_status(rec_id: int, status: RecStatus) -> Any:
+    """Update a recommendation's status. Shared state: a recommendation may have been filed by
+    someone else, and restatusing it (e.g. `dismissed`) is visible to the whole team and is not
+    versioned — check `list_recommendations` first if you did not file it. Requires a contributor+
+    role; unauthorized in stdio mode returns `{action_required: <how to approve>}`."""
     return _authed_call("POST", f"/api/recommendations/{rec_id}/status", json={"status": status})
 
 
@@ -523,7 +551,8 @@ def submit_skill_notebook(
     (skill, MODEL): pass `model` = the EXECUTING model that produced this trial (your own exact
     model id, e.g. `claude-opus-5`); submitting replaces that model's trial only, leaving other
     models' trials intact. The tested skill-version snapshot (for the stale flag) is taken
-    server-side. Requires a contributor+ role. Run right after a sandbox trial so the result shows
+    server-side. Requires a contributor+ role; unauthorized in stdio mode returns
+    `{action_required: <how to approve>}`. Run right after a sandbox trial so the result shows
     in the skill's effectiveness-by-model matrix on the dashboard."""
     body = {
         "model": model,
@@ -552,7 +581,8 @@ def submit_for_review(
     the code stays in git; the reviewer fetches the branch and reviews the real diff. `task_ref` is
     the issue_logs id/link; `commit_shas`/`files` describe the change; `summary` is what changed and
     why; `verified_notes` is what you checked (php -l / harness / QA) and what you did not. The single
-    lead is auto-assigned. Returns the created review (with its id and status)."""
+    lead is auto-assigned. Returns the created review (with its id and status); unauthorized in
+    stdio mode returns `{action_required: <how to approve>}`."""
     body = {
         "task_ref": task_ref, "title": title, "branch": branch,
         "commit_shas": commit_shas or [], "summary": summary,
@@ -569,9 +599,9 @@ def list_review_queue() -> Any:
 
 
 @mcp.tool()
-def list_my_reviews(status: str | None = None) -> Any:
-    """Reviews you authored. Filter by `status` (submitted|changes_requested|approved|done). The ones
-    needing your action are `changes_requested` (fix + `resubmit_review`) and `approved` (`ack_review`)."""
+def list_my_reviews(status: ReviewStatus | None = None) -> Any:
+    """Reviews you authored. The ones needing your action are `changes_requested` (fix +
+    `resubmit_review`) and `approved` (`ack_review`)."""
     params = {"mine": "true"}
     if status:
         params["status"] = status
@@ -586,10 +616,10 @@ def get_review(review_id: int) -> Any:
 
 
 @mcp.tool()
-def submit_review_result(review_id: int, verdict: str, comments: str = "") -> Any:
-    """Lead posts a verdict on a review. `verdict`: `approve` | `changes_requested` (comments required
-    for changes_requested). Requires the reviewer (lead) role. Only a review awaiting review can be
-    decided."""
+def submit_review_result(review_id: int, verdict: ReviewVerdict, comments: str = "") -> Any:
+    """Lead posts a verdict on a review (`comments` required for `changes_requested`). Requires the
+    reviewer (lead) role; unauthorized in stdio mode returns `{action_required: <how to approve>}`.
+    Only a review awaiting review can be decided."""
     return _authed_call(
         "POST", f"/api/reviews/{review_id}/result", json={"verdict": verdict, "comments": comments}
     )
@@ -598,7 +628,8 @@ def submit_review_result(review_id: int, verdict: str, comments: str = "") -> An
 @mcp.tool()
 def resubmit_review(review_id: int, commit_shas: list[str] | None = None, note: str = "") -> Any:
     """Author sends a task back for another round after addressing the review comments. Pass the new
-    `commit_shas` and a `note` on what changed. Moves the review back into the lead's queue."""
+    `commit_shas` and a `note` on what changed. Moves the review back into the lead's queue;
+    unauthorized in stdio mode returns `{action_required: <how to approve>}`."""
     return _authed_call(
         "POST", f"/api/reviews/{review_id}/resubmit",
         json={"commit_shas": commit_shas or [], "note": note},
@@ -607,7 +638,8 @@ def resubmit_review(review_id: int, commit_shas: list[str] | None = None, note: 
 
 @mcp.tool()
 def ack_review(review_id: int) -> Any:
-    """Author acknowledges the outcome; an approved review is closed (status `done`)."""
+    """Author acknowledges the outcome; an approved review is closed (status `done`). Unauthorized
+    in stdio mode returns `{action_required: <how to approve>}`."""
     return _authed_call("POST", f"/api/reviews/{review_id}/ack", json={})
 
 
