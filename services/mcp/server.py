@@ -280,7 +280,8 @@ def list_skills(
         ),
     ] = None,
     category: Annotated[
-        str | None, Field(description="Exact category key from `list_mcp_servers`-style keys, e.g. 'data-access'.")
+        str | None,
+        Field(description="Exact category key from `get_rubric`'s `categories`, e.g. 'data-access'."),
     ] = None,
 ) -> Any:
     """List skills, filtered by a literal name/author substring or an exact category key. Returns
@@ -292,13 +293,24 @@ def list_skills(
 @mcp.tool()
 def get_skill(
     skill_id: Annotated[int, Field(description="Numeric skill id, e.g. from `list_skills` or `search`.")],
+    include_references: Annotated[
+        bool,
+        Field(
+            description="Include the reference FILES' contents. Off by default because they are "
+            "the heaviest part of the payload; `references_count` tells you how many exist either "
+            "way. Set true when INSTALLING the skill, since you need their contents to write them."
+        ),
+    ] = False,
 ) -> Any:
-    """Get one skill with its content, latest evaluation and similar skills. To INSTALL the skill
-    into the user's Claude Code, use `skill_md` (the ready-to-write SKILL.md) and `references[]`
-    ({path, content}) and write them to `<skills-dir>/<name>/` with your own Write tool — this
-    MCP server runs in a container and cannot touch the user's disk. Heavy: returns the full
-    SKILL.md plus every reference file inline, with no way to request less."""
-    return _read_call("GET", f"/api/skills/{skill_id}")
+    """Get one skill: its `skill_md`, body, latest evaluation, open recommendations and similar
+    skills. Lean by default — reference files are omitted unless you ask for them.
+
+    To INSTALL into the user's Claude Code, call with `include_references=true`, then write
+    `skill_md` and each `references[]` {path, content} to `<skills-dir>/<name>/` with your own
+    Write tool — this MCP server runs in a container and cannot touch the user's disk."""
+    return _read_call(
+        "GET", f"/api/skills/{skill_id}", params={"include_references": str(include_references).lower()}
+    )
 
 
 @mcp.tool()
@@ -491,14 +503,25 @@ def get_skill_notebook(
         str | None,
         Field(description="Which model's trial to fetch; omit for the best-scoring one."),
     ] = None,
+    include_cells: Annotated[
+        bool,
+        Field(
+            description="Include the raw nbformat cells — the full transcript, by far the largest "
+            "field. Off by default: the scorecard alone answers reuse-vs-regenerate. Set true only "
+            "to actually READ what the run did."
+        ),
+    ] = False,
 ) -> Any:
-    """Get a sandbox-trial notebook for the skill (the run record from the `evals/` harness): the
-    `notebook` (nbformat cells), the `summary` scorecard, `model` (executing model), `effectiveness`
-    (0..1 best pass-rate) and `stale` (true once the skill changed since the trial ran). Returns
-    `{error: 404}` if none recorded. Call before a sandbox run to decide reuse vs. regenerate for
-    YOUR model: if a fresh (non-stale) trial exists for your model and the developer did not ask to
-    regenerate, reuse it. Heavy: returns the whole notebook inline."""
-    params = {"model": model} if model else None
+    """Get a sandbox-trial notebook for the skill (the run record from the `evals/` harness).
+    Lean by default: returns the scorecard — `summary`, `effectiveness` (0..1), `result_grade`,
+    `objective_rate`, `dimensions`, `panel`, executing `model` and `stale` (true once the skill
+    changed since the trial ran) — without the transcript. Returns `{error: 404}` if none recorded.
+
+    Call before a sandbox run to decide reuse vs. regenerate for YOUR model: if a fresh
+    (non-stale) trial exists for your model and the developer did not ask to regenerate, reuse it."""
+    params: dict[str, str] = {"include_cells": str(include_cells).lower()}
+    if model:
+        params["model"] = model
     return _read_call("GET", f"/api/skills/{skill_id}/notebook", params=params)
 
 

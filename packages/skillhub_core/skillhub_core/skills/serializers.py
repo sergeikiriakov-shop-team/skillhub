@@ -169,10 +169,16 @@ def skill_to_detail(
     skill: Skill,
     similar: list[tuple[Skill, float]] | None = None,
     open_recommendations: list[Recommendation] | None = None,
+    include_references: bool = True,
 ) -> SkillDetail:
+    """``include_references=False`` returns the skill without its reference FILES. Everything else
+    (including ``references_count``, so the caller still knows they exist) is unchanged — this is
+    the cheap read for callers that only need the metadata/body, since reference files are by far
+    the heaviest part of the payload. Defaults to True so existing callers are unaffected."""
     version = skill.latest_version
     evaluation = version.latest_evaluation if version else None
     open_recs = open_recommendations or []
+    all_references = (version.references or []) if version else []
     return SkillDetail(
         id=skill.id,
         name=skill.name,
@@ -192,7 +198,8 @@ def skill_to_detail(
         trigger_text=version.trigger_text if version else None,
         body_md=version.body_md if version else "",
         skill_md=_canonical_skill_md(skill),
-        references=[ReferenceIn(**r) for r in (version.references or [])] if version else [],
+        references=[ReferenceIn(**r) for r in all_references] if include_references else [],
+        references_count=len(all_references),
         section_headings=version.section_headings if version else [],
         version_no=version.version_no if version else 0,
         contributors=_contributors(skill),

@@ -67,9 +67,16 @@ def create_skill(
 
 
 @router.get("/skills/{skill_id}", response_model=SkillDetail)
-def get_skill(skill_id: int, service: SkillService = Depends(get_skill_service)) -> SkillDetail:
+def get_skill(
+    skill_id: int,
+    include_references: bool = True,
+    service: SkillService = Depends(get_skill_service),
+) -> SkillDetail:
+    """One skill in full. ``include_references=false`` omits the reference FILES — the heaviest
+    part of the payload — while `references_count` still reports how many exist. Defaults to true
+    so existing callers (the web UI, which renders them) are unaffected."""
     try:
-        return service.get_skill(skill_id)
+        return service.get_skill(skill_id, include_references=include_references)
     except SkillNotFound as exc:
         raise HTTPException(status_code=404, detail="Skill not found") from exc
 
@@ -78,12 +85,15 @@ def get_skill(skill_id: int, service: SkillService = Depends(get_skill_service))
 def get_skill_notebook(
     skill_id: int,
     model: str | None = None,
+    include_cells: bool = True,
     service: NotebookService = Depends(get_notebook_service),
     _: User | None = Depends(require_read_access),
 ) -> NotebookOut:
     """A sandbox-trial notebook for this skill (the run record from ``evals/``). ``model`` selects
-    the executing model's trial; omitted, returns the best-scoring model's. 404 if none recorded."""
-    notebook = service.get_notebook(skill_id, model)
+    the executing model's trial; omitted, returns the best-scoring model's. 404 if none recorded.
+    ``include_cells=false`` drops the raw nbformat cells and keeps only the scorecard — enough to
+    decide reuse-vs-regenerate without pulling the whole transcript."""
+    notebook = service.get_notebook(skill_id, model, include_cells=include_cells)
     if notebook is None:
         raise HTTPException(status_code=404, detail="No sandbox trial recorded for this skill")
     return notebook

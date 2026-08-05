@@ -90,6 +90,9 @@ export interface SkillDetail extends SkillSummary {
   // Full canonical SKILL.md (frontmatter + body), ready to install into Claude Code.
   skill_md: string;
   references: { path: string; content: string }[];
+  // How many reference files exist — stays accurate even when the caller asked for a lean read
+  // (`include_references=false`), where `references` comes back empty.
+  references_count: number;
   section_headings: string[];
   version_no: number;
   contributors: string[];

@@ -73,7 +73,10 @@ class SkillRepository(Protocol):
 
     def list(self, *, search: str | None, category: str | None, evaluated: bool | None) -> list[SkillSummary]: ...
 
-    def get(self, skill_id: int) -> SkillDetail | None: ...
+    def get(self, skill_id: int, *, include_references: bool = True) -> SkillDetail | None:
+        """The skill's full detail. ``include_references=False`` omits the reference FILES (the
+        heaviest part of the payload) while keeping ``references_count`` accurate."""
+        ...
 
     def delete(self, skill_id: int) -> bool:
         """Delete a skill (flush only; caller commits). False if it does not exist."""

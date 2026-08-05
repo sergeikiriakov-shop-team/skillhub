@@ -120,15 +120,26 @@ class NotebookService:
     def __init__(self, notebooks: NotebookRepository) -> None:
         self._notebooks = notebooks
 
-    def get_notebook(self, skill_id: int, model: str | None = None) -> NotebookOut | None:
+    def get_notebook(
+        self, skill_id: int, model: str | None = None, *, include_cells: bool = True
+    ) -> NotebookOut | None:
         """The trial for a specific model, or — when ``model`` is omitted — the skill's best-scoring
-        model's trial (back-compat for callers that don't specify a model)."""
+        model's trial (back-compat for callers that don't specify a model).
+
+        ``include_cells=False`` drops the raw nbformat ``notebook`` (by far the largest field) and
+        keeps the scorecard: effectiveness, result_grade, objective_rate, dimensions, panel,
+        summary, staleness. That is what a caller deciding "reuse or regenerate?" actually needs;
+        the cells are only for reading the transcript."""
         if not model:
             model = self.get_matrix(skill_id).best_model
             if not model:
                 return None
         row = self._notebooks.get(skill_id, model)
-        return NotebookOut(**row) if row is not None else None
+        if row is None:
+            return None
+        if not include_cells:
+            row = {**row, "notebook": {}}
+        return NotebookOut(**row)
 
     def get_matrix(self, skill_id: int) -> SkillFitOut:
         """The skill's effectiveness-by-model matrix (best model first)."""
@@ -195,8 +206,8 @@ class SkillService:
     ) -> list[SkillSummary]:
         return self._skills.list(search=search, category=category, evaluated=evaluated)
 
-    def get_skill(self, skill_id: int) -> SkillDetail:
-        detail = self._skills.get(skill_id)
+    def get_skill(self, skill_id: int, *, include_references: bool = True) -> SkillDetail:
+        detail = self._skills.get(skill_id, include_references=include_references)
         if detail is None:
             raise SkillNotFound(f"skill {skill_id} not found")
         return detail

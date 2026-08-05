@@ -94,6 +94,10 @@ class SkillDetail(SkillSummary):
         "write to <skills-dir>/<name>/SKILL.md when installing the skill into Claude Code.",
     )
     references: list[ReferenceIn]
+    # How many reference files the skill actually has. Stays accurate even when `references` was
+    # omitted from this response (`include_references=false`), so a lean read still tells the
+    # caller whether there is anything to fetch.
+    references_count: int = 0
     section_headings: list[str]
     version_no: int
     contributors: list[str] = Field(default_factory=list)  # distinct verified authors across versions

@@ -749,12 +749,17 @@ class SqlSkillRepository:
             for s in skills
         ]
 
-    def get(self, skill_id: int) -> SkillDetail | None:
+    def get(self, skill_id: int, *, include_references: bool = True) -> SkillDetail | None:
         skill = get_skill(self._session, skill_id)
         if skill is None:
             return None
         open_recs = open_recommendations_for_skill(self._session, skill)
-        return serializers.skill_to_detail(skill, find_similar(self._session, skill), open_recs)
+        return serializers.skill_to_detail(
+            skill,
+            find_similar(self._session, skill),
+            open_recs,
+            include_references=include_references,
+        )
 
     # --- ingest primitives (orchestrated by IngestService) ---
     def embed(self, text: str) -> list[float] | None:
