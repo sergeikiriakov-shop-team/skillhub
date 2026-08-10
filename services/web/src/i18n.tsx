@@ -106,6 +106,7 @@ const en: Dict = {
   "reviews.queueTab": "Review queue",
   "reviews.assignedTab": "Assigned to me",
   "reviews.mineTab": "My submissions",
+  "reviews.selfTab": "Self-reviews",
   "reviews.allTab": "All",
   "reviews.count": "{count} review(s)",
   "reviews.empty": "No reviews here yet.",
@@ -164,6 +165,14 @@ const en: Dict = {
   "selfReview.severity.nit": "nit",
   "selfReview.noFindings": "The skill reported nothing.",
   "selfReview.suggestion": "Fix",
+  "selfReview.count": "{count} self-review(s)",
+  "selfReview.empty":
+    "No self-reviews yet. Run the self-review skill from Claude Code — it applies the skill " +
+    "configured below to your own diff and posts the findings here.",
+  "selfReview.attachedTo": "· on review #{id}",
+  "selfReview.standalone": "· not handed to a lead yet",
+  "selfReview.show": "Findings",
+  "selfReview.hide": "Hide",
 
   // common
   "common.copy": "Copy",
@@ -448,6 +457,7 @@ const ru: Dict = {
   "reviews.queueTab": "Очередь ревью",
   "reviews.assignedTab": "Назначено мне",
   "reviews.mineTab": "Мои заявки",
+  "reviews.selfTab": "Саморевью",
   "reviews.allTab": "Все",
   "reviews.count": "заявок: {count}",
   "reviews.empty": "Здесь пока нет заявок.",
@@ -506,6 +516,14 @@ const ru: Dict = {
   "selfReview.severity.nit": "придирка",
   "selfReview.noFindings": "Скилл не нашёл замечаний.",
   "selfReview.suggestion": "Как исправить",
+  "selfReview.count": "саморевью: {count}",
+  "selfReview.empty":
+    "Саморевью пока нет. Запустите скилл self-review из Claude Code — он применит к вашему диффу " +
+    "скилл, выбранный ниже, и пришлёт находки сюда.",
+  "selfReview.attachedTo": "· в заявке #{id}",
+  "selfReview.standalone": "· лиду ещё не передано",
+  "selfReview.show": "Замечания",
+  "selfReview.hide": "Скрыть",
 
   // common
   "common.copy": "Копировать",

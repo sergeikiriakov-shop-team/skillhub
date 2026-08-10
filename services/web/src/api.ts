@@ -457,6 +457,14 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ lane, skill, required }),
     }),
+  listSelfReviews: (opts?: { mine?: boolean; taskRef?: string; reviewId?: number }) => {
+    const params = new URLSearchParams();
+    if (opts?.mine) params.set("mine", "true");
+    if (opts?.taskRef) params.set("task_ref", opts.taskRef);
+    if (opts?.reviewId !== undefined) params.set("review_id", String(opts.reviewId));
+    const qs = params.toString();
+    return request<SelfReviewSummary[]>(`/self-reviews${qs ? `?${qs}` : ""}`);
+  },
   getSelfReview: (id: number) => request<SelfReviewDetail>(`/self-reviews/${id}`),
   // --- auth ---
   me: () => request<Me>("/auth/me"),

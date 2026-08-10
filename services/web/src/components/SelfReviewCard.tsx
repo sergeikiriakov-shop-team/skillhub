@@ -1,5 +1,7 @@
-import { Badge, Card, Code, Group, Paper, Stack, Text } from "@mantine/core";
+import { Anchor, Badge, Button, Card, Code, Collapse, Group, Paper, Stack, Text } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { SelfReviewFinding, SelfReviewSummary } from "../api";
 import { useI18n } from "../i18n";
@@ -45,14 +47,25 @@ function Finding({ f }: { f: SelfReviewFinding }) {
   );
 }
 
-/** One self-review attached to a peer review: what the team's review skill found in the author's
- * own change, before the lead ever saw it. The summary comes with the review; the findings are
- * fetched on demand (they are the heavy half). */
-export default function SelfReviewCard({ sr }: { sr: SelfReviewSummary }) {
+/** One self-review: what the team's review skill found in the author's own change, before anyone
+ * else saw it. The summary is cheap and comes with the list; the findings are the heavy half and
+ * are fetched separately — in a list (`collapsible`) only once the reader expands the card.
+ * `showTask` adds the pointer fields, which are redundant on a peer review's own page. */
+export default function SelfReviewCard({
+  sr,
+  collapsible = false,
+  showTask = false,
+}: {
+  sr: SelfReviewSummary;
+  collapsible?: boolean;
+  showTask?: boolean;
+}) {
   const { t } = useI18n();
+  const [open, setOpen] = useState(!collapsible);
   const { data } = useQuery({
     queryKey: ["selfReview", sr.id],
     queryFn: () => api.getSelfReview(sr.id),
+    enabled: open,
   });
   const findings = data?.findings ?? [];
 
@@ -77,7 +90,34 @@ export default function SelfReviewCard({ sr }: { sr: SelfReviewSummary }) {
         </Text>
       </Group>
 
-      <Group gap="xs" mb={data?.summary ? "xs" : 0}>
+      {showTask && (
+        <Group gap="xs" mb={4} wrap="wrap">
+          <Text size="xs" c="dimmed">
+            {t("reviews.task")}: {sr.task_ref}
+          </Text>
+          {sr.branch && (
+            <Text size="xs" c="dimmed">
+              · {sr.branch}
+            </Text>
+          )}
+          {sr.author && (
+            <Text size="xs" c="dimmed">
+              · {t("reviews.by", { author: sr.author })}
+            </Text>
+          )}
+          {sr.review_id ? (
+            <Anchor component={Link} to={`/reviews/${sr.review_id}`} size="xs">
+              {t("selfReview.attachedTo", { id: sr.review_id })}
+            </Anchor>
+          ) : (
+            <Text size="xs" c="dimmed">
+              · {t("selfReview.standalone")}
+            </Text>
+          )}
+        </Group>
+      )}
+
+      <Group gap="xs" mb={open ? "xs" : 0}>
         <Text size="xs" c="dimmed">
           {t(`selfReview.lane.${sr.lane}`)}
         </Text>
@@ -89,25 +129,33 @@ export default function SelfReviewCard({ sr }: { sr: SelfReviewSummary }) {
             · {t("selfReview.blocking", { count: sr.blocking_count })}
           </Text>
         )}
+        {collapsible && (
+          <Button size="compact-xs" variant="subtle" onClick={() => setOpen((v) => !v)} ml="auto">
+            {open ? t("selfReview.hide") : t("selfReview.show")}
+          </Button>
+        )}
       </Group>
 
-      {data?.summary && (
-        <Text size="sm" mb="xs" style={{ whiteSpace: "pre-wrap" }}>
-          {data.summary}
-        </Text>
-      )}
-
-      {findings.length > 0 ? (
-        <Stack gap="xs">
-          {findings.map((f, i) => (
-            <Finding key={`${f.file ?? ""}-${f.line ?? 0}-${i}`} f={f} />
-          ))}
-        </Stack>
-      ) : (
-        <Text size="sm" c="dimmed">
-          {t("selfReview.noFindings")}
-        </Text>
-      )}
+      <Collapse in={open}>
+        {data?.summary && (
+          <Text size="sm" mb="xs" style={{ whiteSpace: "pre-wrap" }}>
+            {data.summary}
+          </Text>
+        )}
+        {findings.length > 0 ? (
+          <Stack gap="xs">
+            {findings.map((f, i) => (
+              <Finding key={`${f.file ?? ""}-${f.line ?? 0}-${i}`} f={f} />
+            ))}
+          </Stack>
+        ) : (
+          data && (
+            <Text size="sm" c="dimmed">
+              {t("selfReview.noFindings")}
+            </Text>
+          )
+        )}
+      </Collapse>
     </Card>
   );
 }

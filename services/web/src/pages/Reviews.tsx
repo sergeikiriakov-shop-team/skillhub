@@ -16,6 +16,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ReviewSummary } from "../api";
 import { useAuth } from "../auth";
+import SelfReviewCard from "../components/SelfReviewCard";
 import SelfReviewPolicy from "../components/SelfReviewPolicy";
 import { useI18n } from "../i18n";
 import type { TFunc } from "../i18n";
@@ -60,12 +61,12 @@ function ReviewCard({ r, t }: { r: ReviewSummary; t: TFunc }) {
   );
 }
 
-type Tab = "queue" | "assigned" | "mine" | "all";
+type Tab = "queue" | "assigned" | "mine" | "all" | "self";
 
 // The board is open-review by default (anyone may pick a task up), so "queue" is every submitted
 // review — not just the ones assigned to you. A designated lead (`is_reviewer`) additionally gets
 // "assigned to me", which is what `queue=true` filters on server-side.
-const TAB_PARAMS: Record<Tab, Parameters<typeof api.listReviews>[0]> = {
+const TAB_PARAMS: Record<string, Parameters<typeof api.listReviews>[0]> = {
   queue: { status: "submitted" },
   assigned: { queue: true, status: "submitted" },
   mine: { mine: true },
@@ -81,8 +82,20 @@ export default function Reviews() {
   const query = useQuery({
     queryKey: ["reviews", tab],
     queryFn: () => api.listReviews(TAB_PARAMS[tab]),
+    enabled: tab !== "self",
+  });
+  // Self-reviews live independently of the board: one exists as soon as a developer runs the
+  // configured skill on their own diff, whether or not the task was ever handed to a lead.
+  const selfQuery = useQuery({
+    queryKey: ["selfReviews"],
+    queryFn: () => api.listSelfReviews(),
+    enabled: tab === "self",
   });
   const items = query.data ?? [];
+  const selfItems = selfQuery.data ?? [];
+  const isSelf = tab === "self";
+  const loading = isSelf ? selfQuery.isLoading : query.isLoading;
+  const count = isSelf ? selfItems.length : items.length;
 
   return (
     <Container size="xl">
@@ -90,7 +103,7 @@ export default function Reviews() {
         <div>
           <Title order={2}>{t("reviews.title")}</Title>
           <Text c="dimmed" size="sm">
-            {t("reviews.count", { count: items.length })}
+            {isSelf ? t("selfReview.count", { count }) : t("reviews.count", { count })}
           </Text>
         </div>
 
@@ -106,17 +119,24 @@ export default function Reviews() {
             ...(isReviewer ? [{ label: t("reviews.assignedTab"), value: "assigned" }] : []),
             { label: t("reviews.mineTab"), value: "mine" },
             { label: t("reviews.allTab"), value: "all" },
+            { label: t("reviews.selfTab"), value: "self" },
           ]}
         />
 
-        {query.isLoading ? (
+        {loading ? (
           <Group justify="center" mt="xl">
             <Loader />
           </Group>
-        ) : items.length === 0 ? (
+        ) : count === 0 ? (
           <Text c="dimmed" ta="center" mt="xl">
-            {t("reviews.empty")}
+            {isSelf ? t("selfReview.empty") : t("reviews.empty")}
           </Text>
+        ) : isSelf ? (
+          <Stack gap="sm">
+            {selfItems.map((sr) => (
+              <SelfReviewCard key={sr.id} sr={sr} collapsible showTask />
+            ))}
+          </Stack>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
             {items.map((r) => (
