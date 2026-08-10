@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from skillhub_core.reviews.code_links import finding_url, normalize_repo_url
+from skillhub_core.reviews.code_links import commit_url, finding_url, normalize_repo_url
 
 GITHUB = "https://github.com/prologisticsbeliani/prologistics"
 
@@ -84,3 +84,18 @@ def test_explicit_template_overrides_the_host_default():
         template="https://code.example/{ref}/{path}#line-{line}",
     )
     assert url == "https://code.example/abc123/a.py#line-5"
+
+
+def test_commit_link_points_at_the_diff():
+    assert commit_url(GITHUB, "abc123") == f"{GITHUB}/commit/abc123"
+
+
+def test_bitbucket_pluralizes_its_commit_path():
+    assert commit_url("https://bitbucket.org/team/app", "abc123") == (
+        "https://bitbucket.org/team/app/commits/abc123"
+    )
+
+
+@pytest.mark.parametrize("repo,sha", [(None, "abc123"), (GITHUB, None), (None, None)])
+def test_commit_link_needs_both_halves(repo, sha):
+    assert commit_url(repo, sha) is None

@@ -36,6 +36,7 @@ from .self_review import (
     SEVERITY_NIT,
     SelfReview,
 )
+from .self_review_fix import SelfReviewFix
 from .self_review_policy import (
     LANE_BACKEND,
     LANE_DEFAULT,
@@ -48,6 +49,7 @@ __all__ = [
     "Review",
     "ReviewEvent",
     "SelfReview",
+    "SelfReviewFix",
     "SelfReviewPolicy",
     "REVIEW_SUBMITTED",
     "REVIEW_CHANGES_REQUESTED",

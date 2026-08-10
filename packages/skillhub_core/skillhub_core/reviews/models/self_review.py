@@ -68,6 +68,10 @@ class SelfReview(Base):
     review: Mapped["Review | None"] = relationship(  # noqa: F821
         "Review", back_populates="self_reviews", foreign_keys=[review_id]
     )
+    # Owned by the review: a fix is meaningless without the finding it answers.
+    fixes: Mapped[list["SelfReviewFix"]] = relationship(  # noqa: F821
+        back_populates="self_review", cascade="all, delete-orphan", order_by="SelfReviewFix.id"
+    )
 
     @property
     def blocking_count(self) -> int:

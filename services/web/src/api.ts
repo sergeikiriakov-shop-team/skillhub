@@ -219,6 +219,17 @@ export interface ReviewEvent {
 }
 
 // --- Self-review: the author's own change, reviewed by the skill the team configured ---
+// What the developer did about a finding — recorded next to the review, never inside it.
+export interface SelfReviewFix {
+  id: number;
+  finding_index: number;
+  commit_sha: string | null;
+  note: string;
+  author: string | null;
+  created_at: string;
+  commit_url: string | null;
+}
+
 export interface SelfReviewFinding {
   severity: string;
   title: string;
@@ -228,6 +239,7 @@ export interface SelfReviewFinding {
   suggestion: string;
   // Deep link to the line in the repository browser, built server-side from the recorded remote.
   url: string | null;
+  fixes: SelfReviewFix[];
 }
 
 export interface SelfReviewSummary {
@@ -242,6 +254,8 @@ export interface SelfReviewSummary {
   blocking_count: number;
   // Findings per severity, worst-first, zero counts omitted.
   severity_counts: Record<string, number>;
+  // Findings with at least one recorded fix.
+  fixed_count: number;
   author: string | null;
   review_id: number | null;
   created_at: string;

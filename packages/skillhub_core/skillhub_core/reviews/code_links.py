@@ -45,6 +45,15 @@ def _template_for(repo: str) -> str:
     return _BITBUCKET_TEMPLATE if "bitbucket." in repo else _BLOB_TEMPLATE
 
 
+def commit_url(repo: str | None, sha: str | None) -> str | None:
+    """Link to one commit — the diff that answers a finding. ``/commits/`` on Bitbucket, ``/commit/``
+    everywhere else. None when either half is missing."""
+    if not repo or not sha:
+        return None
+    segment = "commits" if "bitbucket." in repo else "commit"
+    return f"{repo.rstrip('/')}/{segment}/{sha}"
+
+
 def finding_url(
     *,
     repo: str | None,

@@ -934,8 +934,38 @@ def list_self_reviews(
 def get_self_review(
     self_review_id: Annotated[int, Field(description="Numeric self-review id from a list tool.")],
 ) -> Any:
-    """One self-review with every finding (severity, file, line, detail, suggestion)."""
+    """One self-review with every finding (severity, file, line, detail, suggestion), each with a
+    deep link to its line and whatever fixes have been recorded against it."""
     return _read_call("GET", f"/api/self-reviews/{self_review_id}")
+
+
+class Fix(BaseModel):
+    """How one finding was addressed."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    finding_index: Annotated[
+        int, Field(description="0-based position of the finding in the review's list.")
+    ]
+    commit_sha: Annotated[
+        str | None, Field(description="Commit that fixes it; omit when the answer is not code.")
+    ] = None
+    note: Annotated[str, Field(description="What you did, or why nothing was needed.")] = ""
+
+
+@mcp.tool()
+def record_self_review_fixes(
+    self_review_id: Annotated[int, Field(description="The self-review you are answering.")],
+    fixes: Annotated[list[Fix], Field(description="One entry per finding you addressed.")],
+) -> Any:
+    """Say what you did about individual findings, AFTER fixing them. Purely additive: the verdict,
+    the severities and the findings stay exactly as the skill reported them — this only shows the
+    reader which commit closed which point, so the review reads as a before/after instead of a list
+    of complaints. Only the review's author may record fixes; unauthorized in stdio mode returns
+    `{action_required: <how to approve>}`."""
+    return _authed_call(
+        "POST", f"/api/self-reviews/{self_review_id}/fixes", json=[f.model_dump() for f in fixes]
+    )
 
 
 if __name__ == "__main__":

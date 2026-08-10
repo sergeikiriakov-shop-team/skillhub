@@ -14,6 +14,7 @@ from .schemas import (
     ReviewOut,
     ReviewSubmitIn,
     ReviewSummary,
+    SelfReviewFixIn,
     SelfReviewOut,
     SelfReviewPolicyLane,
     SelfReviewPolicyOut,
@@ -106,4 +107,13 @@ class SelfReviewService:
         self_review = self._self_reviews.get(self_review_id)
         if self_review is None:
             raise SelfReviewNotFound(f"self-review {self_review_id} not found")
+        return self_review
+
+    def record_fixes(
+        self, self_review_id: int, user: User, fixes: list[SelfReviewFixIn]
+    ) -> SelfReviewOut:
+        self_review = self._self_reviews.record_fixes(self_review_id, user, fixes)
+        if self_review is None:
+            raise SelfReviewNotFound(f"self-review {self_review_id} not found")
+        self._self_reviews.commit()
         return self_review

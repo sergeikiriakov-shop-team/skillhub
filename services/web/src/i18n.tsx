@@ -172,6 +172,8 @@ const en: Dict = {
   "selfReview.standalone": "· not handed to a lead yet",
   "selfReview.show": "Findings",
   "selfReview.hide": "Hide",
+  "selfReview.fixed": "fixed",
+  "selfReview.fixedCount": "{fixed}/{total} addressed",
 
   // common
   "common.copy": "Copy",
@@ -522,6 +524,8 @@ const ru: Dict = {
   "selfReview.standalone": "· лиду ещё не передано",
   "selfReview.show": "Замечания",
   "selfReview.hide": "Скрыть",
+  "selfReview.fixed": "исправлено",
+  "selfReview.fixedCount": "закрыто {fixed} из {total}",
 
   // common
   "common.copy": "Копировать",

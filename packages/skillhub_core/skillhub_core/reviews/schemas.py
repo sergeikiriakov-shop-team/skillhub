@@ -76,13 +76,39 @@ class SelfReviewFinding(BaseModel):
     suggestion: str = Field(default="", description="The concrete fix.")
 
 
+class SelfReviewFixIn(BaseModel):
+    """How one finding was addressed. Recorded alongside the review — it never edits the finding,
+    the verdict or the severities."""
+
+    finding_index: int = Field(description="0-based position of the finding in the review's list.")
+    commit_sha: str | None = Field(
+        default=None, description="Commit that fixes it; omit when the answer is not code."
+    )
+    note: str = Field(default="", description="What was done, or why nothing was.")
+
+
+class SelfReviewFixOut(BaseModel):
+    id: int
+    finding_index: int
+    commit_sha: str | None
+    note: str
+    author: str | None
+    created_at: datetime
+    commit_url: str | None = Field(
+        default=None, description="Link to the commit in the code browser, when it is known."
+    )
+
+
 class SelfReviewFindingOut(SelfReviewFinding):
-    """A finding as served. ``url`` is derived at read time from the configured code browser, never
-    stored — so re-pointing the template (or moving hosts) fixes every existing link at once."""
+    """A finding as served. ``url`` and ``fixes`` are layered on at read time — the stored finding
+    itself is frozen, so a review always shows what the skill actually said."""
 
     url: str | None = Field(
         default=None,
         description="Deep link to the exact line in the code browser; null when it is not locatable.",
+    )
+    fixes: list[SelfReviewFixOut] = Field(
+        default_factory=list, description="What the developer did about this finding, in order."
     )
 
 
@@ -129,6 +155,9 @@ class SelfReviewSummary(BaseModel):
         default_factory=dict,
         description="Findings per severity (only the non-zero ones), so a list can show the shape "
         "of a review without fetching every finding.",
+    )
+    fixed_count: int = Field(
+        default=0, description="Findings with at least one recorded fix — progress, not a verdict."
     )
     author: str | None
     review_id: int | None

@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 from skillhub_core.reviews.errors import (
+    NotReviewAuthor,
     SelfReviewNotFound,
     SelfReviewPolicyNotSet,
     UnknownReviewSkill,
@@ -49,6 +50,11 @@ class FakeSelfReviewRepo:
         return ["s1"]
 
     def get(self, self_review_id):
+        return "SR" if self._found else None
+
+    def record_fixes(self, self_review_id, user, fixes):
+        if self._raise:
+            raise self._raise
         return "SR" if self._found else None
 
     def has_self_review(self, author_id, task_ref):
@@ -148,3 +154,26 @@ def test_unknown_stated_verdict_rejected():
 
     with pytest.raises(InvalidSelfReview):
         _derive_verdict([], "looks-fine")
+
+
+# --- fixes (what the developer did about a finding) ----------------------------------------------
+
+
+def test_record_fixes_commits():
+    repo = FakeSelfReviewRepo()
+    assert SelfReviewService(repo).record_fixes(1, USER, []) == "SR"
+    assert repo.committed is True
+
+
+def test_record_fixes_on_a_missing_review_raises_and_does_not_commit():
+    repo = FakeSelfReviewRepo(found=False)
+    with pytest.raises(SelfReviewNotFound):
+        SelfReviewService(repo).record_fixes(9, USER, [])
+    assert repo.committed is False
+
+
+def test_record_fixes_propagates_a_foreign_review_no_commit():
+    repo = FakeSelfReviewRepo(raise_exc=NotReviewAuthor("not yours"))
+    with pytest.raises(NotReviewAuthor):
+        SelfReviewService(repo).record_fixes(1, USER, [])
+    assert repo.committed is False

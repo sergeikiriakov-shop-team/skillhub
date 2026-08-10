@@ -24,6 +24,7 @@ from skillhub_core.reviews.errors import (
     UnknownReviewSkill,
 )
 from skillhub_core.reviews.schemas import (
+    SelfReviewFixIn,
     SelfReviewOut,
     SelfReviewPolicyLane,
     SelfReviewPolicyOut,
@@ -97,6 +98,25 @@ def list_self_reviews(
     return service.list(
         author_id=user.id if mine else None, task_ref=task_ref, review_id=review_id
     )
+
+
+@router.post("/{self_review_id}/fixes", response_model=SelfReviewOut)
+def record_fixes(
+    self_review_id: int,
+    payload: list[SelfReviewFixIn],
+    user: User = Depends(require_user),
+    service: SelfReviewService = Depends(get_self_review_service),
+) -> SelfReviewOut:
+    """Record how you addressed individual findings (a commit, a note, or both). Purely additive —
+    the verdict, the severities and the findings stay exactly as the skill reported them."""
+    try:
+        return service.record_fixes(self_review_id, user, payload)
+    except SelfReviewNotFound as exc:
+        raise HTTPException(status_code=404, detail="Self-review not found") from exc
+    except NotReviewAuthor as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except InvalidSelfReview as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/{self_review_id}", response_model=SelfReviewOut)

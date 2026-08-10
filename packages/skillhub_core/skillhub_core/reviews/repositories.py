@@ -16,6 +16,7 @@ from .schemas import (
     ReviewOut,
     ReviewSubmitIn,
     ReviewSummary,
+    SelfReviewFixIn,
     SelfReviewOut,
     SelfReviewPolicyLane,
     SelfReviewPolicyOut,
@@ -123,6 +124,16 @@ class SqlSelfReviewRepository:
     def get(self, self_review_id: int) -> SelfReviewOut | None:
         row = repository.get_self_review(self._session, self_review_id)
         return repository.to_self_review_detail(row) if row is not None else None
+
+    def record_fixes(
+        self, self_review_id: int, user: User, fixes: list[SelfReviewFixIn]
+    ) -> SelfReviewOut | None:
+        row = repository.get_self_review(self._session, self_review_id)
+        if row is None:
+            return None
+        repository.record_fixes(self._session, row, user, fixes)
+        self._session.refresh(row)
+        return repository.to_self_review_detail(row)
 
     def has_self_review(self, author_id: int, task_ref: str) -> bool:
         return repository.has_self_review(self._session, author_id, task_ref)

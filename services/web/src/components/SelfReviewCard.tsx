@@ -55,6 +55,28 @@ function Finding({ f }: { f: SelfReviewFinding }) {
           {t("selfReview.suggestion")}: {f.suggestion}
         </Text>
       )}
+      {/* What the developer did about it, layered on top — the finding above is still exactly what
+          the skill said, so the pair reads as before/after. */}
+      {f.fixes?.map((fix) => (
+        <Group key={fix.id} gap="xs" mt={6} wrap="nowrap" align="flex-start">
+          <Badge size="sm" color="teal" variant="light">
+            {t("selfReview.fixed")}
+          </Badge>
+          {fix.commit_sha &&
+            (fix.commit_url ? (
+              <Anchor href={fix.commit_url} target="_blank" rel="noreferrer" underline="never">
+                <Code>{fix.commit_sha.slice(0, 10)}</Code>
+              </Anchor>
+            ) : (
+              <Code>{fix.commit_sha.slice(0, 10)}</Code>
+            ))}
+          {fix.note && (
+            <Text size="sm" style={{ whiteSpace: "pre-wrap", flex: 1 }}>
+              {fix.note}
+            </Text>
+          )}
+        </Group>
+      ))}
     </Paper>
   );
 }
@@ -143,6 +165,11 @@ export default function SelfReviewCard({
             {sr.severity_counts[s]} {t(`selfReview.severity.${s}`)}
           </Badge>
         ))}
+        {sr.fixed_count > 0 && (
+          <Badge size="sm" color="teal" variant="light">
+            {t("selfReview.fixedCount", { fixed: sr.fixed_count, total: sr.finding_count })}
+          </Badge>
+        )}
         {collapsible && (
           <Button size="compact-xs" variant="subtle" onClick={() => setOpen((v) => !v)} ml="auto">
             {open ? t("selfReview.hide") : t("selfReview.show")}

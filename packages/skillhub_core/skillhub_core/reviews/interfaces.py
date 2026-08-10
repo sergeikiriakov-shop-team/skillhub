@@ -12,6 +12,7 @@ from .schemas import (
     ReviewOut,
     ReviewSubmitIn,
     ReviewSummary,
+    SelfReviewFixIn,
     SelfReviewOut,
     SelfReviewPolicyLane,
     SelfReviewPolicyOut,
@@ -81,6 +82,14 @@ class SelfReviewRepository(Protocol):
     ) -> list[SelfReviewSummary]: ...
 
     def get(self, self_review_id: int) -> SelfReviewOut | None: ...
+
+    def record_fixes(
+        self, self_review_id: int, user: User, fixes: list[SelfReviewFixIn]
+    ) -> SelfReviewOut | None:
+        """Attach "this is how I addressed it" notes to findings (flush only). None if the review
+        does not exist; raises ``NotReviewAuthor`` for someone else's review and
+        ``InvalidSelfReview`` for a finding index that is not in it."""
+        ...
 
     def has_self_review(self, author_id: int, task_ref: str) -> bool:
         """Whether this author already self-reviewed this task (the ``required`` gate)."""

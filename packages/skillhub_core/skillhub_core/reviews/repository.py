@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..platform.config import get_settings
 from ..platform.models import User
-from .code_links import finding_url, normalize_repo_url
+from .code_links import commit_url, finding_url, normalize_repo_url
 from .errors import (
     InvalidSelfReview,
     NotReviewAuthor,
@@ -44,6 +44,7 @@ from .models import (
     Review,
     ReviewEvent,
     SelfReview,
+    SelfReviewFix,
     SelfReviewPolicy,
 )
 from .schemas import (
@@ -51,6 +52,7 @@ from .schemas import (
     ReviewOut,
     SelfReviewFinding,
     SelfReviewFindingOut,
+    SelfReviewFixOut,
     SelfReviewOut,
     SelfReviewPolicyLane,
     SelfReviewPolicyOut,
@@ -430,8 +432,35 @@ def get_self_review(session: Session, self_review_id: int) -> SelfReview | None:
     return session.scalars(
         select(SelfReview)
         .where(SelfReview.id == self_review_id)
-        .options(selectinload(SelfReview.author))
+        .options(selectinload(SelfReview.author), selectinload(SelfReview.fixes).selectinload(SelfReviewFix.author))
     ).first()
+
+
+def record_fixes(session: Session, self_review: SelfReview, user: User, fixes) -> int:
+    """Record what the developer did about individual findings. Flush only.
+
+    Deliberately additive: nothing about the review changes — not the verdict, not the severities,
+    not the findings — because the point is to show the fix *against* what was originally said."""
+    if self_review.author_user_id != user.id and not user.is_admin:
+        raise NotReviewAuthor("only the author of a self-review may record fixes on it")
+    count = len(self_review.findings or [])
+    for fix in fixes:
+        if not 0 <= fix.finding_index < count:
+            raise InvalidSelfReview(
+                f"finding_index {fix.finding_index} is out of range — this self-review has "
+                f"{count} finding(s)"
+            )
+        session.add(
+            SelfReviewFix(
+                self_review_id=self_review.id,
+                finding_index=fix.finding_index,
+                commit_sha=(fix.commit_sha or None),
+                note=fix.note or "",
+                author_user_id=user.id,
+            )
+        )
+    session.flush()
+    return len(fixes)
 
 
 # --- serialization -----------------------------------------------------------------------------
@@ -459,6 +488,7 @@ def to_self_review_summary(self_review: SelfReview) -> SelfReviewSummary:
     }
     return SelfReviewSummary(
         id=self_review.id,
+        fixed_count=len({f.finding_index for f in self_review.fixes}),
         task_ref=self_review.task_ref,
         branch=self_review.branch,
         lane=self_review.lane,
@@ -481,8 +511,21 @@ def to_self_review_detail(self_review: SelfReview) -> SelfReviewOut:
     # to the branch when the run recorded no SHAs.
     ref = commit_shas[-1] if commit_shas else self_review.branch
     template = get_settings().code_link_template if not self_review.repo else ""
+    fixes_by_finding: dict[int, list[SelfReviewFixOut]] = {}
+    for fix in self_review.fixes:
+        fixes_by_finding.setdefault(fix.finding_index, []).append(
+            SelfReviewFixOut(
+                id=fix.id,
+                finding_index=fix.finding_index,
+                commit_sha=fix.commit_sha,
+                note=fix.note,
+                author=fix.author.name if fix.author else None,
+                created_at=fix.created_at,
+                commit_url=commit_url(self_review.repo, fix.commit_sha),
+            )
+        )
     findings = []
-    for raw in self_review.findings or []:
+    for index, raw in enumerate(self_review.findings or []):
         finding = SelfReviewFindingOut(**raw)
         finding.url = finding_url(
             repo=self_review.repo,
@@ -491,6 +534,7 @@ def to_self_review_detail(self_review: SelfReview) -> SelfReviewOut:
             line=finding.line,
             template=template,
         )
+        finding.fixes = fixes_by_finding.get(index, [])
         findings.append(finding)
     return SelfReviewOut(
         **summary.model_dump(),

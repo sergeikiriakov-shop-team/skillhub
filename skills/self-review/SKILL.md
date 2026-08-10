@@ -72,3 +72,18 @@ as>, summary=<what you covered and concluded>)`.
   clean pass. Fix the code only if the user asks; by default you report.
 - **`pass`** — the task is ready for `submit-for-review`. When the policy is `required`, submitting
   without a self-review is rejected (409), so run this first.
+
+## Once the findings are fixed — say what you did
+After committing the fixes, call
+`record_self_review_fixes(self_review_id, fixes=[{finding_index, commit_sha, note}, …])`.
+- `finding_index` is the 0-based position in the findings you posted, so the note lands on the right
+  point. `commit_sha` is the commit that closes it; omit it when the answer is not code (a test run,
+  a deliberate non-issue) and say so in `note`.
+- This is **additive**: it never edits the verdict, the severities or the findings. The record must
+  keep showing what the skill originally caught — the value is in reading the before and the after
+  together, and a review that quietly rewrites itself is worth nothing to whoever reads it later.
+- Only report what you actually did. If a finding is still open, leave it without a fix rather than
+  writing a note that implies otherwise; "3 of 9 addressed" is honest and useful, a full green board
+  that isn't true is neither.
+- Re-running the whole self-review afterwards is the other half: fixes show *what you did*, a fresh
+  run shows *whether it worked*.
