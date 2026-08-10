@@ -110,6 +110,11 @@ class SelfReviewSummary(BaseModel):
     verdict: str
     finding_count: int
     blocking_count: int
+    severity_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Findings per severity (only the non-zero ones), so a list can show the shape "
+        "of a review without fetching every finding.",
+    )
     author: str | None
     review_id: int | None
     created_at: datetime

@@ -13,6 +13,8 @@ const SEVERITY_COLOR: Record<string, string> = {
   nit: "gray",
 };
 
+const SEVERITY_ORDER = ["blocker", "major", "minor", "nit"];
+
 const VERDICT_COLOR: Record<string, string> = { pass: "green", changes_needed: "orange" };
 
 function Finding({ f }: { f: SelfReviewFinding }) {
@@ -124,11 +126,13 @@ export default function SelfReviewCard({
         <Text size="xs" c="dimmed">
           · {t("selfReview.findings", { count: sr.finding_count })}
         </Text>
-        {sr.blocking_count > 0 && (
-          <Text size="xs" c="orange">
-            · {t("selfReview.blocking", { count: sr.blocking_count })}
-          </Text>
-        )}
+        {/* What the findings actually are, without paying for them: the counts ride along with
+            the summary, so a collapsed card still says "5 major, 3 minor" rather than just "9". */}
+        {SEVERITY_ORDER.filter((s) => sr.severity_counts?.[s]).map((s) => (
+          <Badge key={s} size="sm" color={SEVERITY_COLOR[s]} variant="light">
+            {sr.severity_counts[s]} {t(`selfReview.severity.${s}`)}
+          </Badge>
+        ))}
         {collapsible && (
           <Button size="compact-xs" variant="subtle" onClick={() => setOpen((v) => !v)} ml="auto">
             {open ? t("selfReview.hide") : t("selfReview.show")}

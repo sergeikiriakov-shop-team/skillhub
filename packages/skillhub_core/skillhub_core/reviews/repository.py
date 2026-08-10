@@ -447,6 +447,12 @@ def _event_out(ev: ReviewEvent) -> ReviewEventOut:
 
 def to_self_review_summary(self_review: SelfReview) -> SelfReviewSummary:
     findings = self_review.findings or []
+    # Ordered worst-first (SEVERITIES), zero-count severities omitted — the list view shows this
+    # instead of the full findings, which are fetched only when a reader opens the review.
+    severity_counts = {
+        severity: sum(1 for f in findings if f.get("severity") == severity)
+        for severity in SEVERITIES
+    }
     return SelfReviewSummary(
         id=self_review.id,
         task_ref=self_review.task_ref,
@@ -457,6 +463,7 @@ def to_self_review_summary(self_review: SelfReview) -> SelfReviewSummary:
         verdict=self_review.verdict,
         finding_count=len(findings),
         blocking_count=sum(1 for f in findings if f.get("severity") in BLOCKING_SEVERITIES),
+        severity_counts={k: v for k, v in severity_counts.items() if v},
         author=self_review.author.name if self_review.author else None,
         review_id=self_review.review_id,
         created_at=self_review.created_at,

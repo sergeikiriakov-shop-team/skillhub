@@ -133,8 +133,10 @@ export default function Reviews() {
           </Text>
         ) : isSelf ? (
           <Stack gap="sm">
-            {selfItems.map((sr) => (
-              <SelfReviewCard key={sr.id} sr={sr} collapsible showTask />
+            {/* The newest one opens by itself — it is the one you came to read; the rest stay
+                collapsed so the page does not fetch every findings payload at once. */}
+            {selfItems.map((sr, i) => (
+              <SelfReviewCard key={sr.id} sr={sr} collapsible={i > 0} showTask />
             ))}
           </Stack>
         ) : (

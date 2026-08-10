@@ -238,6 +238,8 @@ export interface SelfReviewSummary {
   verdict: string;
   finding_count: number;
   blocking_count: number;
+  // Findings per severity, worst-first, zero counts omitted.
+  severity_counts: Record<string, number>;
   author: string | null;
   review_id: number | null;
   created_at: string;
