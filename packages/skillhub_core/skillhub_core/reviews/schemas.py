@@ -76,6 +76,16 @@ class SelfReviewFinding(BaseModel):
     suggestion: str = Field(default="", description="The concrete fix.")
 
 
+class SelfReviewFindingOut(SelfReviewFinding):
+    """A finding as served. ``url`` is derived at read time from the configured code browser, never
+    stored — so re-pointing the template (or moving hosts) fixes every existing link at once."""
+
+    url: str | None = Field(
+        default=None,
+        description="Deep link to the exact line in the code browser; null when it is not locatable.",
+    )
+
+
 class SelfReviewSubmitIn(BaseModel):
     """Result of running the policy's review skill over your own change. A POINTER plus the report —
     the code stays in git."""
@@ -83,6 +93,11 @@ class SelfReviewSubmitIn(BaseModel):
     task_ref: str = Field(description="issue_logs id or link identifying the task.")
     branch: str | None = None
     commit_shas: list[str] = Field(default_factory=list)
+    repo: str | None = Field(
+        default=None,
+        description="The repository reviewed, as `git remote get-url origin` prints it (ssh or "
+        "https). Findings deep-link into it, so it must be the repo the diff is actually in.",
+    )
     lane: str = Field(default="default", description="Policy lane used: default | backend | frontend.")
     skill: str | None = Field(
         default=None,
@@ -122,8 +137,9 @@ class SelfReviewSummary(BaseModel):
 
 class SelfReviewOut(SelfReviewSummary):
     commit_shas: list[str]
+    repo: str | None = Field(default=None, description="Browsable base URL of the repository reviewed.")
     summary: str
-    findings: list[SelfReviewFinding] = Field(default_factory=list)
+    findings: list[SelfReviewFindingOut] = Field(default_factory=list)
 
 
 class SelfReviewPolicyLane(BaseModel):

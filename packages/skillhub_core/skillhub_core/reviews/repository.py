@@ -12,7 +12,9 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from ..platform.config import get_settings
 from ..platform.models import User
+from .code_links import finding_url, normalize_repo_url
 from .errors import (
     InvalidSelfReview,
     NotReviewAuthor,
@@ -48,6 +50,7 @@ from .schemas import (
     ReviewEventOut,
     ReviewOut,
     SelfReviewFinding,
+    SelfReviewFindingOut,
     SelfReviewOut,
     SelfReviewPolicyLane,
     SelfReviewPolicyOut,
@@ -345,6 +348,7 @@ def create_self_review(session: Session, author: User, data) -> SelfReview:
         task_ref=data.task_ref,
         branch=data.branch,
         commit_shas=list(data.commit_shas or []),
+        repo=normalize_repo_url(data.repo),
         lane=lane,
         skill_id=skill_id,
         skill_name=skill_name,
@@ -472,11 +476,28 @@ def to_self_review_summary(self_review: SelfReview) -> SelfReviewSummary:
 
 def to_self_review_detail(self_review: SelfReview) -> SelfReviewOut:
     summary = to_self_review_summary(self_review)
+    commit_shas = list(self_review.commit_shas or [])
+    # Pin links to the commit the review actually read; line numbers drift on a branch. Falls back
+    # to the branch when the run recorded no SHAs.
+    ref = commit_shas[-1] if commit_shas else self_review.branch
+    template = get_settings().code_link_template if not self_review.repo else ""
+    findings = []
+    for raw in self_review.findings or []:
+        finding = SelfReviewFindingOut(**raw)
+        finding.url = finding_url(
+            repo=self_review.repo,
+            ref=ref,
+            path=finding.file,
+            line=finding.line,
+            template=template,
+        )
+        findings.append(finding)
     return SelfReviewOut(
         **summary.model_dump(),
-        commit_shas=list(self_review.commit_shas or []),
+        commit_shas=commit_shas,
+        repo=self_review.repo,
         summary=self_review.summary,
-        findings=[SelfReviewFinding(**f) for f in (self_review.findings or [])],
+        findings=findings,
     )
 
 

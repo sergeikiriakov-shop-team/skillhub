@@ -45,6 +45,10 @@ class SelfReview(Base):
     task_ref: Mapped[str] = mapped_column(String(200), index=True)  # issue_logs id/link
     branch: Mapped[str | None] = mapped_column(String(300), nullable=True)
     commit_shas: Mapped[list] = mapped_column(JSONB, default=list)
+    # Browsable base URL of the repository reviewed, normalized from the agent's git remote. Kept
+    # per review, not per instance: the team works in more than one repository, and a finding is
+    # only linkable against the repo it was actually found in.
+    repo: Mapped[str | None] = mapped_column(String(400), nullable=True)
     lane: Mapped[str] = mapped_column(String(20), default="default")  # which policy lane applied
     skill_id: Mapped[int | None] = mapped_column(
         ForeignKey("skills.id", ondelete="SET NULL"), nullable=True, index=True

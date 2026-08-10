@@ -109,6 +109,8 @@ def _apply_column_migrations() -> None:
         # predates self_reviews, so the column is added here rather than by create_all.
         "ALTER TABLE review_events ADD COLUMN IF NOT EXISTS self_review_id INTEGER "
         "REFERENCES self_reviews(id) ON DELETE SET NULL",
+        # Findings deep-link into the repository they were found in, which the agent reports.
+        "ALTER TABLE self_reviews ADD COLUMN IF NOT EXISTS repo VARCHAR(400)",
     ]
     with engine.begin() as conn:
         for stmt in statements:

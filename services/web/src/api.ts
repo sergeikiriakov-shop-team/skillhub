@@ -226,6 +226,8 @@ export interface SelfReviewFinding {
   line: number | null;
   detail: string;
   suggestion: string;
+  // Deep link to the line in the repository browser, built server-side from the recorded remote.
+  url: string | null;
 }
 
 export interface SelfReviewSummary {

@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     # Deprecated break-glass admin token (minted into auth_tokens on boot). Prefer bootstrap admins.
     skillhub_admin_token: str = ""
 
+    # --- Code browser (deep-links from a review finding to the line it is about) ---
+    # Template with {ref} (commit SHA or branch), {path} and {line}. Empty → derived from
+    # ``skillhub_allowed_repo`` as a GitHub blob URL, which is right for a GitHub-hosted team; set
+    # it explicitly for GitLab/Gitea/Bitbucket or a second repository host.
+    skillhub_code_link_template: str = ""
+
     @property
     def database_url(self) -> str:
         return (
@@ -92,6 +98,19 @@ class Settings(BaseSettings):
         if self.oauth_redirect_uri:
             return self.oauth_redirect_uri
         return f"{self.skillhub_public_url.rstrip('/')}/api/auth/callback"
+
+    @property
+    def code_link_template(self) -> str:
+        """URL template for one line of source, or "" when no code browser is known.
+
+        The explicit setting wins; otherwise the repository SkillHub already gates access by
+        (``skillhub_allowed_repo``) is assumed to be on GitHub — the team's code lives there, so a
+        review finding can point straight at the line it is about."""
+        if self.skillhub_code_link_template:
+            return self.skillhub_code_link_template
+        if self.skillhub_allowed_repo:
+            return f"https://github.com/{self.skillhub_allowed_repo.strip('/')}/blob/{{ref}}/{{path}}#L{{line}}"
+        return ""
 
     @property
     def bootstrap_admin_emails(self) -> set[str]:

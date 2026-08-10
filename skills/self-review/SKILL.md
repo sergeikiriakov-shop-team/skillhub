@@ -35,6 +35,9 @@ written; the point is that your self-review is done by the team's chosen method,
 ## 3. Gather what to review
 One git command at a time, no `cd`:
 - **branch** — `git rev-parse --abbrev-ref HEAD` (should be the task branch `<id>/<slug>`).
+- **repo** — `git remote get-url origin`, verbatim (ssh or https, either is fine). Pass it: findings
+  deep-link to their line in this repo, and the team works in more than one, so without it every
+  finding is just text.
 - **commit_shas** — `git log --format=%H origin/master8..HEAD` (fall back to `git log --format=%H -n 20 HEAD`).
 - **the diff** — `git diff origin/master8...HEAD` (same fallback). This is what the skill reviews.
 - **task_ref** — the issue_logs id/link, from the branch name or the user.
@@ -55,8 +58,8 @@ actually checked in the summary so the lead can judge the coverage. Do not inven
 `nit`-only output is a legitimate result.
 
 ## 5. Post it
-`submit_self_review(task_ref, findings, branch, commit_shas, lane, model=<the model you ran as>,
-summary=<what you covered and concluded>)`.
+`submit_self_review(task_ref, findings, branch, commit_shas, repo, lane, model=<the model you ran
+as>, summary=<what you covered and concluded>)`.
 - Omit `verdict` — the service derives it: any `blocker`/`major` → `changes_needed`, else `pass`.
 - Omit `skill` — the service records the lane's configured skill. Pass it ONLY if you deliberately
   applied a different one, so the record stays truthful.

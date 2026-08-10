@@ -28,12 +28,22 @@ function Finding({ f }: { f: SelfReviewFinding }) {
         <Text size="sm" fw={600} style={{ flex: 1 }}>
           {f.title}
         </Text>
-        {f.file && (
-          <Code>
-            {f.file}
-            {f.line ? `:${f.line}` : ""}
-          </Code>
-        )}
+        {f.file &&
+          (f.url ? (
+            // Straight to the line, at the commit the review read — not at whatever the branch
+            // says today.
+            <Anchor href={f.url} target="_blank" rel="noreferrer" underline="never">
+              <Code>
+                {f.file}
+                {f.line ? `:${f.line}` : ""}
+              </Code>
+            </Anchor>
+          ) : (
+            <Code>
+              {f.file}
+              {f.line ? `:${f.line}` : ""}
+            </Code>
+          ))}
       </Group>
       {f.detail && (
         <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>

@@ -875,6 +875,14 @@ def submit_self_review(
     ] = None,
     branch: Annotated[str | None, Field(description="Branch that was reviewed.")] = None,
     commit_shas: Annotated[list[str] | None, Field(description="Commits reviewed.")] = None,
+    repo: Annotated[
+        str | None,
+        Field(
+            description="Repository reviewed, verbatim from `git remote get-url origin` (ssh or "
+            "https). Findings deep-link into it, so pass it — teams work in several repos and "
+            "without it a finding cannot be opened at its line."
+        ),
+    ] = None,
     lane: Annotated[
         SelfReviewLane, Field(description="Which policy lane the change falls into.")
     ] = "default",
@@ -896,7 +904,7 @@ def submit_self_review(
     open peer review of the same task (or to a later one when you submit it), so the lead sees what
     you already caught. Unauthorized in stdio mode returns `{action_required: <how to approve>}`."""
     body = {
-        "task_ref": task_ref, "branch": branch, "commit_shas": commit_shas or [],
+        "task_ref": task_ref, "branch": branch, "commit_shas": commit_shas or [], "repo": repo,
         "lane": lane, "skill": skill, "model": model, "verdict": verdict,
         "summary": summary, "review_id": review_id,
         "findings": [f.model_dump() for f in (findings or [])],
