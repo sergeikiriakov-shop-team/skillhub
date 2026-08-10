@@ -23,6 +23,10 @@ they or an admin can.
    "nothing to review" and stop this tick — do not do anything else.
 2. **For each review** (oldest first): `get_review(review_id)` to read the pointer + the author's
    summary + `verified_notes` + the thread (including any prior verdicts/resubmits).
+3. **Read the author's self-review**, if any: `self_reviews` on the review carries the verdict and
+   finding counts; `get_self_review(id)` gives the full findings. Use it to aim your own pass — do
+   not re-litigate what it already caught and the author fixed, and do treat an empty or clean
+   self-review on a large diff as a reason to look harder, not less.
 
 ## Review one task (pointer -> real diff)
 The board carries a pointer, not the code — review the actual branch:

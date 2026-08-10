@@ -69,6 +69,23 @@ each skill against it, and submits results back (`POST /api/skills/{id}/assessme
 `skills/skillhub/SKILL.md` into Claude Code, or add the SkillHub MCP server (`services/mcp/`), to
 drive this. Storing the strategy server-side means every developer runs the one identical algorithm.
 
+## Task review & self-review
+
+Beyond the skill catalog, SkillHub runs the team's **task review board** — the same design stance
+applied to reviewing work: the service holds the pointer and the strategy, Claude Code does the
+reviewing.
+
+- **Peer review.** A developer hands a deploy-ready task over (`task_ref`, branch, commit SHAs,
+  changed files, summary, what was verified — the code stays in git); the lead fetches the branch,
+  reviews the real diff and posts `approve` / `changes_requested`. Every step lands in an immutable
+  thread. Skills: `submit-for-review`, `review-inbox` (lead, under `/loop`), `review-status`.
+- **Self-review.** *Which* skill reviews your own diff is a server setting, not a personal choice:
+  an admin points each lane (`default` / `backend` / `frontend`) at a catalog skill on the Reviews
+  page, optionally marking it mandatory. Your Claude Code reads the policy, fetches that SKILL.md,
+  applies it to your diff and posts the findings back — they attach to the peer review of the same
+  task, so the lead sees what you already caught. Skill: `self-review`. When a lane is marked
+  mandatory, handing a task to the lead without a self-review is rejected.
+
 ## Authentication
 
 Built for a shared, remotely-hosted instance. **Reads are public by default** (set

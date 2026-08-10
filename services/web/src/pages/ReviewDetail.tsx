@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useParams } from "react-router-dom";
 import { api, ReviewEvent } from "../api";
+import SelfReviewCard from "../components/SelfReviewCard";
 import { useI18n } from "../i18n";
 import { STATUS_COLOR, StatusBadge } from "./Reviews";
 
@@ -140,6 +141,23 @@ export default function ReviewDetail() {
             )}
           </Stack>
         </Card>
+
+        <div>
+          <Title order={4} mb="xs">
+            {t("selfReview.title")}
+          </Title>
+          {r.self_reviews.length > 0 ? (
+            <Stack gap="xs">
+              {r.self_reviews.map((sr) => (
+                <SelfReviewCard key={sr.id} sr={sr} />
+              ))}
+            </Stack>
+          ) : (
+            <Text c="dimmed" size="sm">
+              {t("selfReview.none")}
+            </Text>
+          )}
+        </div>
 
         <div>
           <Title order={4} mb="xs">

@@ -27,7 +27,7 @@ from typing import Annotated, Any, Literal
 import httpx
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.utilities.func_metadata import ArgModelBase
-from pydantic import ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # Reject unknown arguments instead of silently swallowing them. FastMCP derives every tool's
 # argument model from this shared base, so setting `extra="forbid"` here does two things at once:
@@ -56,6 +56,9 @@ SourceFormat = Literal[
 McpTransport = Literal["stdio", "http"]
 ReviewStatus = Literal["submitted", "changes_requested", "approved", "done"]
 ReviewVerdict = Literal["approve", "changes_requested"]
+SelfReviewLane = Literal["default", "backend", "frontend"]
+SelfReviewVerdict = Literal["pass", "changes_needed"]
+FindingSeverity = Literal["blocker", "major", "minor", "nit"]
 
 TRANSPORT = os.environ.get("SKILLHUB_MCP_TRANSPORT", "stdio").strip().lower()
 BASE = os.environ.get("SKILLHUB_URL", "http://host.docker.internal:8000").rstrip("/")
@@ -837,6 +840,94 @@ def ack_review(
     """Author acknowledges the outcome; an approved review is closed (status `done`). Unauthorized
     in stdio mode returns `{action_required: <how to approve>}`."""
     return _authed_call("POST", f"/api/reviews/{review_id}/ack", json={})
+
+
+# --- Self-review (review your OWN change with the skill the team configured) ---------------------
+
+
+class Finding(BaseModel):
+    """One issue found in your own change."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    severity: Annotated[FindingSeverity, Field(description="How badly it must be fixed.")]
+    title: Annotated[str, Field(description="One-line statement of the issue.")]
+    file: Annotated[str | None, Field(description="Repo-relative path.")] = None
+    line: Annotated[int | None, Field(description="1-indexed line it anchors to.")] = None
+    detail: Annotated[str, Field(description="Why it is wrong / what breaks.")] = ""
+    suggestion: Annotated[str, Field(description="The concrete fix.")] = ""
+
+
+@mcp.tool()
+def get_self_review_policy() -> Any:
+    """Which catalog skill the team uses to review its OWN changes, per lane (default / backend /
+    frontend), and whether a self-review is mandatory before handing a task to the lead. Read this
+    FIRST, then fetch that skill with `get_skill` and apply it to your diff. The choice is a server
+    setting, so everyone self-reviews the same way."""
+    return _read_call("GET", "/api/self-reviews/policy")
+
+
+@mcp.tool()
+def submit_self_review(
+    task_ref: Annotated[str, Field(description="The issue_logs id or link the work belongs to.")],
+    findings: Annotated[
+        list[Finding] | None, Field(description="Issues found; empty means the change is clean.")
+    ] = None,
+    branch: Annotated[str | None, Field(description="Branch that was reviewed.")] = None,
+    commit_shas: Annotated[list[str] | None, Field(description="Commits reviewed.")] = None,
+    lane: Annotated[
+        SelfReviewLane, Field(description="Which policy lane the change falls into.")
+    ] = "default",
+    skill: Annotated[
+        str | None,
+        Field(description="Skill you actually applied; omit to record the lane's configured one."),
+    ] = None,
+    model: Annotated[str, Field(description="Model that ran the review, e.g. claude-opus-5.")] = "",
+    verdict: Annotated[
+        SelfReviewVerdict | None,
+        Field(description="Omit to derive it: any blocker/major finding means changes_needed."),
+    ] = None,
+    summary: Annotated[str, Field(description="What the review covered and concluded.")] = "",
+    review_id: Annotated[
+        int | None, Field(description="Attach to this peer review; omit to attach by task_ref.")
+    ] = None,
+) -> Any:
+    """Post the result of reviewing your OWN change with the configured skill. It attaches to your
+    open peer review of the same task (or to a later one when you submit it), so the lead sees what
+    you already caught. Unauthorized in stdio mode returns `{action_required: <how to approve>}`."""
+    body = {
+        "task_ref": task_ref, "branch": branch, "commit_shas": commit_shas or [],
+        "lane": lane, "skill": skill, "model": model, "verdict": verdict,
+        "summary": summary, "review_id": review_id,
+        "findings": [f.model_dump() for f in (findings or [])],
+    }
+    return _authed_call("POST", "/api/self-reviews", json=body)
+
+
+@mcp.tool()
+def list_self_reviews(
+    mine: Annotated[bool, Field(description="Only the ones you ran.")] = True,
+    task_ref: Annotated[str | None, Field(description="Filter by task.")] = None,
+    review_id: Annotated[
+        int | None, Field(description="Only those attached to this peer review.")
+    ] = None,
+) -> Any:
+    """Self-reviews, newest first — each with its verdict and finding counts. Use `get_self_review`
+    for the full findings list."""
+    params: dict[str, Any] = {"mine": "true" if mine else "false"}
+    if task_ref:
+        params["task_ref"] = task_ref
+    if review_id is not None:
+        params["review_id"] = str(review_id)
+    return _read_call("GET", "/api/self-reviews", params=params)
+
+
+@mcp.tool()
+def get_self_review(
+    self_review_id: Annotated[int, Field(description="Numeric self-review id from a list tool.")],
+) -> Any:
+    """One self-review with every finding (severity, file, line, detail, suggestion)."""
+    return _read_call("GET", f"/api/self-reviews/{self_review_id}")
 
 
 if __name__ == "__main__":

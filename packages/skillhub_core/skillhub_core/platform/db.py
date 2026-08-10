@@ -50,6 +50,7 @@ def init_db() -> None:
     _apply_column_migrations()
     _seed_categories()
     _seed_rubric_weights()
+    _seed_self_review_policy()
     _seed_skill_notebooks()
     _bootstrap_admin()
 
@@ -104,6 +105,10 @@ def _apply_column_migrations() -> None:
         "NOT NULL DEFAULT 'skill'",
         "CREATE INDEX IF NOT EXISTS ix_recommendations_target_kind ON recommendations (target_kind)",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_mcp_servers_name ON mcp_servers (name)",
+        # Self-review: thread entries can now point at the self-review they carry. review_events
+        # predates self_reviews, so the column is added here rather than by create_all.
+        "ALTER TABLE review_events ADD COLUMN IF NOT EXISTS self_review_id INTEGER "
+        "REFERENCES self_reviews(id) ON DELETE SET NULL",
     ]
     with engine.begin() as conn:
         for stmt in statements:
@@ -144,6 +149,20 @@ def _seed_rubric_weights() -> None:
         session.commit()
         if repository.recompute_overall_scores(session):
             session.commit()
+
+
+def _seed_self_review_policy() -> None:
+    """Create an empty policy row per self-review lane so the admin editor always shows the full set
+    and an unconfigured lane reads as "no skill" rather than going missing. Never overwrites a lane
+    an admin has already pointed at a skill. Idempotent."""
+    from ..reviews.models import SELF_REVIEW_LANES, SelfReviewPolicy
+
+    with SessionLocal() as session:
+        existing = {p.lane for p in session.query(SelfReviewPolicy).all()}
+        for lane in SELF_REVIEW_LANES:
+            if lane not in existing:
+                session.add(SelfReviewPolicy(lane=lane, skill_id=None, required=False))
+        session.commit()
 
 
 def _seed_skill_notebooks() -> None:

@@ -14,7 +14,8 @@ EVENT_SUBMIT = "submit"
 EVENT_VERDICT = "verdict"
 EVENT_RESUBMIT = "resubmit"
 EVENT_ACK = "ack"
-EVENT_KINDS = (EVENT_SUBMIT, EVENT_VERDICT, EVENT_RESUBMIT, EVENT_ACK)
+EVENT_SELF_REVIEW = "self_review"  # the author's own skill-driven review, attached to this review
+EVENT_KINDS = (EVENT_SUBMIT, EVENT_VERDICT, EVENT_RESUBMIT, EVENT_ACK, EVENT_SELF_REVIEW)
 
 
 class ReviewEvent(Base):
@@ -26,6 +27,9 @@ class ReviewEvent(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     review_id: Mapped[int] = mapped_column(ForeignKey("reviews.id", ondelete="CASCADE"), index=True)
     kind: Mapped[str] = mapped_column(String(20))
+    self_review_id: Mapped[int | None] = mapped_column(  # set on EVENT_SELF_REVIEW
+        ForeignKey("self_reviews.id", ondelete="SET NULL"), nullable=True
+    )
     author_user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )

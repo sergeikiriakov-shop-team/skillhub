@@ -12,7 +12,16 @@ from sqlalchemy.orm import Session
 from ..platform.models import User
 from . import repository
 from .errors import InvalidReviewTransition, NotReviewAuthor
-from .schemas import ReviewOut, ReviewSubmitIn, ReviewSummary
+from .schemas import (
+    ReviewOut,
+    ReviewSubmitIn,
+    ReviewSummary,
+    SelfReviewOut,
+    SelfReviewPolicyLane,
+    SelfReviewPolicyOut,
+    SelfReviewSubmitIn,
+    SelfReviewSummary,
+)
 
 
 class SqlReviewRepository:
@@ -73,6 +82,50 @@ class SqlReviewRepository:
         self._require_author(review, user)
         repository.acknowledge(self._session, review, user)
         return self._detail(review_id)
+
+    def commit(self) -> None:
+        self._session.commit()
+
+
+class SqlSelfReviewRepository:
+    """``SelfReviewRepository`` backed by SQLAlchemy.
+
+    Delegates to the query helpers in ``skillhub_core.reviews.repository``, which own the catalog
+    lookups (which skill reviews this lane) and the attach-to-peer-review rule. Flush only — the
+    ``SelfReviewService`` owns the commit."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def policy(self) -> SelfReviewPolicyOut:
+        return repository.get_policy(self._session)
+
+    def lane_policy(self, lane: str) -> SelfReviewPolicyLane | None:
+        return repository.get_lane_policy(self._session, lane)
+
+    def set_policy(
+        self, lane: str, skill: str | None, required: bool, admin: User
+    ) -> SelfReviewPolicyLane:
+        return repository.set_policy(self._session, lane, skill, required, admin)
+
+    def submit(self, author: User, data: SelfReviewSubmitIn) -> SelfReviewOut:
+        self_review = repository.create_self_review(self._session, author, data)
+        return repository.to_self_review_detail(self_review)
+
+    def list(
+        self, *, author_id: int | None, task_ref: str | None, review_id: int | None
+    ) -> list[SelfReviewSummary]:
+        rows = repository.list_self_reviews(
+            self._session, author_id=author_id, task_ref=task_ref, review_id=review_id
+        )
+        return [repository.to_self_review_summary(r) for r in rows]
+
+    def get(self, self_review_id: int) -> SelfReviewOut | None:
+        row = repository.get_self_review(self._session, self_review_id)
+        return repository.to_self_review_detail(row) if row is not None else None
+
+    def has_self_review(self, author_id: int, task_ref: str) -> bool:
+        return repository.has_self_review(self._session, author_id, task_ref)
 
     def commit(self) -> None:
         self._session.commit()

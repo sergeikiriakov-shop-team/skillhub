@@ -20,6 +20,10 @@ identity.
 - The task is on its own feature branch `<id>/<slug>`, committed. If work is uncommitted or you are
   on `master8`/`dev`, stop and tell the user — submit only committed work on a task branch.
 - The task is actually ready (ideally already driven by `green-loop`). If not clearly ready, ask.
+- **Self-review first.** Run the `self-review` skill (it applies the team's configured review skill
+  to your diff and posts the findings). When the policy marks it `required`, submitting without one
+  is rejected with 409 — and either way the lead sees what you already caught, attached to this
+  review's thread.
 
 ## Gather the pointer (all from git + the task)
 Run these against the task's branch (one git command at a time; no `cd`):

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from skillhub_core.mcp.services import McpRubricService, McpService
 from skillhub_core.platform.db import get_session
 from skillhub_core.platform.services import UserAdminService
-from skillhub_core.reviews.services import ReviewService
+from skillhub_core.reviews.services import ReviewService, SelfReviewService
 from skillhub_core.skills.services import (
     CatalogService,
     EvaluationService,
@@ -60,6 +60,12 @@ def get_catalog_service(session: Session = Depends(get_session)) -> CatalogServi
 
 def get_review_service(session: Session = Depends(get_session)) -> ReviewService:
     return container.review_service(reviews=container.review_repository(session=session))
+
+
+def get_self_review_service(session: Session = Depends(get_session)) -> SelfReviewService:
+    return container.self_review_service(
+        self_reviews=container.self_review_repository(session=session)
+    )
 
 
 def get_mcp_service(session: Session = Depends(get_session)) -> McpService:

@@ -15,6 +15,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ReviewSummary } from "../api";
+import { useAuth } from "../auth";
+import SelfReviewPolicy from "../components/SelfReviewPolicy";
 import { useI18n } from "../i18n";
 import type { TFunc } from "../i18n";
 
@@ -58,18 +60,27 @@ function ReviewCard({ r, t }: { r: ReviewSummary; t: TFunc }) {
   );
 }
 
-type Tab = "queue" | "mine" | "all";
+type Tab = "queue" | "assigned" | "mine" | "all";
+
+// The board is open-review by default (anyone may pick a task up), so "queue" is every submitted
+// review — not just the ones assigned to you. A designated lead (`is_reviewer`) additionally gets
+// "assigned to me", which is what `queue=true` filters on server-side.
+const TAB_PARAMS: Record<Tab, Parameters<typeof api.listReviews>[0]> = {
+  queue: { status: "submitted" },
+  assigned: { queue: true, status: "submitted" },
+  mine: { mine: true },
+  all: {},
+};
 
 export default function Reviews() {
   const { t } = useI18n();
+  const { me } = useAuth();
   const [tab, setTab] = useState<Tab>("queue");
+  const isReviewer = !!me?.is_reviewer;
 
   const query = useQuery({
     queryKey: ["reviews", tab],
-    queryFn: () =>
-      api.listReviews(
-        tab === "queue" ? { status: "submitted" } : tab === "mine" ? { mine: true } : {},
-      ),
+    queryFn: () => api.listReviews(TAB_PARAMS[tab]),
   });
   const items = query.data ?? [];
 
@@ -92,6 +103,7 @@ export default function Reviews() {
           onChange={(v) => setTab(v as Tab)}
           data={[
             { label: t("reviews.queueTab"), value: "queue" },
+            ...(isReviewer ? [{ label: t("reviews.assignedTab"), value: "assigned" }] : []),
             { label: t("reviews.mineTab"), value: "mine" },
             { label: t("reviews.allTab"), value: "all" },
           ]}
@@ -112,6 +124,8 @@ export default function Reviews() {
             ))}
           </SimpleGrid>
         )}
+
+        <SelfReviewPolicy />
 
         <Alert variant="light" color="gray" mt="md">
           {t("reviews.usageHint")}

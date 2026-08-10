@@ -54,6 +54,11 @@ class Review(Base):
     events: Mapped[list["ReviewEvent"]] = relationship(  # noqa: F821
         back_populates="review", cascade="all, delete-orphan", order_by="ReviewEvent.id"
     )
+    # Self-reviews the author ran on this task before handing it over. Not owned by the review (they
+    # exist before it and outlive it), so no delete-cascade — the FK is nulled instead.
+    self_reviews: Mapped[list["SelfReview"]] = relationship(  # noqa: F821
+        "SelfReview", back_populates="review", order_by="SelfReview.id"
+    )
 
     @property
     def latest_verdict(self) -> "ReviewEvent | None":  # noqa: F821

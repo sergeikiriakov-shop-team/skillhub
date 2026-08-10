@@ -16,6 +16,7 @@ from skillhub_core.reviews.errors import (
     InvalidReviewTransition,
     NotReviewAuthor,
     ReviewNotFound,
+    SelfReviewRequired,
 )
 from skillhub_core.reviews.schemas import (
     ReviewOut,
@@ -38,8 +39,12 @@ def submit_review(
     user: User = Depends(require_user),
     service: ReviewService = Depends(get_review_service),
 ) -> ReviewOut:
-    """Submit a deploy-ready task for review (author = the authenticated user)."""
-    return service.submit(user, payload)
+    """Submit a deploy-ready task for review (author = the authenticated user). Rejected with 409
+    when the self-review policy is mandatory and the author has not self-reviewed this task."""
+    try:
+        return service.submit(user, payload)
+    except SelfReviewRequired as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @router.get("", response_model=list[ReviewSummary])

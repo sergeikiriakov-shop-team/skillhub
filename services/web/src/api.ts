@@ -215,6 +215,49 @@ export interface ReviewEvent {
   verdict: string | null;
   body: string;
   created_at: string;
+  self_review_id: number | null;
+}
+
+// --- Self-review: the author's own change, reviewed by the skill the team configured ---
+export interface SelfReviewFinding {
+  severity: string;
+  title: string;
+  file: string | null;
+  line: number | null;
+  detail: string;
+  suggestion: string;
+}
+
+export interface SelfReviewSummary {
+  id: number;
+  task_ref: string;
+  branch: string | null;
+  lane: string;
+  skill: string;
+  model: string;
+  verdict: string;
+  finding_count: number;
+  blocking_count: number;
+  author: string | null;
+  review_id: number | null;
+  created_at: string;
+}
+
+export interface SelfReviewDetail extends SelfReviewSummary {
+  commit_shas: string[];
+  summary: string;
+  findings: SelfReviewFinding[];
+}
+
+export interface SelfReviewPolicyLane {
+  lane: string;
+  skill_id: number | null;
+  skill: string | null;
+  required: boolean;
+}
+
+export interface SelfReviewPolicy {
+  lanes: SelfReviewPolicyLane[];
 }
 
 export interface ReviewSummary {
@@ -235,6 +278,7 @@ export interface ReviewDetail extends ReviewSummary {
   verified_notes: string;
   created_at: string;
   events: ReviewEvent[];
+  self_reviews: SelfReviewSummary[];
 }
 
 export interface RubricCategory {
@@ -405,6 +449,15 @@ export const api = {
     return request<ReviewSummary[]>(`/reviews${qs ? `?${qs}` : ""}`);
   },
   getReview: (id: number) => request<ReviewDetail>(`/reviews/${id}`),
+  // --- self-review ---
+  selfReviewPolicy: () => request<SelfReviewPolicy>("/self-reviews/policy"),
+  // Admin: point one lane at the catalog skill that reviews it (skill: null unsets the lane).
+  updateSelfReviewPolicy: (lane: string, skill: string | null, required: boolean) =>
+    request<SelfReviewPolicyLane>("/self-reviews/policy", {
+      method: "PUT",
+      body: JSON.stringify({ lane, skill, required }),
+    }),
+  getSelfReview: (id: number) => request<SelfReviewDetail>(`/self-reviews/${id}`),
   // --- auth ---
   me: () => request<Me>("/auth/me"),
   logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),

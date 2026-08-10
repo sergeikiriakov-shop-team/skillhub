@@ -60,6 +60,38 @@ synthesize an "ideal" merged skill.
   The provider is deliberately isolated to `/login` + `/callback` and the `(auth_provider,
   provider_sub)` identity columns, so swapping it (GitHub↔Google↔…) is a localized change.
 
+## Bounded contexts (`skillhub_core`)
+
+`platform` (users, auth, tokens, DB bootstrap) · `skills` (the catalog, rubric, evaluations,
+recommendations, sandbox trials) · `reviews` (task review + self-review) · `mcp` (catalogued MCP
+servers). Each context owns `models/ · schemas · errors · interfaces (repository Protocols) ·
+repositories (SQLAlchemy) · services`; the API composes them through a `dependency-injector`
+container (`services/api/app/container.py`) and thin routers that only map domain errors to HTTP.
+
+## Task Review + self-review (`skillhub_core/reviews`)
+
+Two halves of one context, both carrying a **pointer** to the work — the code stays in git.
+
+- **Task review (peer).** A developer submits a deploy-ready task (`task_ref`, branch, commit SHAs,
+  changed files, summary, verification notes); the lead fetches the branch, reviews the real diff and
+  posts a verdict. State machine: `submitted → approved | changes_requested → (resubmit) submitted
+  … → done` (author `ack`). Every transition appends to an immutable thread (`review_events`). The
+  lead is the single `is_reviewer` user, auto-assigned at submit; in **open-review** mode (default)
+  any authenticated user may post a verdict.
+- **Self-review (own change, team's skill).** *Which* skill reviews a developer's own diff is a
+  server setting, exactly like the rubric weights: `self_review_policies` maps a lane
+  (`default | backend | frontend`) to a catalog skill, plus a `required` flag. Claude Code reads it
+  (`GET /api/self-reviews/policy` / MCP `get_self_review_policy`), fetches that SKILL.md with
+  `get_skill`, applies it to the diff, and posts findings back (`POST /api/self-reviews`). The result
+  (`self_reviews`: verdict + `findings[]` with severity/file/line/detail/suggestion) attaches to the
+  author's peer review of the same task — on submit, any unattached self-review for that `task_ref`
+  is picked up — and appears in its thread as a `self_review` event. With any lane marked `required`,
+  submitting a task to the lead without a self-review is rejected (409).
+
+  The verdict is derived server-side when the client omits it: any `blocker`/`major` finding →
+  `changes_needed`, otherwise `pass`. Same split as everywhere else in SkillHub — the *strategy*
+  lives in the service, the *reviewing* happens in the developer's own Claude Code.
+
 ## Ingest pipeline (`skillhub_core/pipeline.py`)
 
 `parse → embed → persist`
@@ -75,6 +107,10 @@ synthesize an "ideal" merged skill.
 `skills 1─* skill_versions 1─* evaluations`, `skill_versions 1─1 skill_embeddings`,
 `skills *─* categories` (via `skill_categories`, with confidence + source). A new version is
 created only when the content hash changes, so re-imports are idempotent.
+
+`reviews 1─* review_events`, `reviews 1─* self_reviews` (nullable FK: a self-review exists before,
+and outlives, the peer review), `self_reviews *─1 skills` (the reviewing skill, with `skill_name`
+kept as a snapshot so the record survives a rename/delete), `self_review_policies` keyed by lane.
 
 **Identity + authorship (team registry).** A skill is keyed by **name** (unique `uq_skills_name`);
 re-uploading a name adds a version rather than a duplicate row. Verified authorship: `skills` and

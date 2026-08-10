@@ -25,7 +25,8 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   `SKILLHUB_ADMIN_TOKEN` is a deprecated break-glass. GitHub keys via `GITHUB_CLIENT_ID/SECRET` +
   `SKILLHUB_PUBLIC_URL`; without them the stack runs but browser login is disabled.
 - **Frontend = read-only dashboard** (catalog + semantic search + per-skill detail + a stats
-  strip). No upload/evaluate/delete UI — those happen via Claude Code / the API. It is fully
+  strip + the review board at `/reviews`, where the only editable thing is the admin's self-review
+  policy). No upload/evaluate/delete UI — those happen via Claude Code / the API. It is fully
   **bilingual (RU/EN)** via a lightweight home-grown i18n (`services/web/src/i18n.tsx`, toggle in
   the header, choice persisted to localStorage), and has a **Guide** page (`/guide`) with
   developer instructions. Only static UI chrome is translated; API data stays as stored.
@@ -47,10 +48,35 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   stale `services/airflow/` DAG have been **removed**. Orchestration (scheduled headless
   `claude -p` re-evaluation) is deferred to a later phase.
 
+- **Task review + self-review are their own bounded context** (`skillhub_core/reviews`), and the
+  service is DDD-shaped throughout: contexts `platform` / `skills` / `reviews` / `mcp`, each with
+  `models/ · schemas · errors · interfaces (repository Protocols) · repositories · services`, wired
+  by a `dependency-injector` container (`services/api/app/container.py` + `deps.py`). Routers are
+  thin: they only map domain errors to HTTP.
+  - **Peer review.** Submit a deploy-ready task as a POINTER (task_ref, branch, commit SHAs, files,
+    summary, verified_notes) → the lead fetches the branch and reviews the real diff → verdict
+    `approve | changes_requested` → author resubmits or acks. `submitted → approved |
+    changes_requested → … → done`, every step appended to `review_events`. The lead is the single
+    `is_reviewer` user (auto-assigned at submit); **open-review mode** (default, config-gated) lets
+    any authenticated user post a verdict.
+  - **Self-review.** WHICH skill reviews a developer's own diff is an admin-managed server setting
+    (`self_review_policies`: lane `default|backend|frontend` → catalog skill, + `required`), the same
+    pattern as the rubric weights. Claude Code reads the policy, fetches that SKILL.md via
+    `get_skill`, applies it to the diff, and POSTs the findings back; the result attaches to the peer
+    review of the same `task_ref` (on submit, unattached ones are picked up) and shows in its thread.
+    Verdict is server-derived when omitted: any `blocker`/`major` → `changes_needed`, else `pass`.
+    Any lane marked `required` makes `POST /api/reviews` 409 without a self-review.
+
 ## Key API endpoints
 - Reads (open when `SKILLHUB_PUBLIC_READS=true`, else require a logged-in user): `GET /api/stats`,
   `/api/skills`, `/api/skills?evaluated=false` (work queue), `/api/skills/{id}`, `/api/search?q=`,
   `/api/categories`, `/api/rubric`, `/api/skills/{id}/evaluations`. `GET /api/health` is always open.
+- Task review: `POST /api/reviews` (submit), `GET /api/reviews?status=|mine=|queue=`,
+  `GET /api/reviews/{id}`, `POST /api/reviews/{id}/result` (reviewer), `/resubmit`, `/ack` (author).
+- Self-review: `GET /api/self-reviews/policy`, `PUT /api/self-reviews/policy` (admin),
+  `POST /api/self-reviews`, `GET /api/self-reviews?mine=|task_ref=|review_id=`,
+  `GET /api/self-reviews/{id}`. Mounted at `/self-reviews`, not under `/reviews`, so nothing
+  collides with `/reviews/{review_id}`.
 - Token/cookie writes: `POST /api/skills` (contributor+), `POST /api/skills/{id}/assessment`
   (evaluator), `DELETE /api/skills/{id}` (admin).
 - Auth: `GET /api/auth/login|callback`, `GET /api/auth/me`, `POST /api/auth/logout`,
@@ -99,12 +125,21 @@ Install `skills/skillhub/SKILL.md` into Claude Code (or point it at the repo). S
 
 Tools: `list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `get_stats`,
 `list_task_groups`, `list_recommendations`, `upload_skill` (contributor+), `submit_assessment`
-(evaluator), `add_recommendation`/`set_recommendation_status` (contributor+), `authenticate`.
-See `services/mcp/README.md`.
+(evaluator), `add_recommendation`/`set_recommendation_status` (contributor+), `authenticate`;
+task review — `submit_for_review`, `list_review_queue`, `list_my_reviews`, `get_review`,
+`submit_review_result`, `resubmit_review`, `ack_review`; self-review — `get_self_review_policy`,
+`submit_self_review`, `list_self_reviews`, `get_self_review`. See `services/mcp/README.md`.
+
+## Skills shipped with the service (`skills/`)
+`skillhub` (evaluate the catalog) · `connect-skillhub` (one-line MCP setup) · `sandbox-eval` ·
+`submit-for-review` · `review-inbox` (lead, under `/loop`) · `review-status` · `self-review`.
 
 ## Next
-- **Trial upload via Claude Code** using the MCP (connect it, then upload a real SKILL.md and
-  evaluate it). A trial `evaluator` user `dev-trial` was created for this.
+- **End-to-end trial of the review board on prod** — it has never run on real data: `self-review`
+  (with a lane pointed at a review skill) → `submit-for-review` → `review-inbox` verdict →
+  `resubmit_review` → approve → `ack_review`.
+- **Wire `green-loop` to the board**: auto-submit once a task is deploy-ready, auto-resubmit after
+  `changes_requested` (`submit-for-review` still says "once wired").
 - Then: "optimal skills" (synthesis of an ideal skill from a cluster) display + richer stats.
 - Later/optional: a scheduler running headless `claude -p` re-evaluation.
 

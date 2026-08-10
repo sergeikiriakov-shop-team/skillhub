@@ -104,6 +104,7 @@ const en: Dict = {
     "reviews and posts a verdict. Actions happen from Claude Code (submit-for-review / review-inbox " +
     "/ review-status); this page is read-only.",
   "reviews.queueTab": "Review queue",
+  "reviews.assignedTab": "Assigned to me",
   "reviews.mineTab": "My submissions",
   "reviews.allTab": "All",
   "reviews.count": "{count} review(s)",
@@ -127,9 +128,42 @@ const en: Dict = {
   "reviews.event.verdict": "verdict",
   "reviews.event.resubmit": "resubmitted",
   "reviews.event.ack": "acknowledged",
+  "reviews.event.self_review": "self-review",
   "reviews.usageHint":
     "Act from Claude Code: developers use the submit-for-review / review-status skills; the lead " +
     "runs review-inbox (under /loop). Verdicts and resubmits are not done from this page.",
+
+  // self-review
+  "selfReview.title": "Self-review",
+  "selfReview.policyTitle": "Self-review policy",
+  "selfReview.policyIntro":
+    "Which catalog skill reviews a developer's own change, per lane. The choice is a server " +
+    "setting, so everyone self-reviews the same way — Claude Code reads it with the self-review " +
+    "skill and applies that SKILL.md to the diff.",
+  "selfReview.lane": "Lane",
+  "selfReview.lane.default": "Default",
+  "selfReview.lane.backend": "Backend",
+  "selfReview.lane.frontend": "Frontend",
+  "selfReview.skill": "Reviewing skill",
+  "selfReview.notSet": "not configured",
+  "selfReview.required": "mandatory before handing over",
+  "selfReview.requiredShort": "mandatory",
+  "selfReview.optional": "optional",
+  "selfReview.save": "Save",
+  "selfReview.saved": "Saved",
+  "selfReview.adminOnly": "Only an admin can change this.",
+  "selfReview.none": "No self-review was recorded for this task.",
+  "selfReview.verdict.pass": "clean",
+  "selfReview.verdict.changes_needed": "changes needed",
+  "selfReview.findings": "{count} finding(s)",
+  "selfReview.blocking": "{count} blocking",
+  "selfReview.ranBy": "{skill} · {model}",
+  "selfReview.severity.blocker": "blocker",
+  "selfReview.severity.major": "major",
+  "selfReview.severity.minor": "minor",
+  "selfReview.severity.nit": "nit",
+  "selfReview.noFindings": "The skill reported nothing.",
+  "selfReview.suggestion": "Fix",
 
   // common
   "common.copy": "Copy",
@@ -412,6 +446,7 @@ const ru: Dict = {
     "смотрит и выносит вердикт. Действия выполняются из Claude Code (submit-for-review / " +
     "review-inbox / review-status); эта страница — только для чтения.",
   "reviews.queueTab": "Очередь ревью",
+  "reviews.assignedTab": "Назначено мне",
   "reviews.mineTab": "Мои заявки",
   "reviews.allTab": "Все",
   "reviews.count": "заявок: {count}",
@@ -435,9 +470,42 @@ const ru: Dict = {
   "reviews.event.verdict": "вердикт",
   "reviews.event.resubmit": "переотправлено",
   "reviews.event.ack": "подтверждено",
+  "reviews.event.self_review": "саморевью",
   "reviews.usageHint":
     "Действия — из Claude Code: разработчики используют скиллы submit-for-review / review-status; " +
     "лид запускает review-inbox (под /loop). Вердикты и переотправка не делаются с этой страницы.",
+
+  // self-review
+  "selfReview.title": "Саморевью",
+  "selfReview.policyTitle": "Политика саморевью",
+  "selfReview.policyIntro":
+    "Каким скиллом из каталога разработчик проверяет собственные изменения — по дорожкам. Выбор " +
+    "хранится на сервере, поэтому саморевью у всех проходит одинаково: Claude Code читает эту " +
+    "настройку скиллом self-review и применяет указанный SKILL.md к диффу.",
+  "selfReview.lane": "Дорожка",
+  "selfReview.lane.default": "По умолчанию",
+  "selfReview.lane.backend": "Бэкенд",
+  "selfReview.lane.frontend": "Фронтенд",
+  "selfReview.skill": "Скилл-ревьюер",
+  "selfReview.notSet": "не настроено",
+  "selfReview.required": "обязательно перед подачей на ревью",
+  "selfReview.requiredShort": "обязательно",
+  "selfReview.optional": "по желанию",
+  "selfReview.save": "Сохранить",
+  "selfReview.saved": "Сохранено",
+  "selfReview.adminOnly": "Менять может только администратор.",
+  "selfReview.none": "Саморевью по этой задаче не записано.",
+  "selfReview.verdict.pass": "чисто",
+  "selfReview.verdict.changes_needed": "нужны правки",
+  "selfReview.findings": "замечаний: {count}",
+  "selfReview.blocking": "критичных: {count}",
+  "selfReview.ranBy": "{skill} · {model}",
+  "selfReview.severity.blocker": "блокер",
+  "selfReview.severity.major": "серьёзное",
+  "selfReview.severity.minor": "мелкое",
+  "selfReview.severity.nit": "придирка",
+  "selfReview.noFindings": "Скилл не нашёл замечаний.",
+  "selfReview.suggestion": "Как исправить",
 
   // common
   "common.copy": "Копировать",

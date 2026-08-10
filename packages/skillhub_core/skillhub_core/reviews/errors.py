@@ -20,3 +20,25 @@ class NotReviewAuthor(ReviewsError):
 
 class InvalidReviewTransition(ReviewsError):
     """An illegal workflow transition (e.g. approving a review not awaiting review; mapped to 409)."""
+
+
+class SelfReviewNotFound(ReviewsError):
+    """A self-review id did not resolve (mapped to 404)."""
+
+
+class SelfReviewPolicyNotSet(ReviewsError):
+    """No reviewing skill is configured for the lane, so a self-review cannot be run or recorded
+    against it (mapped to 409). An admin sets it via ``PUT /api/self-reviews/policy``."""
+
+
+class UnknownReviewSkill(ReviewsError):
+    """The named reviewing skill is not in the catalog (mapped to 400)."""
+
+
+class InvalidSelfReview(ReviewsError):
+    """A malformed self-review: unknown lane, verdict or finding severity (mapped to 400)."""
+
+
+class SelfReviewRequired(ReviewsError):
+    """The lane's policy requires a self-review before the task may be handed to the lead, and the
+    author has none for this task (mapped to 409)."""

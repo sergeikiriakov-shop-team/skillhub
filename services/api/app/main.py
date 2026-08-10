@@ -27,6 +27,7 @@ from .routers import (
     reviews,
     rubric,
     search,
+    self_reviews,
     skills,
     stats,
     task_groups,
@@ -74,6 +75,8 @@ app.include_router(stats.router, prefix="/api", dependencies=_gated)
 app.include_router(admin.router, prefix="/api", dependencies=_gated)
 # Task Review context (peer-review handoff between developers and the lead).
 app.include_router(reviews.router, prefix="/api", dependencies=_gated)
+# Self-review: the same context's "review your own change with the team's skill" half.
+app.include_router(self_reviews.router, prefix="/api", dependencies=_gated)
 # MCP context (catalogued MCP servers, scored on their own tool-surface rubric).
 app.include_router(mcp.router, prefix="/api", dependencies=_gated)
 
