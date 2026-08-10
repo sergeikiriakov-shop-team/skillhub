@@ -43,7 +43,6 @@ router = APIRouter(tags=["self-reviews"], prefix="/self-reviews")
 @router.get("/policy", response_model=SelfReviewPolicyOut)
 def get_policy(
     service: SelfReviewService = Depends(get_self_review_service),
-    _: User | None = Depends(require_read_access),
 ) -> SelfReviewPolicyOut:
     """Which catalog skill self-reviews each lane, and whether it is mandatory before handing a task
     to the lead. Claude Code reads this, then fetches that skill with ``get_skill``."""
@@ -104,7 +103,6 @@ def list_self_reviews(
 def get_self_review(
     self_review_id: int,
     service: SelfReviewService = Depends(get_self_review_service),
-    _: User | None = Depends(require_read_access),
 ) -> SelfReviewOut:
     """One self-review with its full findings list."""
     try:
