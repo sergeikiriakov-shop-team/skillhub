@@ -65,7 +65,10 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
     `get_skill`, applies it to the diff, and POSTs the findings back; the result attaches to the peer
     review of the same `task_ref` (on submit, unattached ones are picked up) and shows in its thread.
     Verdict is server-derived when omitted: any `blocker`/`major` → `changes_needed`, else `pass`.
-    Any lane marked `required` makes `POST /api/reviews` 409 without a self-review.
+    Any lane marked `required` makes `POST /api/reviews` 409 without a self-review. Findings
+    deep-link to their line: the agent passes `repo` (its `git remote get-url origin`), stored per
+    self-review because the team spans repositories; URLs are derived at read time in
+    `reviews/code_links.py` and pinned to the last reviewed commit.
 
 ## Key API endpoints
 - Reads (open when `SKILLHUB_PUBLIC_READS=true`, else require a logged-in user): `GET /api/stats`,

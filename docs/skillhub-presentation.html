@@ -1,0 +1,964 @@
+<style>
+  :root {
+    --font-sans: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "Cascadia Mono", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+    /* neutrals — cool, teal-biased (chosen, not default grey) */
+    --bg: #F1F5F4;
+    --surface: #FFFFFF;
+    --surface-2: #E7EFED;
+    --ink: #0F1E1C;
+    --ink-2: #35514E;
+    --muted: #5E7370;
+    --line: #D6E0DD;
+    --line-strong: #BCCCC8;
+
+    /* accents — teal = storage/structure (the server), amber = compute (each dev's Claude) */
+    --teal: #0C7A76;
+    --teal-strong: #085B58;
+    --teal-tint: #DCEEEC;
+    --amber: #B06E10;
+    --amber-strong: #8C5608;
+    --amber-tint: #F4E6CD;
+
+    /* semantic */
+    --good: #1F7A4D;
+    --good-tint: #DCEEE2;
+    --plan: #4E628F;
+    --plan-tint: #E1E7F2;
+    --warn: #A9700A;
+
+    --shadow: 0 1px 2px rgba(15,30,28,.05), 0 8px 26px -14px rgba(15,30,28,.22);
+    --radius: 14px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0C1514;
+      --surface: #111F1D;
+      --surface-2: #17302C;
+      --ink: #E9F1EF;
+      --ink-2: #B6C9C5;
+      --muted: #8DA29E;
+      --line: #24403C;
+      --line-strong: #305650;
+
+      --teal: #34C1B6;
+      --teal-strong: #57D6CB;
+      --teal-tint: #10322E;
+      --amber: #E4A64A;
+      --amber-strong: #F0BC6E;
+      --amber-tint: #35291396;
+
+      --good: #45C77E;
+      --good-tint: #16341F;
+      --plan: #8FA3CE;
+      --plan-tint: #1B2540;
+      --warn: #E4A64A;
+
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -16px rgba(0,0,0,.55);
+    }
+  }
+  /* viewer toggle must win in both directions */
+  :root[data-theme="light"] {
+    --bg: #F1F5F4; --surface: #FFFFFF; --surface-2: #E7EFED;
+    --ink: #0F1E1C; --ink-2: #35514E; --muted: #5E7370;
+    --line: #D6E0DD; --line-strong: #BCCCC8;
+    --teal: #0C7A76; --teal-strong: #085B58; --teal-tint: #DCEEEC;
+    --amber: #B06E10; --amber-strong: #8C5608; --amber-tint: #F4E6CD;
+    --good: #1F7A4D; --good-tint: #DCEEE2; --plan: #4E628F; --plan-tint: #E1E7F2; --warn: #A9700A;
+    --shadow: 0 1px 2px rgba(15,30,28,.05), 0 8px 26px -14px rgba(15,30,28,.22);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0C1514; --surface: #111F1D; --surface-2: #17302C;
+    --ink: #E9F1EF; --ink-2: #B6C9C5; --muted: #8DA29E;
+    --line: #24403C; --line-strong: #305650;
+    --teal: #34C1B6; --teal-strong: #57D6CB; --teal-tint: #10322E;
+    --amber: #E4A64A; --amber-strong: #F0BC6E; --amber-tint: #35291396;
+    --good: #45C77E; --good-tint: #16341F; --plan: #8FA3CE; --plan-tint: #1B2540; --warn: #E4A64A;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -16px rgba(0,0,0,.55);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .page { max-width: 1140px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---------- hero (committed dark "control panel" look, both themes) ---------- */
+  .hero {
+    position: relative;
+    margin: 0 0 8px;
+    padding: 76px clamp(24px, 6vw, 84px) 68px;
+    color: #E7F3F1;
+    background:
+      radial-gradient(120% 120% at 12% 0%, rgba(52,193,182,.16), transparent 55%),
+      radial-gradient(90% 90% at 100% 100%, rgba(224,166,74,.13), transparent 52%),
+      #08201E;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(circle at 50% 40%, #000 55%, transparent 100%);
+    pointer-events: none;
+  }
+  .hero > * { position: relative; }
+  .wordmark {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: clamp(34px, 6vw, 58px);
+    letter-spacing: -.02em;
+    margin: 0;
+    line-height: 1;
+  }
+  .wordmark .hub { color: #34C1B6; }
+  .hero-kicker {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: .22em;
+    font-size: 12px;
+    color: #7FB8B2;
+    margin: 0 0 22px;
+  }
+  .hero-thesis {
+    font-size: clamp(20px, 3.1vw, 30px);
+    font-weight: 600;
+    line-height: 1.32;
+    max-width: 20ch;
+    margin: 26px 0 10px;
+    text-wrap: balance;
+  }
+  .hero-thesis b { color: #E4A64A; font-weight: 700; }
+  .hero-sub { color: #A9CFCA; max-width: 62ch; font-size: 16.5px; margin: 0; }
+  .hero-meta {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 34px;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.14);
+    color: #CFE6E3;
+    white-space: nowrap;
+  }
+  .chip b { color: #fff; font-weight: 600; }
+
+  /* ---------- sections ---------- */
+  section.block { padding-top: 62px; scroll-margin-top: 20px; }
+  .eyebrow {
+    display: flex; align-items: center; gap: 12px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: .17em;
+    font-size: 12px;
+    color: var(--teal);
+    margin: 0 0 14px;
+  }
+  .eyebrow .num {
+    display: inline-grid; place-items: center;
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: var(--teal-tint);
+    color: var(--teal);
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+  h2 {
+    font-size: clamp(23px, 3.4vw, 32px);
+    line-height: 1.18;
+    letter-spacing: -.015em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .lead { font-size: 17.5px; color: var(--ink-2); max-width: 68ch; margin: 0 0 8px; }
+  p { max-width: 70ch; }
+  .prose { color: var(--ink-2); }
+  .prose strong { color: var(--ink); font-weight: 650; }
+  code {
+    font-family: var(--font-mono);
+    font-size: .88em;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    padding: .1em .4em;
+    border-radius: 6px;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  /* ---------- cards / grids ---------- */
+  .grid { display: grid; gap: 16px; }
+  .cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .cols-4 { grid-template-columns: repeat(4, 1fr); }
+  @media (max-width: 860px) { .cols-3, .cols-4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .cols-2, .cols-3, .cols-4 { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+  .card h3 {
+    margin: 0 0 6px; font-size: 16.5px; letter-spacing: -.01em;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .card p { margin: 0; font-size: 14.5px; color: var(--muted); max-width: none; }
+  .card .tag {
+    font-family: var(--font-mono); font-size: 11px; color: var(--teal);
+    background: var(--teal-tint); padding: 2px 7px; border-radius: 6px;
+  }
+
+  /* callout — the key nuance */
+  .callout {
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--amber);
+    background: linear-gradient(180deg, var(--surface), var(--surface));
+    border-radius: 12px;
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+  }
+  .callout .k {
+    font-family: var(--font-mono); font-size: 12px; text-transform: uppercase;
+    letter-spacing: .15em; color: var(--amber-strong); margin: 0 0 8px;
+  }
+  .callout p { margin: 0; color: var(--ink-2); }
+  .callout p + p { margin-top: 10px; }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
+  @media (max-width: 720px) { .split { grid-template-columns: 1fr; } }
+  .panel {
+    border-radius: 12px; padding: 20px; border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .panel.bad { border-color: color-mix(in srgb, var(--amber) 40%, var(--line)); background: color-mix(in srgb, var(--amber-tint) 55%, var(--surface)); }
+  .panel.good { border-color: color-mix(in srgb, var(--teal) 40%, var(--line)); background: color-mix(in srgb, var(--teal-tint) 55%, var(--surface)); }
+  .panel h4 { margin: 0 0 10px; font-size: 14px; font-family: var(--font-mono); letter-spacing: .04em; }
+  .panel.bad h4 { color: var(--amber-strong); }
+  .panel.good h4 { color: var(--teal-strong); }
+  .panel ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14.5px; }
+  .panel li { margin: 6px 0; }
+
+  /* ---------- diagram scaffolding ---------- */
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 12px;
+    margin-top: 8px;
+  }
+  .diagram-scroll { overflow-x: auto; }
+  svg.diagram { display: block; width: 100%; height: auto; min-width: 680px; }
+
+  /* SVG classes — theme-aware via tokens */
+  .d-server-box { fill: var(--surface-2); stroke: var(--teal); stroke-width: 1.6; }
+  .d-server-title { fill: var(--ink); font-family: var(--font-mono); font-weight: 700; }
+  .d-server-sub { fill: var(--muted); font-family: var(--font-sans); }
+  .d-banner { fill: var(--teal-strong); }
+  .d-banner-txt { fill: #fff; font-family: var(--font-mono); font-weight: 600; }
+  .d-chip { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1; }
+  .d-chip-txt { fill: var(--ink); font-family: var(--font-mono); }
+  .d-chip-txt tspan.dim { fill: var(--muted); }
+  .d-dev { fill: color-mix(in srgb, var(--amber-tint) 70%, var(--surface)); stroke: var(--amber); stroke-width: 1.5; }
+  .d-dev-title { fill: var(--ink); font-family: var(--font-mono); font-weight: 700; }
+  .d-dev-sub { fill: var(--amber-strong); font-family: var(--font-sans); }
+  .d-node { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.4; stroke-dasharray: 4 3; }
+  .d-node-txt { fill: var(--ink-2); font-family: var(--font-mono); }
+  .d-line { stroke: var(--amber); stroke-width: 2; fill: none; }
+  .d-line-soft { stroke: var(--line-strong); stroke-width: 1.6; fill: none; }
+  .d-arrow { fill: var(--amber); }
+  .d-legend { fill: var(--ink-2); font-family: var(--font-sans); }
+  .d-legend-num { fill: var(--teal); font-family: var(--font-mono); font-weight: 700; }
+  .d-legend-mono { fill: var(--muted); font-family: var(--font-mono); }
+
+  /* detailed MCP + API diagram */
+  .d-svc { fill: var(--surface-2); stroke: var(--teal); stroke-width: 1.5; }
+  .d-svc-title { fill: var(--ink); font-family: var(--font-mono); font-weight: 700; }
+  .d-svc-sub { fill: var(--muted); font-family: var(--font-sans); }
+  .d-ep { fill: var(--ink-2); font-family: var(--font-mono); }
+  .d-ep-dim { fill: var(--muted); font-family: var(--font-mono); }
+  .d-route { fill: var(--teal); font-family: var(--font-mono); font-weight: 600; }
+  .d-edge { stroke: var(--line-strong); stroke-width: 1.6; fill: none; }
+  .d-edge-arrow { fill: var(--line-strong); }
+  .d-ext-box { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.4; stroke-dasharray: 5 3; }
+
+  /* vertical numbered sequence (OAuth handshake) */
+  .seq { display: grid; gap: 9px; margin: 12px 0 0; padding: 0; list-style: none; }
+  .seq li { display: grid; grid-template-columns: 28px 1fr; gap: 13px; align-items: start; }
+  .seq .b {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+    width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center;
+    background: var(--teal-tint); color: var(--teal); margin-top: 1px;
+  }
+  .seq .b.amber { background: var(--amber-tint); color: var(--amber-strong); }
+  .seq .t { font-size: 14.5px; color: var(--ink-2); }
+  .seq .t code { font-size: 12.5px; }
+  .seq .t b { color: var(--ink); font-weight: 650; }
+
+  /* endpoint reference cards */
+  .ep-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .ep-list li { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-2); line-height: 1.45; word-break: break-word; }
+  .ep-group { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--teal); margin: 13px 0 5px; }
+  .ep-group:first-child { margin-top: 2px; }
+  .ep-group.amber { color: var(--amber-strong); }
+
+  /* pipeline steps */
+  .flow { display: flex; gap: 0; align-items: stretch; overflow-x: auto; padding: 6px 2px 12px; }
+  .flow .step {
+    flex: 1 0 178px; min-width: 178px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px; position: relative;
+  }
+  .flow .step + .step { margin-left: 26px; }
+  .flow .step + .step::before {
+    content: "→"; position: absolute; left: -22px; top: 50%; transform: translateY(-50%);
+    color: var(--teal); font-family: var(--font-mono); font-size: 18px; font-weight: 700;
+  }
+  .flow .step .n {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+    color: var(--teal); background: var(--teal-tint);
+    width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; margin-bottom: 10px;
+  }
+  .flow .step h4 { margin: 0 0 5px; font-size: 14.5px; }
+  .flow .step p { margin: 0; font-size: 13px; color: var(--muted); max-width: none; }
+  .flow .step.compute { border-color: color-mix(in srgb, var(--amber) 45%, var(--line)); }
+  .flow .step.compute .n { color: var(--amber-strong); background: var(--amber-tint); }
+  .flow .step.compute h4::after {
+    content: "Claude Code"; font-family: var(--font-mono); font-size: 9.5px; font-weight: 600;
+    color: var(--amber-strong); background: var(--amber-tint);
+    padding: 2px 6px; border-radius: 5px; margin-left: 7px; letter-spacing: .03em; vertical-align: middle;
+  }
+
+  /* roles ladder */
+  .ladder { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; }
+  .role {
+    font-family: var(--font-mono); font-size: 13.5px; padding: 8px 14px; border-radius: 9px;
+    background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink);
+  }
+  .role span { display: block; font-family: var(--font-sans); font-size: 11.5px; color: var(--muted); }
+  .ladder .arr { color: var(--teal); font-family: var(--font-mono); font-weight: 700; }
+
+  /* rubric dimensions */
+  .dim { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .dim .w {
+    font-family: var(--font-mono); font-size: 12px; font-weight: 700;
+    padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+    background: var(--surface-2); color: var(--muted); border: 1px solid var(--line);
+  }
+  .dim .w.heavy { background: var(--teal-tint); color: var(--teal); border-color: transparent; }
+
+  .bands { display: grid; gap: 8px; margin-top: 8px; }
+  .band { display: grid; grid-template-columns: 62px 1fr; gap: 14px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line); }
+  .band:first-child { border-top: none; }
+  .band .score { font-family: var(--font-mono); font-weight: 700; color: var(--ink); }
+  .band .lab { font-weight: 650; }
+  .band small { color: var(--muted); font-weight: 400; display: block; font-size: 13.5px; }
+
+  /* data model */
+  .er { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 780px) { .er { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 500px) { .er { grid-template-columns: 1fr; } }
+  .entity { border: 1px solid var(--line); border-radius: 11px; background: var(--surface); overflow: hidden; }
+  .entity .hd { font-family: var(--font-mono); font-weight: 700; font-size: 13.5px; padding: 9px 13px; background: var(--surface-2); border-bottom: 1px solid var(--line); color: var(--ink); }
+  .entity ul { margin: 0; padding: 10px 13px 12px 26px; font-size: 13px; color: var(--muted); }
+  .entity li { margin: 3px 0; }
+  .entity.accent .hd { background: var(--teal-tint); color: var(--teal-strong); }
+  .rel-note { font-family: var(--font-mono); font-size: 13px; color: var(--muted); margin-top: 14px; line-height: 2; }
+  .rel-note b { color: var(--ink); }
+
+  /* status columns */
+  .status-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .status-grid { grid-template-columns: 1fr; } }
+  .stat-list { list-style: none; margin: 0; padding: 0; }
+  .stat-list li { display: flex; gap: 11px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14.5px; color: var(--ink-2); align-items: flex-start; }
+  .stat-list li:first-child { border-top: none; }
+  .pill {
+    flex: none; margin-top: 2px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; padding: 3px 8px; border-radius: 999px; white-space: nowrap;
+  }
+  .pill.done { background: var(--good-tint); color: var(--good); }
+  .pill.plan { background: var(--plan-tint); color: var(--plan); }
+  .pill.wip  { background: var(--amber-tint); color: var(--amber-strong); }
+
+  /* code block */
+  .codeblock {
+    font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7;
+    background: #08201E; color: #CFE6E3; border-radius: 12px; padding: 18px 20px;
+    overflow-x: auto; border: 1px solid rgba(255,255,255,.08);
+  }
+  .codeblock .cmt { color: #6FA39D; }
+  .codeblock .ok { color: #E4A64A; }
+
+  .say { display: grid; gap: 8px; margin-top: 12px; }
+  .say .q {
+    font-family: var(--font-mono); font-size: 13.5px; color: var(--ink);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; padding: 9px 13px;
+  }
+  .say .q::before { content: "› "; color: var(--teal); font-weight: 700; }
+
+  footer {
+    margin-top: 70px; padding-top: 22px; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 13.5px;
+  }
+  footer code { font-size: 12.5px; }
+
+  hr.sep { border: none; border-top: 1px solid var(--line); margin: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto !important; }
+  }
+</style>
+
+<header class="hero">
+  <p class="hero-kicker">Внутренняя презентация для команды · июль 2026</p>
+  <h1 class="wordmark">Skill<span class="hub">Hub</span></h1>
+  <p class="hero-thesis">Общий реестр скиллов Claude Code, где <b>сервер ничего не «думает»</b> — думает Claude Code каждого разработчика.</p>
+  <p class="hero-sub">Скиллы (<code style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15);color:#CFE6E3">SKILL.md</code>) со всей команды собираются в одном месте: хранятся, ищутся векторным поиском, оцениваются по единой рубрике и ставятся к себе одной фразой. Вся «умная» работа выполняется на собственном аккаунте разработчика.</p>
+  <div class="hero-meta">
+    <span class="chip"><b>Python 3.12</b> · FastAPI</span>
+    <span class="chip"><b>React</b> · Vite · Mantine</span>
+    <span class="chip"><b>Postgres 16</b> · pgvector</span>
+    <span class="chip">MCP · <b>OAuth 2.1</b></span>
+    <span class="chip">Один VPS · push-to-deploy</span>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- 1. Зачем -->
+  <section class="block" id="why">
+    <p class="eyebrow"><span class="num">01</span> Зачем это нужно</p>
+    <h2>Каждый пишет свои почти одинаковые скиллы. SkillHub собирает их в один каталог.</h2>
+    <p class="lead">Сегодня разработчики независимо пишут дублирующие друг друга <code>SKILL.md</code>. SkillHub — это реестр, слой оценки качества и (в перспективе) синтеза «идеального» скилла из группы похожих.</p>
+    <div class="split">
+      <div class="panel bad">
+        <h4>Как было</h4>
+        <ul>
+          <li>Каждый держит свои скиллы локально, у всех разные версии.</li>
+          <li>Нет единого мнения, какой скилл лучше и когда его применять.</li>
+          <li>Дубли и пересечения никто не видит.</li>
+          <li>Оценка «на глаз» — у каждого свой критерий качества.</li>
+        </ul>
+      </div>
+      <div class="panel good">
+        <h4>Как стало</h4>
+        <ul>
+          <li>Один каталог: одна запись на имя, история версий, подтверждённое авторство.</li>
+          <li>Единая рубрика качества → сопоставимые оценки для всех.</li>
+          <li>Векторный поиск и группировка по «работе» (task_group).</li>
+          <li>Установка скилла себе одной фразой в Claude Code.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Ключевой принцип -->
+  <section class="block" id="principle">
+    <p class="eyebrow"><span class="num">02</span> Главный принцип</p>
+    <h2>Работа идёт через собственный аккаунт каждого разработчика</h2>
+    <p class="lead">Это ключевая архитектурная идея всего проекта. Сервис <strong>принципиально не вызывает LLM</strong> — ни ключа Anthropic, ни LangChain на сервере нет.</p>
+
+    <div class="callout" style="margin:8px 0 20px">
+      <p class="k">Как это работает</p>
+      <p>Сервер — это <strong>система хранения и раздачи</strong>: он держит скиллы и единую стратегию оценки и отдаёт их по <code>GET /api/rubric</code>. А оценку, категоризацию и синтез выполняет <strong>Claude Code каждого разработчика</strong> — на его собственном аккаунте. Claude Code тянет рубрику и очередь неоценённых скиллов, всё считает у себя и присылает результат обратно (<code>POST /api/skills/{id}/assessment</code>).</p>
+      <p>Поскольку сама стратегия хранится <strong>на сервере</strong>, все разработчики выполняют <strong>один и тот же алгоритм</strong> — оценки получаются сопоставимыми, а не «у каждого свой промпт».</p>
+    </div>
+
+    <div class="grid cols-3">
+      <div class="card">
+        <h3>💳 Свой аккаунт — свои вычисления</h3>
+        <p>Нет общего API-ключа и центрального бюджета на токены. «Тяжёлую» работу оплачивает подписка Claude каждого разработчика. Нагрузка масштабируется вместе с командой.</p>
+      </div>
+      <div class="card">
+        <h3>🔑 Личность через GitHub</h3>
+        <p>Разработчик входит под своим GitHub-аккаунтом (OAuth). Авторство скиллов и оценок привязано к проверенной личности — подделать нельзя.</p>
+      </div>
+      <div class="card">
+        <h3>📐 Единый алгоритм на сервере</h3>
+        <p>Рубрика, правила категоризации, стратегия отбора и синтеза лежат в <code>rubric.py</code> и отдаются через API. Меняем стратегию в одном месте — обновляются все.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Архитектура — центральная диаграмма -->
+  <section class="block" id="arch">
+    <p class="eyebrow"><span class="num">03</span> Архитектура и поток работы</p>
+    <h2>Сервер в центре, Claude Code каждого разработчика — по краям</h2>
+    <p class="lead">Ниже — как устроен обмен. <span style="color:var(--teal);font-weight:650">Бирюзовым</span> обозначено хранение и раздача (сервер), <span style="color:var(--amber-strong);font-weight:650">янтарным</span> — вычисления (собственный Claude Code каждого разработчика).</p>
+
+    <div class="diagram-wrap">
+      <div class="diagram-scroll">
+        <svg class="diagram" viewBox="0 0 1040 706" role="img" aria-label="Диаграмма архитектуры SkillHub: центральный сервер и Claude Code каждого разработчика">
+          <defs>
+            <marker id="ah" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto-start-reverse">
+              <path d="M0,0 L6.5,3 L0,6 Z" class="d-arrow"/>
+            </marker>
+            <marker id="ahs" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto-start-reverse">
+              <path d="M0,0 L6.5,3 L0,6 Z" fill="var(--line-strong)"/>
+            </marker>
+          </defs>
+
+          <!-- connections (drawn first, behind boxes) -->
+          <line x1="252" y1="196" x2="378" y2="282" class="d-line" marker-start="url(#ah)" marker-end="url(#ah)"/>
+          <line x1="252" y1="486" x2="378" y2="420" class="d-line" marker-start="url(#ah)" marker-end="url(#ah)"/>
+          <line x1="788" y1="196" x2="662" y2="282" class="d-line" marker-start="url(#ah)" marker-end="url(#ah)"/>
+          <line x1="788" y1="486" x2="662" y2="420" class="d-line" marker-start="url(#ah)" marker-end="url(#ah)"/>
+          <line x1="520" y1="120" x2="520" y2="182" class="d-line-soft" marker-end="url(#ahs)"/>
+
+          <!-- browser node (humans) -->
+          <rect x="426" y="66" width="188" height="54" rx="10" class="d-node"/>
+          <text x="520" y="89" text-anchor="middle" class="d-node-txt" font-size="13">Браузер · портал</text>
+          <text x="520" y="107" text-anchor="middle" class="d-node-txt" font-size="11.5" fill="var(--muted)">вход через GitHub · чтение</text>
+
+          <!-- central server -->
+          <rect x="380" y="182" width="280" height="316" rx="16" class="d-server-box"/>
+          <text x="520" y="212" text-anchor="middle" class="d-server-title" font-size="20">SkillHub</text>
+          <text x="520" y="231" text-anchor="middle" class="d-server-sub" font-size="12">сервер на одном VPS</text>
+
+          <rect x="398" y="246" width="244" height="30" rx="7" class="d-banner"/>
+          <text x="520" y="266" text-anchor="middle" class="d-banner-txt" font-size="12.5">НЕ вызывает LLM</text>
+
+          <!-- component chips -->
+          <g>
+            <rect x="400" y="288" width="240" height="30" rx="7" class="d-chip"/>
+            <text x="412" y="308" class="d-chip-txt" font-size="12.5">web · <tspan class="dim">React SPA (nginx)</tspan></text>
+            <rect x="400" y="324" width="240" height="30" rx="7" class="d-chip"/>
+            <text x="412" y="344" class="d-chip-txt" font-size="12.5">api · <tspan class="dim">FastAPI · роутеры</tspan></text>
+            <rect x="400" y="360" width="240" height="30" rx="7" class="d-chip"/>
+            <text x="412" y="380" class="d-chip-txt" font-size="12.5">skillhub_core · <tspan class="dim">общая логика</tspan></text>
+            <rect x="400" y="396" width="240" height="30" rx="7" class="d-chip"/>
+            <text x="412" y="416" class="d-chip-txt" font-size="12.5">db · <tspan class="dim">Postgres + pgvector</tspan></text>
+            <rect x="400" y="432" width="240" height="30" rx="7" class="d-chip"/>
+            <text x="412" y="452" class="d-chip-txt" font-size="12.5">mcp · <tspan class="dim">удалённый MCP (OAuth)</tspan></text>
+          </g>
+          <text x="520" y="484" text-anchor="middle" class="d-server-sub" font-size="11">хранит скиллы · эмбеддинги · рубрику</text>
+
+          <!-- developer nodes -->
+          <g>
+            <rect x="62" y="150" width="190" height="90" rx="12" class="d-dev"/>
+            <text x="157" y="186" text-anchor="middle" class="d-dev-title" font-size="15">›_ Claude Code</text>
+            <text x="157" y="207" text-anchor="middle" class="d-dev-sub" font-size="12">Разработчик 1</text>
+            <text x="157" y="224" text-anchor="middle" class="d-dev-sub" font-size="11" fill="var(--muted)">собственный аккаунт</text>
+          </g>
+          <g>
+            <rect x="62" y="440" width="190" height="90" rx="12" class="d-dev"/>
+            <text x="157" y="476" text-anchor="middle" class="d-dev-title" font-size="15">›_ Claude Code</text>
+            <text x="157" y="497" text-anchor="middle" class="d-dev-sub" font-size="12">Разработчик 2</text>
+            <text x="157" y="514" text-anchor="middle" class="d-dev-sub" font-size="11" fill="var(--muted)">собственный аккаунт</text>
+          </g>
+          <g>
+            <rect x="788" y="150" width="190" height="90" rx="12" class="d-dev"/>
+            <text x="883" y="186" text-anchor="middle" class="d-dev-title" font-size="15">›_ Claude Code</text>
+            <text x="883" y="207" text-anchor="middle" class="d-dev-sub" font-size="12">Разработчик 3</text>
+            <text x="883" y="224" text-anchor="middle" class="d-dev-sub" font-size="11" fill="var(--muted)">собственный аккаунт</text>
+          </g>
+          <g>
+            <rect x="788" y="440" width="190" height="90" rx="12" class="d-dev"/>
+            <text x="883" y="476" text-anchor="middle" class="d-dev-title" font-size="15">›_ Claude Code</text>
+            <text x="883" y="497" text-anchor="middle" class="d-dev-sub" font-size="12">Разработчик N</text>
+            <text x="883" y="514" text-anchor="middle" class="d-dev-sub" font-size="11" fill="var(--muted)">собственный аккаунт</text>
+          </g>
+
+          <!-- legend: numbered flow -->
+          <text x="70" y="588" class="d-legend" font-size="13.5" font-weight="650" fill="var(--ink)">Цикл оценки (повторяется у каждого):</text>
+          <text x="70" y="614" class="d-legend" font-size="13"><tspan class="d-legend-num">①</tspan>  тянет рубрику + очередь неоценённых <tspan class="d-legend-mono" font-size="12">(GET /api/rubric, /api/skills?evaluated=false)</tspan></text>
+          <text x="70" y="638" class="d-legend" font-size="13"><tspan class="d-legend-num">②</tspan>  оценивает и категоризирует у себя — по единой серверной стратегии</text>
+          <text x="70" y="662" class="d-legend" font-size="13"><tspan class="d-legend-num">③</tspan>  отправляет результат обратно <tspan class="d-legend-mono" font-size="12">(POST /api/skills/{id}/assessment)</tspan></text>
+
+          <!-- legend: colors -->
+          <rect x="70" y="682" width="14" height="14" rx="3" fill="var(--teal)"/>
+          <text x="92" y="694" class="d-legend" font-size="12.5">хранение и раздача стратегии</text>
+          <rect x="360" y="682" width="14" height="14" rx="3" fill="var(--amber)"/>
+          <text x="382" y="694" class="d-legend" font-size="12.5">вычисления — ваш Claude Code</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="grid cols-4" style="margin-top:16px">
+      <div class="card"><h3><span class="tag">web</span></h3><p>React + Vite + Mantine. Read-only портал: каталог, поиск, методология, рекомендации, ревью, Guide. Двуязычный RU/EN.</p></div>
+      <div class="card"><h3><span class="tag">api</span></h3><p>FastAPI. Роутеры: skills, evaluations, categories, search, rubric, recommendations, reviews, task_groups, stats, admin, auth, oauth.</p></div>
+      <div class="card"><h3><span class="tag">skillhub_core</span></h3><p>Общая библиотека (DDD): контексты <code>platform</code>, <code>skills</code>, <code>reviews</code>. Парсинг, эмбеддинги, репозиторий, пайплайн.</p></div>
+      <div class="card"><h3><span class="tag">db + mcp</span></h3><p>Postgres 16 + pgvector для поиска. <code>mcp</code> — удалённый HTTP-сервер MCP за nginx (<code>/mcp</code>), точка входа для Claude Code.</p></div>
+    </div>
+
+    <h3 style="margin:38px 0 6px; font-size:19px; letter-spacing:-.01em">MCP и API в деталях</h3>
+    <p class="lead" style="font-size:16px">Как удалённый MCP и REST API связаны через nginx и как проходит вход. SkillHub здесь — сам себе <strong>сервер авторизации</strong> (это <code>api</code>), а <code>mcp</code> — <strong>resource server</strong>: он проверяет присланный Bearer и форвардит тот же токен в API, который и применяет гейт чтения и роли.</p>
+
+    <div class="diagram-wrap">
+      <div class="diagram-scroll">
+        <svg class="diagram" viewBox="0 0 1060 580" role="img" aria-label="Детальная схема MCP и API SkillHub: клиенты, маршрутизация nginx, resource server, authorization server и БД">
+          <defs>
+            <marker id="each" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto-start-reverse">
+              <path d="M0,0 L6.5,3 L0,6 Z" class="d-edge-arrow"/>
+            </marker>
+          </defs>
+
+          <!-- edges (behind boxes) -->
+          <line x1="180" y1="131" x2="250" y2="200" class="d-edge" marker-end="url(#each)"/>
+          <line x1="180" y1="407" x2="250" y2="345" class="d-edge" marker-end="url(#each)"/>
+          <line x1="464" y1="205" x2="520" y2="158" class="d-edge" marker-end="url(#each)"/>
+          <line x1="464" y1="345" x2="520" y2="360" class="d-edge" marker-end="url(#each)"/>
+          <line x1="660" y1="240" x2="660" y2="286" class="d-edge" marker-end="url(#each)"/>
+          <line x1="820" y1="384" x2="876" y2="384" class="d-edge" marker-end="url(#each)"/>
+          <line x1="600" y1="496" x2="600" y2="512" class="d-edge" marker-end="url(#each)"/>
+          <text x="188" y="152" class="d-ep-dim" font-size="10">HTTPS</text>
+          <text x="188" y="392" class="d-ep-dim" font-size="10">HTTPS</text>
+          <text x="668" y="268" class="d-route" font-size="10.5">тот же Bearer</text>
+          <text x="824" y="378" class="d-ep-dim" font-size="9.5">SQLAlchemy</text>
+          <text x="610" y="509" class="d-route" font-size="10">OAuth</text>
+
+          <!-- clients -->
+          <rect x="24" y="96" width="156" height="70" rx="12" class="d-dev"/>
+          <text x="102" y="128" text-anchor="middle" class="d-dev-title" font-size="14">Браузер</text>
+          <text x="102" y="148" text-anchor="middle" class="d-dev-sub" font-size="11.5">человек · портал</text>
+
+          <rect x="24" y="372" width="156" height="70" rx="12" class="d-dev"/>
+          <text x="102" y="404" text-anchor="middle" class="d-dev-title" font-size="14">›_ Claude Code</text>
+          <text x="102" y="424" text-anchor="middle" class="d-dev-sub" font-size="11.5">MCP-клиент</text>
+
+          <!-- nginx (web) -->
+          <rect x="250" y="150" width="214" height="234" rx="13" class="d-svc"/>
+          <text x="357" y="176" text-anchor="middle" class="d-svc-title" font-size="15">web · nginx</text>
+          <text x="357" y="195" text-anchor="middle" class="d-svc-sub" font-size="11.5">SPA + reverse proxy</text>
+          <text x="264" y="230" class="d-ep" font-size="11">/           → SPA</text>
+          <text x="264" y="252" class="d-ep" font-size="11">/api/*      → api</text>
+          <text x="264" y="274" class="d-ep" font-size="11">/mcp        → mcp</text>
+          <text x="264" y="300" class="d-ep-dim" font-size="10.5">/.well-known/oauth-</text>
+          <text x="264" y="314" class="d-ep-dim" font-size="10.5">  ‑protected‑resource → mcp</text>
+          <text x="264" y="338" class="d-ep-dim" font-size="10.5">/.well-known/oauth-</text>
+          <text x="264" y="352" class="d-ep-dim" font-size="10.5">  ‑authorization‑server → api</text>
+
+          <!-- mcp: resource server -->
+          <rect x="520" y="90" width="300" height="150" rx="13" class="d-svc"/>
+          <text x="534" y="118" class="d-svc-title" font-size="15">mcp — resource server</text>
+          <text x="534" y="136" class="d-svc-sub" font-size="11.5">FastMCP · :9000</text>
+          <text x="534" y="164" class="d-ep" font-size="11.5">1 · проверяет Bearer → GET /api/auth/me</text>
+          <text x="534" y="186" class="d-ep" font-size="11.5">2 · форвардит ТОТ ЖЕ токен в REST API</text>
+          <text x="534" y="214" class="d-route" font-size="11">инструменты (31):</text>
+          <text x="534" y="231" class="d-ep-dim" font-size="11">reads · writes · reviews · authenticate</text>
+
+          <!-- api: authorization server + data -->
+          <rect x="520" y="286" width="300" height="210" rx="13" class="d-svc"/>
+          <text x="534" y="313" class="d-svc-title" font-size="15">api — FastAPI · :8000</text>
+          <text x="534" y="337" class="d-route" font-size="11">OAUTH 2.1 AS</text>
+          <text x="534" y="354" class="d-ep" font-size="11">/api/oauth/{register,authorize,token}</text>
+          <text x="534" y="378" class="d-route" font-size="11">AUTH (люди + device flow)</text>
+          <text x="534" y="395" class="d-ep" font-size="11">/api/auth/login · /callback · /me</text>
+          <text x="534" y="410" class="d-ep-dim" font-size="11">/device/{code,token,approve} · /tokens</text>
+          <text x="534" y="434" class="d-route" font-size="11">DATA · require_read_access · роли</text>
+          <text x="534" y="451" class="d-ep" font-size="11">skills · assessment · search · rubric</text>
+          <text x="534" y="466" class="d-ep-dim" font-size="11">stats · recommendations · reviews</text>
+          <text x="534" y="481" class="d-ep-dim" font-size="11">categories · task-groups · admin</text>
+
+          <!-- db -->
+          <rect x="876" y="330" width="160" height="110" rx="12" class="d-svc"/>
+          <text x="956" y="356" text-anchor="middle" class="d-svc-title" font-size="14">db</text>
+          <text x="956" y="374" text-anchor="middle" class="d-svc-sub" font-size="11">Postgres + pgvector</text>
+          <text x="888" y="397" class="d-ep-dim" font-size="10.5">users · auth_tokens</text>
+          <text x="888" y="412" class="d-ep-dim" font-size="10.5">skills · versions</text>
+          <text x="888" y="427" class="d-ep-dim" font-size="10.5">evals · embeddings</text>
+
+          <!-- github (external identity) -->
+          <rect x="520" y="512" width="286" height="46" rx="10" class="d-ext-box"/>
+          <text x="534" y="534" class="d-ep" font-size="12">GitHub — только identity</text>
+          <text x="534" y="550" class="d-ep-dim" font-size="10.5">login · emails · repo-access gate</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="split" style="margin-top:18px; align-items:start">
+      <div class="card">
+        <h3 style="margin-bottom:2px">OAuth-рукопожатие MCP</h3>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 2px">Стандартная авторизация MCP (spec 2025-06-18) — Claude Code проходит её сам, один раз.</p>
+        <ol class="seq">
+          <li><span class="b">1</span><span class="t">Claude Code → <code>GET /mcp</code> → <code>401</code> + <code>WWW-Authenticate</code></span></li>
+          <li><span class="b">2</span><span class="t"><code>GET /.well-known/oauth-protected-resource/mcp</code> (отдаёт <b>mcp</b>) → адрес AS</span></li>
+          <li><span class="b">3</span><span class="t"><code>GET /.well-known/oauth-authorization-server</code> (отдаёт <b>api</b>) → метаданные AS</span></li>
+          <li><span class="b">4</span><span class="t"><b>Dynamic Client Registration</b> → <code>POST /api/oauth/register</code></span></li>
+          <li><span class="b amber">5</span><span class="t"><b>Authorization Code + PKCE</b> → <code>GET /api/oauth/authorize</code>: браузер, вход через GitHub → <code>code</code></span></li>
+          <li><span class="b">6</span><span class="t"><b>Token</b> → <code>POST /api/oauth/token</code> (code + PKCE) → <code>access</code> + <code>refresh</code></span></li>
+          <li><span class="b">7</span><span class="t"><code>GET /mcp</code> с Bearer → mcp проверяет через <code>/api/auth/me</code> и форвардит токен в API</span></li>
+        </ol>
+      </div>
+      <div style="display:grid; gap:16px">
+        <div class="card">
+          <h3 style="margin-bottom:2px">API — эндпоинты</h3>
+          <div class="ep-group">OAuth 2.1 authorization server</div>
+          <ul class="ep-list">
+            <li>/api/oauth/register · /authorize · /token</li>
+            <li>/.well-known/oauth-authorization-server</li>
+          </ul>
+          <div class="ep-group">Auth (люди + device flow)</div>
+          <ul class="ep-list">
+            <li>/api/auth/login · /callback · /me · /logout</li>
+            <li>/api/auth/device/{code,token,approve} · /tokens</li>
+          </ul>
+          <div class="ep-group">Данные · гейт require_read_access + роли</div>
+          <ul class="ep-list">
+            <li>/skills · /skills/{id} · /skills/{id}/assessment</li>
+            <li>/search · /rubric · /categories · /task-groups · /stats</li>
+            <li>/recommendations · /reviews · /admin/*</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:2px">MCP — инструменты (31)</h3>
+          <div class="ep-group">Чтение</div>
+          <ul class="ep-list"><li>list_skills · get_skill · search · get_rubric · list_task_groups · get_stats · list_unevaluated · list_recommendations</li></ul>
+          <div class="ep-group amber">Запись — contributor+ / evaluator</div>
+          <ul class="ep-list"><li>upload_skill · submit_assessment · add_recommendation · set_recommendation_status</li></ul>
+          <div class="ep-group">Каталог MCP-серверов</div>
+          <ul class="ep-list"><li>list_mcp_servers · get_mcp_server · get_mcp_rubric · upload_mcp_server · submit_mcp_assessment</li></ul>
+          <div class="ep-group">Песочница (трайлы)</div>
+          <ul class="ep-list"><li>get_skill_notebook · get_skill_fit · submit_skill_notebook</li></ul>
+          <div class="ep-group">Ревью задач</div>
+          <ul class="ep-list"><li>submit_for_review · list_review_queue · list_my_reviews · get_review · submit_review_result · resubmit_review · ack_review</li></ul>
+          <div class="ep-group amber">Саморевью — скилл задаёт сервер</div>
+          <ul class="ep-list"><li>get_self_review_policy · submit_self_review · list_self_reviews · get_self_review</li></ul>
+          <div class="ep-group">Авторизация</div>
+          <ul class="ep-list"><li>authenticate <span style="color:var(--muted)">— http: OAuth (браузер) · stdio: device flow</span></li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Жизненный цикл -->
+  <section class="block" id="lifecycle">
+    <p class="eyebrow"><span class="num">04</span> Жизненный цикл скилла</p>
+    <h2>От загрузки до «идеального» скилла</h2>
+    <p class="lead">Шаги <span style="color:var(--teal);font-weight:650">без метки</span> выполняет сервер; шаги с меткой <b style="color:var(--amber-strong)">Claude Code</b> — собственный агент разработчика.</p>
+
+    <div class="flow">
+      <div class="step"><div class="n">1</div><h4>Импорт</h4><p>parse → embed → persist. Версия создаётся только при смене хеша — реимпорт идемпотентен.</p></div>
+      <div class="step compute"><div class="n">2</div><h4>Оценка</h4><p>Скоринг по рубрике v2: 6 измерений 0–10 + holistic overall.</p></div>
+      <div class="step compute"><div class="n">3</div><h4>Категоризация</h4><p>Два уровня: широкая категория + узкий <code>task_group</code> («та же работа»).</p></div>
+      <div class="step compute"><div class="n">4</div><h4>Отбор</h4><p>Внутри одного <code>task_group</code> выбирается лучший по overall.</p></div>
+      <div class="step compute"><div class="n">5</div><h4>Синтез</h4><p>Из кластера собирается «идеальный» скилл по фиксированному алгоритму.</p></div>
+      <div class="step"><div class="n">6</div><h4>Рекомендации / Ревью</h4><p>Куратор предлагает изменения; задачи проходят peer-review.</p></div>
+    </div>
+
+    <p class="prose" style="margin-top:6px">Дедупликация встроена в импорт: загрузка контента, <strong>идентичного</strong> существующему скиллу под другим именем, отклоняется (HTTP 409); просто <strong>похожий</strong> (косинус ≥ 0.90) — принимается с предупреждением. Так настоящие варианты живут под разными именами внутри одного <code>task_group</code>.</p>
+  </section>
+
+  <!-- 5. Аутентификация -->
+  <section class="block" id="auth">
+    <p class="eyebrow"><span class="num">05</span> Аутентификация и роли</p>
+    <h2>SkillHub — собственный сервер авторизации; GitHub даёт только личность</h2>
+    <p class="lead">Одна таблица <code>auth_tokens</code> и один <code>get_user_by_token</code> обслуживают все входы. Провайдер намеренно изолирован (только <code>/login</code> + <code>/callback</code>), поэтому его легко заменить.</p>
+
+    <div class="grid cols-3" style="margin-bottom:18px">
+      <div class="card">
+        <h3>👤 Люди — браузер</h3>
+        <p>Вход <strong>через GitHub</strong> (auth-code flow) → cookie <code>skillhub_session</code>. Кнопка в шапке портала.</p>
+      </div>
+      <div class="card">
+        <h3>🤖 Claude Code — MCP</h3>
+        <p>Удалённый HTTP MCP по URL. Первый вызов инструмента открывает браузер для входа через <strong>MCP OAuth</strong> — ни Docker, ни токена вручную. Legacy stdio + device flow — запасной путь.</p>
+      </div>
+      <div class="card">
+        <h3>🚪 Гейт доступа</h3>
+        <p>Войти может только тот, у кого есть <strong>доступ к настроенному GitHub-репозиторию</strong>. Админы гейт обходят. Чтения на прод-инстансе тоже закрыты (<code>SKILLHUB_PUBLIC_READS=false</code>).</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:12px">Роли — по возрастанию прав</h3>
+      <div class="ladder">
+        <span class="role">viewer<span>смотрит каталог</span></span>
+        <span class="arr">→</span>
+        <span class="role">contributor<span>загружает скиллы</span></span>
+        <span class="arr">→</span>
+        <span class="role">evaluator<span>отправляет оценки</span></span>
+        <span class="arr">→</span>
+        <span class="role">admin<span>управляет пользователями</span></span>
+      </div>
+      <p class="prose" style="margin-top:14px;font-size:14.5px">Любой GitHub-аккаунт начинает как <code>viewer</code>. E-mail из <code>SKILLHUB_BOOTSTRAP_ADMINS</code> становится <code>admin</code> при первом входе; дальше админ повышает остальных. Роли — это понятие самого SkillHub, провайдер их не несёт.</p>
+    </div>
+  </section>
+
+  <!-- 6. Рубрика -->
+  <section class="block" id="rubric">
+    <p class="eyebrow"><span class="num">06</span> Рубрика оценки · v2</p>
+    <h2>Единая мера качества — одна для всех рецензентов</h2>
+    <p class="lead">6 измерений по 0–10 плюс holistic <code>overall</code>. Версия рубрики хранится в каждой оценке: при смене рубрики старые оценки помечаются как <em>устаревшие</em>, а не переписываются молча.</p>
+
+    <div class="split" style="align-items:start">
+      <div class="card">
+        <h3 style="margin-bottom:12px">Измерения и веса</h3>
+        <div class="grid" style="gap:10px">
+          <div class="dim"><span>trigger_quality <small style="color:var(--muted)">— насколько точно указано, КОГДА срабатывать</small></span><span class="w heavy">×2</span></div>
+          <hr class="sep">
+          <div class="dim"><span>completeness <small style="color:var(--muted)">— покрыт ли рабочий процесс без пробелов</small></span><span class="w heavy">×2</span></div>
+          <hr class="sep">
+          <div class="dim"><span>clarity <small style="color:var(--muted)">— ясность и однозначность</small></span><span class="w">×1</span></div>
+          <hr class="sep">
+          <div class="dim"><span>reusability <small style="color:var(--muted)">— переиспользуемость, а не разовость</small></span><span class="w">×1</span></div>
+          <hr class="sep">
+          <div class="dim"><span>safety <small style="color:var(--muted)">— предупреждения о разрушительных действиях</small></span><span class="w">×1</span></div>
+          <hr class="sep">
+          <div class="dim"><span>structure <small style="color:var(--muted)">— заголовки, примеры, references</small></span><span class="w">×1</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:6px">Калибровочные якоря</h3>
+        <p style="font-size:13.5px;color:var(--muted);margin:0 0 4px">Одинаковый смысл балла у всех — оценки сопоставимы.</p>
+        <div class="bands">
+          <div class="band"><span class="score">9–10</span><span><span class="lab">Exemplary</span><small>Лучшее в классе: точный триггер, полный процесс, явные предохранители.</small></span></div>
+          <div class="band"><span class="score">7–8</span><span><span class="lab">Strong</span><small>Готов к использованию с мелкими пробелами.</small></span></div>
+          <div class="band"><span class="score">5–6</span><span><span class="lab">Serviceable</span><small>Работает, но заметно неполон или слишком общий.</small></span></div>
+          <div class="band"><span class="score">3–4</span><span><span class="lab">Weak</span><small>Размытый триггер, пропущены шаги или нет предупреждений.</small></span></div>
+          <div class="band"><span class="score">0–2</span><span><span class="lab">Poor</span><small>По сути не рабочий скилл или заглушка.</small></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:18px">
+      <p class="k">Двухуровневая таксономия</p>
+      <p><strong>Широкая категория</strong> (<code>primary_category</code>) — куда скилл относится в общем. <strong>Узкий <code>task_group</code></strong> — конкретная «работа» скилла (например <code>sql-data-read</code>, <code>react-authoring</code>). Скиллы, делающие <em>одну и ту же</em> работу, обязаны иметь общий <code>task_group</code> — именно это позволяет конкурирующим вариантам от разных разработчиков сходиться в один кластер, отбираться и синтезироваться в «идеальный».</p>
+    </div>
+  </section>
+
+  <!-- 7. Модель данных -->
+  <section class="block" id="data">
+    <p class="eyebrow"><span class="num">07</span> Модель данных</p>
+    <h2>Что и как хранится</h2>
+    <p class="lead">Скилл ключуется по имени (<code>uq_skills_name</code>): повторная загрузка имени добавляет версию, а не дубль. У скиллов и версий есть проверенный автор (<code>created_by_user_id</code>).</p>
+
+    <div class="er">
+      <div class="entity accent">
+        <div class="hd">skills</div>
+        <ul><li>name (unique)</li><li>author · summary</li><li>created_by_user_id</li><li>is_synthesized</li></ul>
+      </div>
+      <div class="entity">
+        <div class="hd">skill_versions</div>
+        <ul><li>content_hash</li><li>source_format</li><li>skill_md · references</li><li>created_by_user_id</li></ul>
+      </div>
+      <div class="entity">
+        <div class="hd">evaluations</div>
+        <ul><li>6 измерений + overall</li><li>rubric_version</li><li>strengths / weaknesses</li><li>evaluator</li></ul>
+      </div>
+      <div class="entity">
+        <div class="hd">skill_embeddings</div>
+        <ul><li>vector(384)</li><li>pgvector · MiniLM-L6</li><li>для поиска и дедупа</li></ul>
+      </div>
+      <div class="entity">
+        <div class="hd">categories · task_groups</div>
+        <ul><li>двухуровневая таксономия</li><li>skill_categories (confidence)</li></ul>
+      </div>
+      <div class="entity">
+        <div class="hd">recommendations</div>
+        <ul><li>kind · scope · targets</li><li>suggested_action</li><li>status</li></ul>
+      </div>
+      <div class="entity">
+        <div class="hd">reviews · review_events</div>
+        <ul><li>task_ref · branch · commits</li><li>verdict · status</li><li>лента событий</li></ul>
+      </div>
+      <div class="entity">
+        <div class="hd">self_reviews · self_review_policies</div>
+        <ul><li>дорожка → скилл-ревьюер</li><li>вердикт · findings</li><li>привязка к ревью</li></ul>
+      </div>
+      <div class="entity">
+        <div class="hd">users</div>
+        <ul><li>auth_provider · provider_sub</li><li>role · email</li></ul>
+      </div>
+      <div class="entity">
+        <div class="hd">auth_tokens</div>
+        <ul><li>kind: session · device · pat</li><li>только SHA-256</li></ul>
+      </div>
+    </div>
+
+    <p class="rel-note">
+      <b>skills</b> 1─∗ <b>skill_versions</b> 1─∗ <b>evaluations</b> &nbsp;·&nbsp; <b>skill_versions</b> 1─1 <b>skill_embeddings</b> &nbsp;·&nbsp; <b>skills</b> ∗─∗ <b>categories</b><br>
+      Новая версия — только при смене content_hash, поэтому реимпорт идемпотентен.
+    </p>
+  </section>
+
+  <!-- 8. Возможности портала -->
+  <section class="block" id="features">
+    <p class="eyebrow"><span class="num">08</span> Возможности портала</p>
+    <h2>Что видит пользователь</h2>
+    <div class="grid cols-3">
+      <div class="card"><h3>📚 Каталог + детали</h3><p>Список скиллов, страница скилла с оценками, версиями, авторами и фразой «Install into Claude Code».</p></div>
+      <div class="card"><h3>🔎 Векторный поиск</h3><p>Поиск через векторные эмбеддинги (pgvector), а не по подстроке.</p></div>
+      <div class="card"><h3>📊 Методология</h3><p>Та же рубрика v2, что отдаётся Claude Code, показана человеку — прозрачность оценки.</p></div>
+      <div class="card"><h3>💡 Рекомендации</h3><p>Предложения куратора: <code>synthesize · split · merge · dedup · improve · delete</code> с готовым действием для Claude Code.</p></div>
+      <div class="card"><h3>✅ Task Review</h3><p>Peer-review deploy-ready задач: указатель на ветку/коммиты, вердикт <code>approve / changes_requested</code>, лента событий.</p></div>
+      <div class="card"><h3>🪞 Саморевью</h3><p>Разработчик проверяет свой дифф скиллом, который выбран <b>на сервере</b> (дорожки default / backend / frontend, флаг «обязательно»). Находки видны на доске и прикрепляются к ревью задачи.</p></div>
+      <div class="card"><h3>🌐 Guide · RU/EN</h3><p>Инструкция для разработчика прямо на портале; двуязычный интерфейс с переключателем.</p></div>
+    </div>
+  </section>
+
+  <!-- 9. Статус -->
+  <section class="block" id="status">
+    <p class="eyebrow"><span class="num">09</span> Что сделано и что впереди</p>
+    <h2>Статус проекта</h2>
+    <div class="status-grid">
+      <div class="card">
+        <h3 style="margin-bottom:4px">Сделано</h3>
+        <ul class="stat-list">
+          <li><span class="pill done">done</span> Реестр скиллов: импорт (parse · embed · persist), версии по хешу, дедуп, подтверждённое авторство</li>
+          <li><span class="pill done">done</span> Ключевая архитектура: сервис хранит, Claude Code оценивает — без LLM в сервисе</li>
+          <li><span class="pill done">done</span> Рубрика v2 + двухуровневая таксономия + стратегия синтеза на сервере</li>
+          <li><span class="pill done">done</span> Авторизация: собственный OAuth 2.1-сервер, вход через GitHub, MCP OAuth / device flow, роли, гейт по доступу к репозиторию</li>
+          <li><span class="pill done">done</span> Рекомендации куратора + Task Review (peer-review задач) + саморевью скиллом из настройки сервера</li>
+          <li><span class="pill done">done</span> Портал RU/EN + Guide; удалённый HTTP MCP (одна команда); DDD-ядро; TLS + push-to-deploy</li>
+        </ul>
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <h3 style="margin-bottom:4px">В работе / ближайшее</h3>
+          <ul class="stat-list">
+            <li><span class="pill wip">next</span> Пробная загрузка скилла через MCP и его оценка</li>
+            <li><span class="pill wip">next</span> Боевой прогон доски ревью: саморевью → подача → вердикт → правки → закрытие</li>
+            <li><span class="pill wip">next</span> Витрина «идеальных» скиллов + богаче статистика</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 style="margin-bottom:4px">В планах (roadmap)</h3>
+          <ul class="stat-list">
+            <li><span class="pill plan">ф.2</span> Рекомендация «какой скилл когда», кластеризация дублей, история версий в UI</li>
+            <li><span class="pill plan">ф.3</span> Синтез идеального скилла из кластера → экспорт в SKILL.md / адаптеры → PR</li>
+            <li><span class="pill plan">ф.4</span> Телеметрия, обратная связь, лидерборды; планировщик переоценки (<code>claude -p</code>)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. Как подключиться -->
+  <section class="block" id="start">
+    <p class="eyebrow"><span class="num">10</span> Как начать</p>
+    <h2>Подключение за одну команду</h2>
+    <p class="lead">MCP работает на сервере — ни Docker, ни образа, ни токена не нужно.</p>
+    <div class="codeblock" style="margin-bottom:8px">claude mcp add --transport http --scope user skillhub https://166.1.29.218.sslip.io/mcp
+<span class="cmt"># при первом вызове инструмента Claude Code сам откроет браузер для входа через GitHub</span></div>
+    <p class="prose" style="font-size:14.5px">Если установлен скилл <code>connect-skillhub</code>, можно просто сказать Claude Code: <em>«установи SkillHub MCP для https://166.1.29.218.sslip.io»</em>. После подключения — обычным текстом:</p>
+    <div class="say">
+      <div class="q">что есть в SkillHub про SQL?</div>
+      <div class="q">импортируй этот SKILL.md в SkillHub</div>
+      <div class="q">оцени неоценённые скиллы в SkillHub</div>
+      <div class="q">установи скилл &lt;имя&gt; из SkillHub в мой проект</div>
+    </div>
+  </section>
+
+  <footer>
+    <p><strong>Об этом документе.</strong> Файл — <code>docs/skillhub-presentation.html</code>. Он обновляется по мере развития проекта: при смене рубрики (<code>rubric.py</code> → <code>RUBRIC_VERSION</code>), добавлении фич или изменении roadmap правьте соответствующие блоки и переопубликуйте артефакт. Источники правды — <code>README.md</code>, <code>docs/architecture.md</code>, <code>docs/SESSION_HANDOFF.md</code> и <code>docs/developer-onboarding-ru.md</code>.</p>
+  </footer>
+
+</div>

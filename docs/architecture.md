@@ -92,6 +92,16 @@ Two halves of one context, both carrying a **pointer** to the work — the code 
   `changes_needed`, otherwise `pass`. Same split as everywhere else in SkillHub — the *strategy*
   lives in the service, the *reviewing* happens in the developer's own Claude Code.
 
+  **Deep links.** A finding carries `file`/`line`, and the service turns that into a link to the
+  line. The repository is recorded **per self-review** (`self_reviews.repo`, normalized from the
+  agent's `git remote get-url origin` by `reviews/code_links.py`), not configured per instance —
+  the team works in several repos, so a global setting would only ever be right for one of them.
+  URLs are built at **read time**, never stored, so re-pointing the shape fixes every existing
+  finding at once; they pin to the last reviewed commit rather than the branch, because line
+  numbers drift. `SKILLHUB_CODE_LINK_TEMPLATE` overrides the host-derived shape
+  (`{repo}`/`{ref}`/`{path}`/`{line}`); with no recorded repo the service falls back to
+  `SKILLHUB_ALLOWED_REPO`, which keeps pre-existing runs linkable.
+
 ## Ingest pipeline (`skillhub_core/pipeline.py`)
 
 `parse → embed → persist`
