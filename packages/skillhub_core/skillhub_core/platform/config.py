@@ -100,16 +100,14 @@ class Settings(BaseSettings):
         return f"{self.skillhub_public_url.rstrip('/')}/api/auth/callback"
 
     @property
-    def code_link_template(self) -> str:
-        """URL template for one line of source, or "" when no code browser is known.
+    def default_repo_url(self) -> str:
+        """Browsable repository to assume when a record does not name its own, or "" when unknown.
 
-        The explicit setting wins; otherwise the repository SkillHub already gates access by
-        (``skillhub_allowed_repo``) is assumed to be on GitHub — the team's code lives there, so a
-        review finding can point straight at the line it is about."""
-        if self.skillhub_code_link_template:
-            return self.skillhub_code_link_template
+        Falls back to the repository SkillHub already gates access by (``skillhub_allowed_repo``),
+        assumed to be on GitHub — that is the team's main repo, so runs recorded before the agent
+        started reporting its remote still link correctly."""
         if self.skillhub_allowed_repo:
-            return f"https://github.com/{self.skillhub_allowed_repo.strip('/')}/blob/{{ref}}/{{path}}#L{{line}}"
+            return f"https://github.com/{self.skillhub_allowed_repo.strip('/')}"
         return ""
 
     @property

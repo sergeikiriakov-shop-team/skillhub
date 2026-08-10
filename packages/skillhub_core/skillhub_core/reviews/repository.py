@@ -510,7 +510,11 @@ def to_self_review_detail(self_review: SelfReview) -> SelfReviewOut:
     # Pin links to the commit the review actually read; line numbers drift on a branch. Falls back
     # to the branch when the run recorded no SHAs.
     ref = commit_shas[-1] if commit_shas else self_review.branch
-    template = get_settings().code_link_template if not self_review.repo else ""
+    settings = get_settings()
+    # A run that did not report its remote (or predates the agent doing so) still links, against the
+    # instance's main repository.
+    repo = self_review.repo or settings.default_repo_url or None
+    template = settings.skillhub_code_link_template
     fixes_by_finding: dict[int, list[SelfReviewFixOut]] = {}
     for fix in self_review.fixes:
         fixes_by_finding.setdefault(fix.finding_index, []).append(
@@ -521,14 +525,14 @@ def to_self_review_detail(self_review: SelfReview) -> SelfReviewOut:
                 note=fix.note,
                 author=fix.author.name if fix.author else None,
                 created_at=fix.created_at,
-                commit_url=commit_url(self_review.repo, fix.commit_sha),
+                commit_url=commit_url(repo, fix.commit_sha),
             )
         )
     findings = []
     for index, raw in enumerate(self_review.findings or []):
         finding = SelfReviewFindingOut(**raw)
         finding.url = finding_url(
-            repo=self_review.repo,
+            repo=repo,
             ref=ref,
             path=finding.file,
             line=finding.line,

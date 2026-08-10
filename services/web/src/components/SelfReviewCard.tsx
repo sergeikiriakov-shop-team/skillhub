@@ -17,6 +17,21 @@ const SEVERITY_ORDER = ["blocker", "major", "minor", "nit"];
 
 const VERDICT_COLOR: Record<string, string> = { pass: "green", changes_needed: "orange" };
 
+/** A monospace token that opens the repository browser when we know where to point.
+ *
+ * Kept visibly a link — blue, underlined on hover, with the ↗ that says it leaves the page — because
+ * a `file:line` that silently happens to be clickable is a link nobody clicks. */
+function CodeLink({ href, label }: { href: string | null; label: string }) {
+  if (!href) return <Code>{label}</Code>;
+  return (
+    <Anchor href={href} target="_blank" rel="noreferrer" title={href}>
+      <Code c="blue" style={{ cursor: "pointer" }}>
+        {label} ↗
+      </Code>
+    </Anchor>
+  );
+}
+
 function Finding({ f }: { f: SelfReviewFinding }) {
   const { t } = useI18n();
   return (
@@ -28,22 +43,11 @@ function Finding({ f }: { f: SelfReviewFinding }) {
         <Text size="sm" fw={600} style={{ flex: 1 }}>
           {f.title}
         </Text>
-        {f.file &&
-          (f.url ? (
-            // Straight to the line, at the commit the review read — not at whatever the branch
-            // says today.
-            <Anchor href={f.url} target="_blank" rel="noreferrer" underline="never">
-              <Code>
-                {f.file}
-                {f.line ? `:${f.line}` : ""}
-              </Code>
-            </Anchor>
-          ) : (
-            <Code>
-              {f.file}
-              {f.line ? `:${f.line}` : ""}
-            </Code>
-          ))}
+        {f.file && (
+          // Straight to the line, at the commit the review read — not at whatever the branch says
+          // today. Rendered as a link only when there is one, so nothing looks clickable in vain.
+          <CodeLink href={f.url} label={`${f.file}${f.line ? `:${f.line}` : ""}`} />
+        )}
       </Group>
       {f.detail && (
         <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
@@ -62,14 +66,9 @@ function Finding({ f }: { f: SelfReviewFinding }) {
           <Badge size="sm" color="teal" variant="light">
             {t("selfReview.fixed")}
           </Badge>
-          {fix.commit_sha &&
-            (fix.commit_url ? (
-              <Anchor href={fix.commit_url} target="_blank" rel="noreferrer" underline="never">
-                <Code>{fix.commit_sha.slice(0, 10)}</Code>
-              </Anchor>
-            ) : (
-              <Code>{fix.commit_sha.slice(0, 10)}</Code>
-            ))}
+          {fix.commit_sha && (
+            <CodeLink href={fix.commit_url} label={fix.commit_sha.slice(0, 10)} />
+          )}
           {fix.note && (
             <Text size="sm" style={{ whiteSpace: "pre-wrap", flex: 1 }}>
               {fix.note}
