@@ -488,7 +488,10 @@ def to_self_review_summary(self_review: SelfReview) -> SelfReviewSummary:
     }
     return SelfReviewSummary(
         id=self_review.id,
-        fixed_count=len({f.finding_index for f in self_review.fixes}),
+        # Only a fix that names a commit counts as closed. A note alone is an ANSWER — usually
+        # "not addressed, because…" — and counting those as fixed would turn the progress badge
+        # into exactly the falsely-green board this whole feature exists to avoid.
+        fixed_count=len({f.finding_index for f in self_review.fixes if f.commit_sha}),
         task_ref=self_review.task_ref,
         branch=self_review.branch,
         lane=self_review.lane,

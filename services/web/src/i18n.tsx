@@ -173,7 +173,8 @@ const en: Dict = {
   "selfReview.show": "Findings",
   "selfReview.hide": "Hide",
   "selfReview.fixed": "fixed",
-  "selfReview.fixedCount": "{fixed}/{total} addressed",
+  "selfReview.answered": "answered",
+  "selfReview.fixedCount": "{fixed}/{total} fixed in code",
 
   // common
   "common.copy": "Copy",
@@ -525,7 +526,8 @@ const ru: Dict = {
   "selfReview.show": "Замечания",
   "selfReview.hide": "Скрыть",
   "selfReview.fixed": "исправлено",
-  "selfReview.fixedCount": "закрыто {fixed} из {total}",
+  "selfReview.answered": "ответ автора",
+  "selfReview.fixedCount": "исправлено кодом: {fixed} из {total}",
 
   // common
   "common.copy": "Копировать",

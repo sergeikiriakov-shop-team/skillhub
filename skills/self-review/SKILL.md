@@ -82,8 +82,10 @@ After committing the fixes, call
 - This is **additive**: it never edits the verdict, the severities or the findings. The record must
   keep showing what the skill originally caught — the value is in reading the before and the after
   together, and a review that quietly rewrites itself is worth nothing to whoever reads it later.
-- Only report what you actually did. If a finding is still open, leave it without a fix rather than
-  writing a note that implies otherwise; "3 of 9 addressed" is honest and useful, a full green board
-  that isn't true is neither.
+- Only report what you actually did. A fix **with a commit** counts as closed; a fix with only a
+  note reads as an *answer* ("not addressed, because…") and is not counted as fixed — which is the
+  honest split, so use it rather than inventing a commit. If a finding is simply still open, leave
+  it without a fix at all: "3 of 9 fixed in code" is useful, a full green board that isn't true is
+  worse than nothing.
 - Re-running the whole self-review afterwards is the other half: fixes show *what you did*, a fresh
   run shows *whether it worked*.

@@ -63,8 +63,10 @@ function Finding({ f }: { f: SelfReviewFinding }) {
           the skill said, so the pair reads as before/after. */}
       {f.fixes?.map((fix) => (
         <Group key={fix.id} gap="xs" mt={6} wrap="nowrap" align="flex-start">
-          <Badge size="sm" color="teal" variant="light">
-            {t("selfReview.fixed")}
+          {/* A commit is evidence; a bare note is the developer's answer — often "not addressed,
+              because…". Labelling both "fixed" would misreport the second kind. */}
+          <Badge size="sm" color={fix.commit_sha ? "teal" : "gray"} variant="light">
+            {fix.commit_sha ? t("selfReview.fixed") : t("selfReview.answered")}
           </Badge>
           {fix.commit_sha && (
             <CodeLink href={fix.commit_url} label={fix.commit_sha.slice(0, 10)} />

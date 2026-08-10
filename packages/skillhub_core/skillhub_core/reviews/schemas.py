@@ -157,7 +157,9 @@ class SelfReviewSummary(BaseModel):
         "of a review without fetching every finding.",
     )
     fixed_count: int = Field(
-        default=0, description="Findings with at least one recorded fix — progress, not a verdict."
+        default=0,
+        description="Findings closed by a commit. A fix carrying only a note is an answer (often "
+        "'not addressed, because…') and is deliberately NOT counted here.",
     )
     author: str | None
     review_id: int | None
