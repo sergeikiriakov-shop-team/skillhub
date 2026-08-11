@@ -1,44 +1,10 @@
-"""Application services for the MCP context.
-
-Depend only on the repository Protocol, own the transaction boundary, and raise domain errors the
-API layer maps to HTTP. No SQLAlchemy, no FastAPI."""
+"""Application service for the McpServer aggregate — catalog, introspection upload, assessment."""
 
 from __future__ import annotations
 
-from .errors import InvalidManifest, McpServerNotFound
-from .interfaces import McpRepository
-from .rubric import (
-    MCP_INTROSPECTION_PROTOCOL,
-    MCP_RECOMMENDATION_STRATEGY,
-    MCP_RUBRIC_CALIBRATION,
-    MCP_RUBRIC_DIMENSIONS,
-    MCP_RUBRIC_INSTRUCTIONS,
-    MCP_RUBRIC_VERSION,
-    MCP_RUBRIC_WEIGHTS,
-)
-from .schemas import (
-    McpEvaluationResult,
-    McpRubricOut,
-    McpServerDetail,
-    McpServerSummary,
-)
-
-
-class McpRubricService:
-    """Serves the MCP evaluation strategy. Static by design — unlike the skills rubric, the MCP
-    weights are not admin-editable yet, so there is nothing to persist."""
-
-    def get_rubric(self) -> McpRubricOut:
-        return McpRubricOut(
-            rubric_version=MCP_RUBRIC_VERSION,
-            instructions=MCP_RUBRIC_INSTRUCTIONS,
-            dimensions=MCP_RUBRIC_DIMENSIONS,
-            weights=MCP_RUBRIC_WEIGHTS,
-            calibration=MCP_RUBRIC_CALIBRATION,
-            evaluation_schema=McpEvaluationResult.model_json_schema(),
-            recommendation_strategy=MCP_RECOMMENDATION_STRATEGY,
-            introspection_protocol=MCP_INTROSPECTION_PROTOCOL,
-        )
+from ..errors import InvalidManifest, McpServerNotFound
+from ..interfaces import McpRepository
+from ..schemas import McpEvaluationResult, McpServerDetail, McpServerSummary
 
 
 class McpService:
@@ -88,3 +54,5 @@ class McpService:
         if not self._servers.delete(server_id):
             raise McpServerNotFound(f"mcp server {server_id} does not exist")
         self._servers.commit()
+
+
