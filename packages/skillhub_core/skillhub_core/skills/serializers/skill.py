@@ -1,21 +1,21 @@
-"""Map ORM objects to API DTOs."""
+"""Skill aggregate → DTOs (summary and detail)."""
 
 from __future__ import annotations
 
-from . import adapters
-from ..platform.models import User
-from .models import Evaluation, Recommendation, Skill, SkillVersion
-from .schemas import (
+from .. import adapters
+from ...platform.models import User
+from ..models import Recommendation, Skill, SkillVersion
+from ..schemas import (
     CategoryOut,
-    EvaluationOut,
     ParsedSkill,
-    RecommendationOut,
     ReferenceIn,
     SimilarSkill,
     SkillDetail,
     SkillSummary,
     SkillVersionInfo,
 )
+from .evaluation import evaluation_to_out
+from .recommendation import _recommendation_to_out
 
 
 def _user_display(user: User | None) -> str | None:
@@ -35,20 +35,6 @@ def _uploaded_by(skill: Skill) -> str | None:
     return _user_display(version.creator) if version else None
 
 
-def evaluation_to_out(evaluation: Evaluation) -> EvaluationOut:
-    return EvaluationOut(
-        model=evaluation.model,
-        rubric_version=evaluation.rubric_version,
-        scores=evaluation.scores,
-        overall_score=evaluation.overall_score,
-        strengths=evaluation.strengths or [],
-        weaknesses=evaluation.weaknesses or [],
-        rationale=evaluation.rationale or "",
-        created_at=evaluation.created_at,
-    )
-
-
-_CHARS_PER_TOKEN = 4  # standard rough heuristic (English/code mix); a size proxy, not a measurement.
 
 
 def _estimated_tokens(skill: Skill) -> int | None:
@@ -147,22 +133,6 @@ def _contributors(skill: Skill) -> list[str]:
     return list(seen.keys())
 
 
-def _recommendation_to_out(rec: Recommendation) -> RecommendationOut:
-    return RecommendationOut(
-        id=rec.id,
-        target_kind=rec.target_kind,
-        kind=rec.kind,
-        title=rec.title,
-        rationale=rec.rationale,
-        scope=rec.scope,
-        targets=rec.targets or [],
-        suggested_action=rec.suggested_action,
-        anchor=rec.anchor,
-        status=rec.status,
-        created_by=rec.created_by,
-        created_at=rec.created_at,
-        updated_at=rec.updated_at,
-    )
 
 
 def skill_to_detail(
@@ -216,3 +186,5 @@ def skill_to_detail(
             for other, sim in (similar or [])
         ],
     )
+
+
