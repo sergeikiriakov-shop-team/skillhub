@@ -64,9 +64,34 @@ synthesize an "ideal" merged skill.
 
 `platform` (users, auth, tokens, DB bootstrap) · `skills` (the catalog, rubric, evaluations,
 recommendations, sandbox trials) · `reviews` (task review + self-review) · `mcp` (catalogued MCP
-servers). Each context owns `models/ · schemas · errors · interfaces (repository Protocols) ·
-repositories (SQLAlchemy) · services`; the API composes them through a `dependency-injector`
-container (`services/api/app/container.py`) and thin routers that only map domain errors to HTTP.
+servers). The API composes them through a `dependency-injector` container
+(`services/api/app/container.py`) and thin routers that only map domain errors to HTTP.
+
+**Every context has the same shape — a package per layer, a module per aggregate:**
+
+```
+<context>/
+  models/        aggregates + their rules (transitions, invariants, derived values)
+  schemas/       Pydantic DTOs (the API/MCP surface)
+  serializers/   ORM aggregate → DTO
+  repositories/  SQLAlchemy persistence — queries and writes, nothing else
+  interfaces/    repository Protocols (the seam services depend on)
+  services/      application services: orchestration, transaction boundary, cross-aggregate rules
+  errors.py      domain errors, mapped to HTTP in the routers
+```
+
+Two rules keep this honest rather than decorative:
+
+- **Rules live on the aggregate, not in the repository.** `Review.decide()` refuses an illegal
+  transition and appends to the thread; `SelfReview.record_fix()` enforces that a fix never edits
+  the finding; `derive_verdict()` decides what a set of findings means. A repository that also
+  decided these things is how two callers end up with two different answers.
+- **A rule spanning two aggregates belongs to an application service.** "No handover to the lead
+  without a self-review when the policy demands one" lives in `ReviewService`, which reads the
+  policy repository — not in a repository reaching sideways into another aggregate.
+
+Dependencies inside a context point one way. In `skills`, `catalog` (the read-model over
+taxonomy/stats/task-groups) may use the per-aggregate modules; none of them uses `catalog`.
 
 ## Task Review + self-review (`skillhub_core/reviews`)
 

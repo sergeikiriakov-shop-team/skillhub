@@ -49,10 +49,15 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   `claude -p` re-evaluation) is deferred to a later phase.
 
 - **Task review + self-review are their own bounded context** (`skillhub_core/reviews`), and the
-  service is DDD-shaped throughout: contexts `platform` / `skills` / `reviews` / `mcp`, each with
-  `models/ · schemas · errors · interfaces (repository Protocols) · repositories · services`, wired
-  by a `dependency-injector` container (`services/api/app/container.py` + `deps.py`). Routers are
-  thin: they only map domain errors to HTTP.
+  service is DDD-shaped throughout: contexts `platform` / `skills` / `reviews` / `mcp`, each laid
+  out the same way — **a package per layer, a module per aggregate**: `models/ · schemas/ ·
+  serializers/ · repositories/ · interfaces/ · services/ · errors.py` — wired by a
+  `dependency-injector` container (`services/api/app/container.py` + `deps.py`). Routers are thin:
+  they only map domain errors to HTTP. Rules live on the aggregates (`Review.decide()`,
+  `SelfReview.record_fix()`, `derive_verdict()`), not in the repositories; a rule spanning two
+  aggregates lives in an application service (the required-self-review gate in `ReviewService`).
+  Flat facades in each `__init__.py` mean `from skillhub_core.<context>.<layer> import X` still
+  works regardless of which module X ended up in.
   - **Peer review.** Submit a deploy-ready task as a POINTER (task_ref, branch, commit SHAs, files,
     summary, verified_notes) → the lead fetches the branch and reviews the real diff → verdict
     `approve | changes_requested` → author resubmits or acks. `submitted → approved |
