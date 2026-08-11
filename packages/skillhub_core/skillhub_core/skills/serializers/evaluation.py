@@ -19,7 +19,6 @@ def evaluation_to_out(evaluation: Evaluation) -> EvaluationOut:
     )
 
 
-_CHARS_PER_TOKEN = 4  # standard rough heuristic (English/code mix); a size proxy, not a measurement.
 
 
 

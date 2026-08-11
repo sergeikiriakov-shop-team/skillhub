@@ -17,6 +17,8 @@ from ..schemas import (
 from .evaluation import evaluation_to_out
 from .recommendation import _recommendation_to_out
 
+_CHARS_PER_TOKEN = 4  # standard rough heuristic (English/code mix); a size proxy, not a measurement.
+
 
 def _user_display(user: User | None) -> str | None:
     """Verified identity label for a user (name, falling back to email)."""
