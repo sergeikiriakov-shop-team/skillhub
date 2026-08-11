@@ -80,10 +80,12 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   `/api/skills`, `/api/skills?evaluated=false` (work queue), `/api/skills/{id}`, `/api/search?q=`,
   `/api/categories`, `/api/rubric`, `/api/skills/{id}/evaluations`. `GET /api/health` is always open.
 - Task review: `POST /api/reviews` (submit), `GET /api/reviews?status=|mine=|queue=`,
-  `GET /api/reviews/{id}`, `POST /api/reviews/{id}/result` (reviewer), `/resubmit`, `/ack` (author).
+  `GET /api/reviews/{id}`, `POST /api/reviews/{id}/result` (reviewer), `/resubmit`, `/ack` (author),
+  `DELETE /api/reviews/{id}` (author while `submitted`, admin any — 409 after a verdict).
 - Self-review: `GET /api/self-reviews/policy`, `PUT /api/self-reviews/policy` (admin),
   `POST /api/self-reviews`, `GET /api/self-reviews?mine=|task_ref=|review_id=`,
-  `GET /api/self-reviews/{id}`. Mounted at `/self-reviews`, not under `/reviews`, so nothing
+  `GET /api/self-reviews/{id}`, `POST /api/self-reviews/{id}/fixes` (author),
+  `DELETE /api/self-reviews/{id}` (author or admin; takes its fixes and its thread entry with it). Mounted at `/self-reviews`, not under `/reviews`, so nothing
   collides with `/reviews/{review_id}`.
 - Token/cookie writes: `POST /api/skills` (contributor+), `POST /api/skills/{id}/assessment`
   (evaluator), `DELETE /api/skills/{id}` (admin).
@@ -136,7 +138,8 @@ Tools: `list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `
 (evaluator), `add_recommendation`/`set_recommendation_status` (contributor+), `authenticate`;
 task review — `submit_for_review`, `list_review_queue`, `list_my_reviews`, `get_review`,
 `submit_review_result`, `resubmit_review`, `ack_review`; self-review — `get_self_review_policy`,
-`submit_self_review`, `list_self_reviews`, `get_self_review`. See `services/mcp/README.md`.
+`submit_self_review`, `list_self_reviews`, `get_self_review`, `record_self_review_fixes`,
+`delete_self_review`, `delete_review`. See `services/mcp/README.md`.
 
 ## Skills shipped with the service (`skills/`)
 `skillhub` (evaluate the catalog) · `connect-skillhub` (one-line MCP setup) · `sandbox-eval` ·

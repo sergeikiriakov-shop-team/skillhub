@@ -117,6 +117,16 @@ Two halves of one context, both carrying a **pointer** to the work — the code 
   `changes_needed`, otherwise `pass`. Same split as everywhere else in SkillHub — the *strategy*
   lives in the service, the *reviewing* happens in the developer's own Claude Code.
 
+  **Deletion.** Who may remove what is a domain rule on the aggregates. A *self-review* is the
+  author's own account of their own change, so its author (or an admin) may delete it at any time;
+  its fixes go with it and so does its entry in a peer review's thread — a line pointing at findings
+  nobody can open is worse than no line, which the FK's `SET NULL` alone would have left. A *peer
+  review* is different: the author may withdraw it only while it is still awaiting a verdict, after
+  which only an admin may, because an author who could delete a `changes_requested` review could
+  erase the request and resubmit as if it never happened. Withdrawing a review keeps the
+  self-reviews attached to it — they existed before the handover, so they detach and return to the
+  standalone list.
+
   **Deep links.** A finding carries `file`/`line`, and the service turns that into a link to the
   line. The repository is recorded **per self-review** (`self_reviews.repo`, normalized from the
   agent's `git remote get-url origin` by `reviews/code_links.py`), not configured per instance —
