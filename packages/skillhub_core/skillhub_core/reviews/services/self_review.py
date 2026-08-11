@@ -44,6 +44,11 @@ class SelfReviewService:
             raise SelfReviewNotFound(f"self-review {self_review_id} not found")
         return self_review
 
+    def delete(self, self_review_id: int, user: User) -> None:
+        if not self._self_reviews.delete(self_review_id, user):
+            raise SelfReviewNotFound(f"self-review {self_review_id} not found")
+        self._self_reviews.commit()
+
     def record_fixes(
         self, self_review_id: int, user: User, fixes: list[SelfReviewFixIn]
     ) -> SelfReviewOut:

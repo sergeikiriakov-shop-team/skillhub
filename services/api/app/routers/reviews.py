@@ -106,6 +106,24 @@ def resubmit(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@router.delete("/{review_id}", status_code=204)
+def delete_review(
+    review_id: int,
+    user: User = Depends(require_user),
+    service: ReviewService = Depends(get_review_service),
+) -> None:
+    """Withdraw a review. The author may do so while it is still awaiting a verdict; once the lead
+    has ruled, only an admin may (409 otherwise). Self-reviews attached to it survive, detached."""
+    try:
+        service.delete(review_id, user)
+    except ReviewNotFound as exc:
+        raise HTTPException(status_code=404, detail="Review not found") from exc
+    except NotReviewAuthor as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except InvalidReviewTransition as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.post("/{review_id}/ack", response_model=ReviewOut)
 def acknowledge(
     review_id: int,

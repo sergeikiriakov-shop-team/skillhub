@@ -49,6 +49,11 @@ class FakeReviewRepo:
     def acknowledge(self, review_id, user):
         return self._write()
 
+    def delete(self, review_id, user):
+        if self._raise:
+            raise self._raise
+        return self._found
+
     def commit(self):
         self.committed = True
 
@@ -127,3 +132,33 @@ def test_acknowledge_ok_commits():
     repo = FakeReviewRepo()
     assert service(repo).acknowledge(1, USER) == "R"
     assert repo.committed is True
+
+
+# --- deletion (who may withdraw a review, and when) ----------------------------------------------
+
+
+def test_delete_commits():
+    repo = FakeReviewRepo()
+    service(repo).delete(1, USER)
+    assert repo.committed is True
+
+
+def test_delete_missing_raises_and_does_not_commit():
+    repo = FakeReviewRepo(found=False)
+    with pytest.raises(ReviewNotFound):
+        service(repo).delete(9, USER)
+    assert repo.committed is False
+
+
+def test_delete_after_a_verdict_propagates_and_does_not_commit():
+    repo = FakeReviewRepo(raise_exc=InvalidReviewTransition("already has a verdict"))
+    with pytest.raises(InvalidReviewTransition):
+        service(repo).delete(1, USER)
+    assert repo.committed is False
+
+
+def test_delete_someone_elses_review_propagates():
+    repo = FakeReviewRepo(raise_exc=NotReviewAuthor("not yours"))
+    with pytest.raises(NotReviewAuthor):
+        service(repo).delete(1, USER)
+    assert repo.committed is False

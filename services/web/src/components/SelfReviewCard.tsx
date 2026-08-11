@@ -1,9 +1,10 @@
 import { Anchor, Badge, Button, Card, Code, Collapse, Group, Paper, Stack, Text } from "@mantine/core";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { SelfReviewFinding, SelfReviewSummary } from "../api";
+import { useAuth } from "../auth";
 import { useI18n } from "../i18n";
 
 const SEVERITY_COLOR: Record<string, string> = {
@@ -96,7 +97,21 @@ export default function SelfReviewCard({
   showTask?: boolean;
 }) {
   const { t } = useI18n();
+  const { me } = useAuth();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(!collapsible);
+  // Only the author (or an admin) may delete — mirrors the server rule, so the button never
+  // appears where the request would come back 403.
+  const canDelete = !!me?.is_admin || (!!me?.name && me.name === sr.author);
+
+  const remove = useMutation({
+    mutationFn: () => api.deleteSelfReview(sr.id),
+    onSuccess: () => {
+      // The peer review's thread loses an entry too, so refresh both lists.
+      qc.invalidateQueries({ queryKey: ["selfReviews"] });
+      qc.invalidateQueries({ queryKey: ["review"] });
+    },
+  });
   const { data } = useQuery({
     queryKey: ["selfReview", sr.id],
     queryFn: () => api.getSelfReview(sr.id),
@@ -174,6 +189,21 @@ export default function SelfReviewCard({
         {collapsible && (
           <Button size="compact-xs" variant="subtle" onClick={() => setOpen((v) => !v)} ml="auto">
             {open ? t("selfReview.hide") : t("selfReview.show")}
+          </Button>
+        )}
+        {canDelete && (
+          <Button
+            size="compact-xs"
+            variant="subtle"
+            color="red"
+            ml={collapsible ? undefined : "auto"}
+            loading={remove.isPending}
+            onClick={() => {
+              // Deleting takes the fixes and the thread entry with it, so make the reader confirm.
+              if (window.confirm(t("selfReview.confirmDelete"))) remove.mutate();
+            }}
+          >
+            {t("common.delete")}
           </Button>
         )}
       </Group>

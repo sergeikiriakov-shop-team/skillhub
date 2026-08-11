@@ -75,6 +75,11 @@ class FakeSelfReviewRepo:
     def has_self_review(self, author_id, task_ref):
         return self._found
 
+    def delete(self, self_review_id, user):
+        if self._raise:
+            raise self._raise
+        return self._found
+
     def commit(self):
         self.committed = True
 
@@ -191,4 +196,27 @@ def test_record_fixes_propagates_a_foreign_review_no_commit():
     repo = FakeSelfReviewRepo(raise_exc=NotReviewAuthor("not yours"))
     with pytest.raises(NotReviewAuthor):
         SelfReviewService(repo).record_fixes(1, USER, [])
+    assert repo.committed is False
+
+
+# --- deletion ------------------------------------------------------------------------------------
+
+
+def test_delete_commits():
+    repo = FakeSelfReviewRepo()
+    SelfReviewService(repo).delete(1, USER)
+    assert repo.committed is True
+
+
+def test_delete_missing_raises_and_does_not_commit():
+    repo = FakeSelfReviewRepo(found=False)
+    with pytest.raises(SelfReviewNotFound):
+        SelfReviewService(repo).delete(9, USER)
+    assert repo.committed is False
+
+
+def test_delete_someone_elses_self_review_propagates():
+    repo = FakeSelfReviewRepo(raise_exc=NotReviewAuthor("not yours"))
+    with pytest.raises(NotReviewAuthor):
+        SelfReviewService(repo).delete(1, USER)
     assert repo.committed is False

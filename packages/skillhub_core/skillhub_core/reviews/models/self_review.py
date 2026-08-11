@@ -94,6 +94,17 @@ class SelfReview(Base):
         }
         return {severity: n for severity, n in counts.items() if n}
 
+    def assert_deletable_by(self, user) -> None:
+        """A self-review is the author's own account of their own change, so the author may delete
+        it at any point in its life — unlike a peer review, no one else's judgement is recorded in
+        it. Admins may delete any. Its fixes go with it (they answer findings that no longer
+        exist); the peer review it was attached to survives, minus the thread entry."""
+        from ..errors import NotReviewAuthor
+
+        if user.is_admin or self.author_user_id == user.id:
+            return
+        raise NotReviewAuthor("only the author of a self-review (or an admin) may delete it")
+
     def record_fix(self, finding_index: int, commit_sha: str | None, note: str, author_id: int):
         """Attach "this is how I addressed it" to one finding.
 

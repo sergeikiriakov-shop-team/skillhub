@@ -1,5 +1,6 @@
 import {
   Badge,
+  Button,
   Card,
   Code,
   Container,
@@ -10,10 +11,11 @@ import {
   Text,
   Title,
 } from "@mantine/core";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, ReviewEvent } from "../api";
+import { useAuth } from "../auth";
 import SelfReviewCard from "../components/SelfReviewCard";
 import { useI18n } from "../i18n";
 import { STATUS_COLOR, StatusBadge } from "./Reviews";
@@ -61,11 +63,27 @@ function ThreadItem({ ev }: { ev: ReviewEvent }) {
 
 export default function ReviewDetail() {
   const { t } = useI18n();
+  const { me } = useAuth();
   const { id } = useParams();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
   const { data: r, isLoading } = useQuery({
     queryKey: ["review", id],
     queryFn: () => api.getReview(Number(id)),
     enabled: !!id,
+  });
+
+  // The author may withdraw their own submission; the server additionally refuses once a verdict
+  // exists (409), which surfaces as the error line below rather than a hidden button — an author
+  // who tries deserves the reason, not a missing control.
+  const canDelete = !!me?.is_admin || (!!me?.name && !!r && me.name === r.author);
+  const remove = useMutation({
+    mutationFn: () => api.deleteReview(Number(id)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reviews"] });
+      qc.invalidateQueries({ queryKey: ["selfReviews"] });
+      navigate("/reviews");
+    },
   });
 
   if (isLoading) {
@@ -96,8 +114,28 @@ export default function ReviewDetail() {
               {t("reviews.reviewer", { who: r.reviewer ?? t("reviews.unassigned") })}
             </Text>
           </div>
-          <StatusBadge status={r.status} t={t} />
+          <Group gap="xs" wrap="nowrap">
+            <StatusBadge status={r.status} t={t} />
+            {canDelete && (
+              <Button
+                size="compact-xs"
+                variant="subtle"
+                color="red"
+                loading={remove.isPending}
+                onClick={() => {
+                  if (window.confirm(t("reviews.confirmDelete"))) remove.mutate();
+                }}
+              >
+                {t("common.delete")}
+              </Button>
+            )}
+          </Group>
         </Group>
+        {remove.isError && (
+          <Text c="red" size="sm">
+            {String(remove.error)}
+          </Text>
+        )}
 
         <Card withBorder radius="md" padding="md">
           <Stack gap="sm">

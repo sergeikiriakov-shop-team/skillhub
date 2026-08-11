@@ -118,6 +118,22 @@ class SqlReviewRepository:
         self._session.flush()
         return self._detail(review_id)
 
+    def delete(self, review_id: int, user: User) -> bool:
+        """Withdraw a review. False if it does not exist; raises when this user may not.
+
+        Its thread goes with it (delete-orphan). Attached self-reviews do NOT: they existed before
+        the handover and stand on their own, so the FK is nulled and they return to the standalone
+        list rather than disappearing with the submission."""
+        review = self._loaded(review_id)
+        if review is None:
+            return False
+        review.assert_deletable_by(user)
+        for self_review in list(review.self_reviews):
+            self_review.review_id = None
+        self._session.delete(review)
+        self._session.flush()
+        return True
+
     # --- reads -----------------------------------------------------------------------------------
 
     def list(

@@ -842,6 +842,18 @@ def ack_review(
     return _authed_call("POST", f"/api/reviews/{review_id}/ack", json={})
 
 
+@mcp.tool()
+def delete_review(
+    review_id: Annotated[int, Field(description="Numeric review id you authored.")],
+) -> Any:
+    """Withdraw a review you submitted — for a duplicate or a mistyped task_ref. Allowed while it is
+    still awaiting a verdict; once the lead has ruled, only an admin may delete it (409 otherwise),
+    because the thread then records someone else's judgement. Self-reviews attached to it are NOT
+    deleted — they detach and stay in the standalone list. Unauthorized in stdio mode returns
+    `{action_required: <how to approve>}`."""
+    return _authed_call("DELETE", f"/api/reviews/{review_id}")
+
+
 # --- Self-review (review your OWN change with the skill the team configured) ---------------------
 
 
@@ -937,6 +949,17 @@ def get_self_review(
     """One self-review with every finding (severity, file, line, detail, suggestion), each with a
     deep link to its line and whatever fixes have been recorded against it."""
     return _read_call("GET", f"/api/self-reviews/{self_review_id}")
+
+
+@mcp.tool()
+def delete_self_review(
+    self_review_id: Annotated[int, Field(description="Numeric self-review id you ran.")],
+) -> Any:
+    """Delete one of your own self-reviews — a mis-targeted run, a duplicate, or one posted against
+    the wrong task. Its fixes go with it, and so does its entry in any peer review's thread; the
+    peer review itself survives. Admins may delete any. Unauthorized in stdio mode returns
+    `{action_required: <how to approve>}`."""
+    return _authed_call("DELETE", f"/api/self-reviews/{self_review_id}")
 
 
 class Fix(BaseModel):

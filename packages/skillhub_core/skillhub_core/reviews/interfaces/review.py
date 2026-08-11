@@ -37,4 +37,10 @@ class ReviewRepository(Protocol):
         """Author acknowledges the outcome. None if not found; raises ``NotReviewAuthor``."""
         ...
 
+    def delete(self, review_id: int, user: User) -> bool:
+        """Withdraw a review (flush only). False if it does not exist; raises ``NotReviewAuthor``
+        for someone else's, or ``InvalidReviewTransition`` once it has a verdict and the caller is
+        not an admin. Attached self-reviews survive, detached."""
+        ...
+
     def commit(self) -> None: ...

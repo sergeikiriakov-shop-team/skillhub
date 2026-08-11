@@ -68,3 +68,8 @@ class ReviewService:
             raise ReviewNotFound(f"review {review_id} not found")
         self._reviews.commit()
         return review
+
+    def delete(self, review_id: int, user: User) -> None:
+        if not self._reviews.delete(review_id, user):
+            raise ReviewNotFound(f"review {review_id} not found")
+        self._reviews.commit()

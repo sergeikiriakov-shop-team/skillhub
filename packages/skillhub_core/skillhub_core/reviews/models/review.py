@@ -132,6 +132,35 @@ class Review(Base):
             self.status = REVIEW_DONE
         self._record(EVENT_ACK, author_id, note)
 
+    def assert_deletable_by(self, user) -> None:
+        """Who may withdraw this review, and when.
+
+        The author may withdraw their own submission while it is still awaiting a verdict —
+        a mistyped task or a duplicate should not need an admin. Once the lead has ruled on it, the
+        thread is a record of someone else's judgement, so only an admin may remove it: an author
+        who could delete a `changes_requested` review could quietly erase the request and resubmit
+        as if it never happened."""
+        from ..errors import InvalidReviewTransition, NotReviewAuthor
+
+        if user.is_admin:
+            return
+        if self.author_user_id != user.id:
+            raise NotReviewAuthor("only the review's author (or an admin) may delete it")
+        if self.status != REVIEW_SUBMITTED:
+            raise InvalidReviewTransition(
+                f"review {self.id} already has a verdict (status={self.status}) — ask an admin to "
+                "delete it; withdrawing your own review is only possible before it is decided"
+            )
+
+    def detach_self_review(self, self_review_id: int) -> None:
+        """Drop the thread entry that carried a now-deleted self-review.
+
+        The FK alone would only null the pointer, leaving an event describing findings the reader
+        can no longer open — worse than no entry at all."""
+        self.events[:] = [
+            event for event in self.events if event.self_review_id != self_review_id
+        ]
+
     def attach_self_review(self, self_review, author_id: int) -> None:
         """Link a self-review of the same task and thread it, so the lead sees what the author
         already caught before opening the diff."""

@@ -146,6 +146,22 @@ class SqlSelfReviewRepository:
         self._session.flush()
         return serializer.to_detail(self_review)
 
+    def delete(self, self_review_id: int, user: User) -> bool:
+        """Delete a self-review and its fixes. False if it does not exist; raises when this user may
+        not. If it was threaded into a peer review, that entry is removed too — a thread line
+        pointing at findings nobody can open is worse than no line."""
+        self_review = self._loaded(self_review_id)
+        if self_review is None:
+            return False
+        self_review.assert_deletable_by(user)
+        if self_review.review_id is not None:
+            review = self._session.get(Review, self_review.review_id)
+            if review is not None:
+                review.detach_self_review(self_review.id)
+        self._session.delete(self_review)
+        self._session.flush()
+        return True
+
     # --- reads -----------------------------------------------------------------------------------
 
     def list(

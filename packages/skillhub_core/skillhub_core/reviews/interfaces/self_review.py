@@ -42,6 +42,11 @@ class SelfReviewRepository(Protocol):
         """Whether this author already self-reviewed this task (the ``required`` gate)."""
         ...
 
+    def delete(self, self_review_id: int, user: User) -> bool:
+        """Delete a self-review, its fixes and its thread entry (flush only). False if it does not
+        exist; raises ``NotReviewAuthor`` for someone else's."""
+        ...
+
     def commit(self) -> None: ...
 
 

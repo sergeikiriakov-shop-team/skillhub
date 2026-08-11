@@ -125,6 +125,9 @@ const en: Dict = {
   "reviews.verified": "Verified by author",
   "reviews.thread": "Thread",
   "reviews.notFound": "Review not found.",
+  "reviews.confirmDelete":
+    "Withdraw this review? Its thread goes with it. Self-reviews attached to it are kept — they " +
+    "detach and stay in the Self-reviews list. This cannot be undone.",
   "reviews.event.submit": "submitted",
   "reviews.event.verdict": "verdict",
   "reviews.event.resubmit": "resubmitted",
@@ -174,11 +177,15 @@ const en: Dict = {
   "selfReview.hide": "Hide",
   "selfReview.fixed": "fixed",
   "selfReview.answered": "answered",
+  "selfReview.confirmDelete":
+    "Delete this self-review? Its findings and the fixes recorded against them go with it, and so " +
+    "does its entry in the review thread. This cannot be undone.",
   "selfReview.fixedCount": "{fixed}/{total} fixed in code",
 
   // common
   "common.copy": "Copy",
   "common.copied": "Copied",
+  "common.delete": "Delete",
 
   // catalog
   "catalog.title": "Skill catalog",
@@ -478,6 +485,9 @@ const ru: Dict = {
   "reviews.verified": "Проверено автором",
   "reviews.thread": "Тред",
   "reviews.notFound": "Заявка не найдена.",
+  "reviews.confirmDelete":
+    "Отозвать эту заявку? Вместе с ней удалится её лента. Прикреплённые саморевью сохранятся — " +
+    "они отвяжутся и останутся во вкладке «Саморевью». Действие необратимо.",
   "reviews.event.submit": "отправлено",
   "reviews.event.verdict": "вердикт",
   "reviews.event.resubmit": "переотправлено",
@@ -527,11 +537,15 @@ const ru: Dict = {
   "selfReview.hide": "Скрыть",
   "selfReview.fixed": "исправлено",
   "selfReview.answered": "ответ автора",
+  "selfReview.confirmDelete":
+    "Удалить это саморевью? Вместе с ним исчезнут его замечания, записанные по ним исправления и " +
+    "запись в ленте заявки на ревью. Действие необратимо.",
   "selfReview.fixedCount": "исправлено кодом: {fixed} из {total}",
 
   // common
   "common.copy": "Копировать",
   "common.copied": "Скопировано",
+  "common.delete": "Удалить",
 
   // catalog
   "catalog.title": "Каталог скиллов",

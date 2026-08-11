@@ -467,6 +467,8 @@ export const api = {
     return request<ReviewSummary[]>(`/reviews${qs ? `?${qs}` : ""}`);
   },
   getReview: (id: number) => request<ReviewDetail>(`/reviews/${id}`),
+  deleteReview: (id: number) => request<void>(`/reviews/${id}`, { method: "DELETE" }),
+  deleteSelfReview: (id: number) => request<void>(`/self-reviews/${id}`, { method: "DELETE" }),
   // --- self-review ---
   selfReviewPolicy: () => request<SelfReviewPolicy>("/self-reviews/policy"),
   // Admin: point one lane at the catalog skill that reviews it (skill: null unsets the lane).

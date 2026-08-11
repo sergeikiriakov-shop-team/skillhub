@@ -119,6 +119,22 @@ def record_fixes(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.delete("/{self_review_id}", status_code=204)
+def delete_self_review(
+    self_review_id: int,
+    user: User = Depends(require_user),
+    service: SelfReviewService = Depends(get_self_review_service),
+) -> None:
+    """Delete one of your own self-reviews, with its fixes and its entry in a peer review's thread.
+    Admins may delete any."""
+    try:
+        service.delete(self_review_id, user)
+    except SelfReviewNotFound as exc:
+        raise HTTPException(status_code=404, detail="Self-review not found") from exc
+    except NotReviewAuthor as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
 @router.get("/{self_review_id}", response_model=SelfReviewOut)
 def get_self_review(
     self_review_id: int,
