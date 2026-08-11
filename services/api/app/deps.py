@@ -12,7 +12,11 @@ from sqlalchemy.orm import Session
 from skillhub_core.mcp.services import McpRubricService, McpService
 from skillhub_core.platform.db import get_session
 from skillhub_core.platform.services import UserAdminService
-from skillhub_core.reviews.services import ReviewService, SelfReviewService
+from skillhub_core.reviews.services import (
+    ReviewService,
+    SelfReviewPolicyService,
+    SelfReviewService,
+)
 from skillhub_core.skills.services import (
     CatalogService,
     EvaluationService,
@@ -59,12 +63,26 @@ def get_catalog_service(session: Session = Depends(get_session)) -> CatalogServi
 
 
 def get_review_service(session: Session = Depends(get_session)) -> ReviewService:
-    return container.review_service(reviews=container.review_repository(session=session))
+    # Three repositories: the review itself, plus the self-review + policy pair the service reads to
+    # enforce "no handover without a self-review when the policy demands one".
+    return container.review_service(
+        reviews=container.review_repository(session=session),
+        self_reviews=container.self_review_repository(session=session),
+        policies=container.self_review_policy_repository(session=session),
+    )
 
 
 def get_self_review_service(session: Session = Depends(get_session)) -> SelfReviewService:
     return container.self_review_service(
         self_reviews=container.self_review_repository(session=session)
+    )
+
+
+def get_self_review_policy_service(
+    session: Session = Depends(get_session),
+) -> SelfReviewPolicyService:
+    return container.self_review_policy_service(
+        policies=container.self_review_policy_repository(session=session)
     )
 
 

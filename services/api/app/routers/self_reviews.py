@@ -32,10 +32,10 @@ from skillhub_core.reviews.schemas import (
     SelfReviewSubmitIn,
     SelfReviewSummary,
 )
-from skillhub_core.reviews.services import SelfReviewService
+from skillhub_core.reviews.services import SelfReviewPolicyService, SelfReviewService
 
 from ..auth import require_admin, require_user
-from ..deps import get_self_review_service
+from ..deps import get_self_review_policy_service, get_self_review_service
 
 router = APIRouter(tags=["self-reviews"], prefix="/self-reviews")
 
@@ -43,7 +43,7 @@ router = APIRouter(tags=["self-reviews"], prefix="/self-reviews")
 # NOTE: declared before ``/{self_review_id}`` so the literal path wins the match.
 @router.get("/policy", response_model=SelfReviewPolicyOut)
 def get_policy(
-    service: SelfReviewService = Depends(get_self_review_service),
+    service: SelfReviewPolicyService = Depends(get_self_review_policy_service),
 ) -> SelfReviewPolicyOut:
     """Which catalog skill self-reviews each lane, and whether it is mandatory before handing a task
     to the lead. Claude Code reads this, then fetches that skill with ``get_skill``."""
@@ -53,7 +53,7 @@ def get_policy(
 @router.put("/policy", response_model=SelfReviewPolicyLane)
 def set_policy(
     payload: SelfReviewPolicyUpdate,
-    service: SelfReviewService = Depends(get_self_review_service),
+    service: SelfReviewPolicyService = Depends(get_self_review_policy_service),
     admin: User = Depends(require_admin),
 ) -> SelfReviewPolicyLane:
     """Admin-only: point one lane at the skill that reviews it (``skill: null`` unsets the lane)."""

@@ -77,3 +77,71 @@ class SelfReview(Base):
     def blocking_count(self) -> int:
         """Findings severe enough to hold the change back."""
         return sum(1 for f in (self.findings or []) if f.get("severity") in BLOCKING_SEVERITIES)
+
+    @property
+    def fixed_count(self) -> int:
+        """Findings closed by a commit. A fix carrying only a note is an ANSWER — usually "not
+        addressed, because…" — and counting those as fixed would make the progress badge lie."""
+        return len({f.finding_index for f in self.fixes if f.commit_sha})
+
+    @property
+    def severity_counts(self) -> dict[str, int]:
+        """Findings per severity, worst-first, zero counts omitted — enough for a list to show the
+        shape of a review without loading every finding."""
+        counts = {
+            severity: sum(1 for f in (self.findings or []) if f.get("severity") == severity)
+            for severity in SEVERITIES
+        }
+        return {severity: n for severity, n in counts.items() if n}
+
+    def record_fix(self, finding_index: int, commit_sha: str | None, note: str, author_id: int):
+        """Attach "this is how I addressed it" to one finding.
+
+        Deliberately additive: the verdict, the severities and the findings never change, because
+        the record is only worth keeping if it still shows what the skill originally said."""
+        from ..errors import InvalidSelfReview
+        from .self_review_fix import SelfReviewFix
+
+        count = len(self.findings or [])
+        if not 0 <= finding_index < count:
+            raise InvalidSelfReview(
+                f"finding_index {finding_index} is out of range — this self-review has "
+                f"{count} finding(s)"
+            )
+        fix = SelfReviewFix(
+            finding_index=finding_index,
+            commit_sha=commit_sha or None,
+            note=note or "",
+            author_user_id=author_id,
+        )
+        self.fixes.append(fix)
+        return fix
+
+
+def derive_verdict(findings, stated: str | None) -> str:
+    """The verdict a set of findings implies. A stated one wins; otherwise any blocker/major means
+    the change is not ready to hand over.
+
+    A domain rule, not a formatting detail: it decides whether work reaches the lead, so it lives
+    with the model rather than wherever the payload happens to be unpacked."""
+    from ..errors import InvalidSelfReview
+
+    if stated:
+        if stated not in SELF_REVIEW_VERDICTS:
+            raise InvalidSelfReview(
+                f"unknown verdict '{stated}' (expected one of {', '.join(SELF_REVIEW_VERDICTS)})"
+            )
+        return stated
+    blocking = any(getattr(f, "severity", None) in BLOCKING_SEVERITIES for f in findings)
+    return SELF_REVIEW_CHANGES if blocking else SELF_REVIEW_PASS
+
+
+def validate_findings(findings) -> None:
+    """Reject a severity outside the vocabulary rather than storing a finding nothing can rank."""
+    from ..errors import InvalidSelfReview
+
+    for finding in findings:
+        if finding.severity not in SEVERITIES:
+            raise InvalidSelfReview(
+                f"unknown severity '{finding.severity}' (expected one of {', '.join(SEVERITIES)})"
+            )

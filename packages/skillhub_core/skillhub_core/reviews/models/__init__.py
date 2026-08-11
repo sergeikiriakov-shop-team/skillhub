@@ -26,6 +26,8 @@ from .review import (
 )
 from .self_review import (
     BLOCKING_SEVERITIES,
+    derive_verdict,
+    validate_findings,
     SELF_REVIEW_CHANGES,
     SELF_REVIEW_PASS,
     SELF_REVIEW_VERDICTS,
@@ -78,4 +80,6 @@ __all__ = [
     "LANE_BACKEND",
     "LANE_FRONTEND",
     "SELF_REVIEW_LANES",
+    "derive_verdict",
+    "validate_findings",
 ]

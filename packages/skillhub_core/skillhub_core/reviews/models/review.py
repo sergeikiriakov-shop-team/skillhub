@@ -9,7 +9,13 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ...platform.models import Base
-from .event import EVENT_VERDICT
+from .event import (
+    EVENT_ACK,
+    EVENT_RESUBMIT,
+    EVENT_SELF_REVIEW,
+    EVENT_SUBMIT,
+    EVENT_VERDICT,
+)
 
 # --- review status (state machine) ---
 REVIEW_SUBMITTED = "submitted"  # in the lead's queue, awaiting review
@@ -66,3 +72,73 @@ class Review(Base):
             if ev.kind == EVENT_VERDICT:
                 return ev
         return None
+
+    # --- workflow (the aggregate owns its own transitions) ---------------------------------------
+    #
+    # Every legal move through the state machine is a method here, not a branch in the repository:
+    # the rule "only a review awaiting review can be decided" belongs to the Review itself, and
+    # keeping it next to ``status`` is what stops a second caller from inventing a different one.
+    # Each move appends to the thread, because a transition that leaves no trace never happened.
+
+    def _record(self, kind: str, author_id: int, body: str = "", verdict: str | None = None) -> None:
+        from .event import ReviewEvent
+
+        self.events.append(
+            ReviewEvent(kind=kind, author_user_id=author_id, body=body, verdict=verdict)
+        )
+
+    def open_for_review(self, author_id: int, summary: str = "") -> None:
+        """Opening entry in the thread — the review starts life already awaiting the lead."""
+        self._record(EVENT_SUBMIT, author_id, summary)
+
+    def decide(self, reviewer_id: int, verdict: str, comments: str) -> None:
+        """Record the lead's verdict: ``approve`` → approved, ``changes_requested`` → back to the
+        author (comments required — a change request without them is not actionable)."""
+        from ..errors import InvalidReviewTransition
+
+        if self.status != REVIEW_SUBMITTED:
+            raise InvalidReviewTransition(
+                f"review {self.id} is not awaiting review (status={self.status})"
+            )
+        if verdict == VERDICT_APPROVE:
+            self.status = REVIEW_APPROVED
+        elif verdict == VERDICT_CHANGES:
+            if not comments.strip():
+                raise InvalidReviewTransition("changes_requested requires comments")
+            self.status = REVIEW_CHANGES_REQUESTED
+        else:
+            raise InvalidReviewTransition(f"unknown verdict '{verdict}'")
+        self.reviewer_user_id = reviewer_id
+        self._record(EVENT_VERDICT, reviewer_id, comments, verdict=verdict)
+
+    def resubmit(self, author_id: int, commit_shas: list[str], note: str) -> None:
+        """Author sends the task back for another round after addressing the feedback."""
+        from ..errors import InvalidReviewTransition
+
+        if self.status not in (REVIEW_CHANGES_REQUESTED, REVIEW_APPROVED):
+            raise InvalidReviewTransition(
+                f"review {self.id} cannot be resubmitted (status={self.status})"
+            )
+        if commit_shas:
+            self.commit_shas = list(commit_shas)
+        self.status = REVIEW_SUBMITTED
+        self._record(EVENT_RESUBMIT, author_id, note)
+
+    def acknowledge(self, author_id: int, note: str = "") -> None:
+        """Author acknowledges the outcome; an approved review closes. Acknowledging anything else
+        is a no-op on the status by design — the author confirming they read a change request is
+        legitimate, it just does not close anything."""
+        if self.status == REVIEW_APPROVED:
+            self.status = REVIEW_DONE
+        self._record(EVENT_ACK, author_id, note)
+
+    def attach_self_review(self, self_review, author_id: int) -> None:
+        """Link a self-review of the same task and thread it, so the lead sees what the author
+        already caught before opening the diff."""
+        self_review.review_id = self.id
+        blocking, total = self_review.blocking_count, len(self_review.findings or [])
+        body = f"{self_review.skill_name}: {self_review.verdict} — {total} finding(s), {blocking} blocking"
+        if self_review.summary:
+            body = f"{body}\n{self_review.summary}"
+        self._record(EVENT_SELF_REVIEW, author_id, body)
+        self.events[-1].self_review_id = self_review.id

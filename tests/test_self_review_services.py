@@ -16,10 +16,38 @@ from skillhub_core.reviews.errors import (
     SelfReviewPolicyNotSet,
     UnknownReviewSkill,
 )
-from skillhub_core.reviews.services import SelfReviewService
+from skillhub_core.reviews.services import SelfReviewPolicyService, SelfReviewService
 
 USER = SimpleNamespace(id=1, is_admin=False)
 ADMIN = SimpleNamespace(id=2, is_admin=True)
+
+
+class FakePolicyRepo:
+    """The policy aggregate's own repository — a separate seam since the split."""
+
+    def __init__(self, *, found=True, raise_exc=None):
+        self._found = found
+        self._raise = raise_exc
+        self.committed = False
+        self.set_lane_args = None
+
+    def all_lanes(self):
+        return "POLICY"
+
+    def lane(self, lane):
+        return "LANE" if self._found else None
+
+    def set_lane(self, lane, skill, required, admin):
+        if self._raise:
+            raise self._raise
+        self.set_lane_args = (lane, skill, required, admin)
+        return "LANE"
+
+    def self_review_required(self):
+        return False
+
+    def commit(self):
+        self.committed = True
 
 
 class FakeSelfReviewRepo:
@@ -27,19 +55,6 @@ class FakeSelfReviewRepo:
         self._found = found
         self._raise = raise_exc
         self.committed = False
-        self.set_policy_args = None
-
-    def policy(self):
-        return "POLICY"
-
-    def lane_policy(self, lane):
-        return "LANE" if self._found else None
-
-    def set_policy(self, lane, skill, required, admin):
-        if self._raise:
-            raise self._raise
-        self.set_policy_args = (lane, skill, required, admin)
-        return "LANE"
 
     def submit(self, author, data):
         if self._raise:
@@ -96,17 +111,17 @@ def test_get_does_not_commit():
 
 
 def test_set_policy_commits_and_passes_the_admin():
-    repo = FakeSelfReviewRepo()
-    service = SelfReviewService(repo)
+    repo = FakePolicyRepo()
+    service = SelfReviewPolicyService(repo)
     assert service.set_policy(ADMIN, lane="backend", skill="pr-review", required=True) == "LANE"
-    assert repo.set_policy_args == ("backend", "pr-review", True, ADMIN)
+    assert repo.set_lane_args == ("backend", "pr-review", True, ADMIN)
     assert repo.committed is True
 
 
 def test_set_policy_unknown_skill_propagates_no_commit():
-    repo = FakeSelfReviewRepo(raise_exc=UnknownReviewSkill("no such skill"))
+    repo = FakePolicyRepo(raise_exc=UnknownReviewSkill("no such skill"))
     with pytest.raises(UnknownReviewSkill):
-        SelfReviewService(repo).set_policy(ADMIN, lane="backend", skill="nope", required=False)
+        SelfReviewPolicyService(repo).set_policy(ADMIN, lane="backend", skill="nope", required=False)
     assert repo.committed is False
 
 
@@ -137,23 +152,23 @@ def _finding(severity: str):
     ],
 )
 def test_verdict_derived_from_severities(severities, expected):
-    from skillhub_core.reviews.repository import _derive_verdict
+    from skillhub_core.reviews.models import derive_verdict
 
-    assert _derive_verdict([_finding(s) for s in severities], None) == expected
+    assert derive_verdict([_finding(s) for s in severities], None) == expected
 
 
 def test_stated_verdict_wins_over_the_findings():
-    from skillhub_core.reviews.repository import _derive_verdict
+    from skillhub_core.reviews.models import derive_verdict
 
-    assert _derive_verdict([_finding("blocker")], "pass") == "pass"
+    assert derive_verdict([_finding("blocker")], "pass") == "pass"
 
 
 def test_unknown_stated_verdict_rejected():
     from skillhub_core.reviews.errors import InvalidSelfReview
-    from skillhub_core.reviews.repository import _derive_verdict
+    from skillhub_core.reviews.models import derive_verdict
 
     with pytest.raises(InvalidSelfReview):
-        _derive_verdict([], "looks-fine")
+        derive_verdict([], "looks-fine")
 
 
 # --- fixes (what the developer did about a finding) ----------------------------------------------

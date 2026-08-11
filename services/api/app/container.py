@@ -13,8 +13,16 @@ from skillhub_core.mcp.repositories import SqlMcpRepository
 from skillhub_core.mcp.services import McpRubricService, McpService
 from skillhub_core.platform.repositories import SqlUserAdminRepository
 from skillhub_core.platform.services import UserAdminService
-from skillhub_core.reviews.repositories import SqlReviewRepository, SqlSelfReviewRepository
-from skillhub_core.reviews.services import ReviewService, SelfReviewService
+from skillhub_core.reviews.repositories import (
+    SqlReviewRepository,
+    SqlSelfReviewPolicyRepository,
+    SqlSelfReviewRepository,
+)
+from skillhub_core.reviews.services import (
+    ReviewService,
+    SelfReviewPolicyService,
+    SelfReviewService,
+)
 from skillhub_core.skills.repositories import (
     SqlCatalogRepository,
     SqlEvaluationRepository,
@@ -44,6 +52,7 @@ class Container(containers.DeclarativeContainer):
     catalog_repository = providers.Factory(SqlCatalogRepository)
     review_repository = providers.Factory(SqlReviewRepository)
     self_review_repository = providers.Factory(SqlSelfReviewRepository)
+    self_review_policy_repository = providers.Factory(SqlSelfReviewPolicyRepository)
     mcp_repository = providers.Factory(SqlMcpRepository)
     user_admin_repository = providers.Factory(SqlUserAdminRepository)
 
@@ -57,6 +66,7 @@ class Container(containers.DeclarativeContainer):
     catalog_service = providers.Factory(CatalogService)
     review_service = providers.Factory(ReviewService)
     self_review_service = providers.Factory(SelfReviewService)
+    self_review_policy_service = providers.Factory(SelfReviewPolicyService)
     mcp_service = providers.Factory(McpService)
     # Static strategy — no repository, so a Singleton is safe (nothing request-scoped inside).
     mcp_rubric_service = providers.Singleton(McpRubricService)
