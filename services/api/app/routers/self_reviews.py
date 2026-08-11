@@ -13,7 +13,7 @@ with ``/reviews/{review_id}``.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from skillhub_core.platform.models import User
 from skillhub_core.reviews.errors import (
@@ -119,12 +119,12 @@ def record_fixes(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.delete("/{self_review_id}", status_code=204)
+@router.delete("/{self_review_id}", status_code=204, response_class=Response)
 def delete_self_review(
     self_review_id: int,
     user: User = Depends(require_user),
     service: SelfReviewService = Depends(get_self_review_service),
-) -> None:
+) -> Response:
     """Delete one of your own self-reviews, with its fixes and its entry in a peer review's thread.
     Admins may delete any."""
     try:
@@ -133,6 +133,7 @@ def delete_self_review(
         raise HTTPException(status_code=404, detail="Self-review not found") from exc
     except NotReviewAuthor as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
+    return Response(status_code=204)
 
 
 @router.get("/{self_review_id}", response_model=SelfReviewOut)

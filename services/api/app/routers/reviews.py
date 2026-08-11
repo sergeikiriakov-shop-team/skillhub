@@ -9,7 +9,7 @@ mapped to HTTP status.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from skillhub_core.platform.models import User
 from skillhub_core.reviews.errors import (
@@ -106,12 +106,12 @@ def resubmit(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
-@router.delete("/{review_id}", status_code=204)
+@router.delete("/{review_id}", status_code=204, response_class=Response)
 def delete_review(
     review_id: int,
     user: User = Depends(require_user),
     service: ReviewService = Depends(get_review_service),
-) -> None:
+) -> Response:
     """Withdraw a review. The author may do so while it is still awaiting a verdict; once the lead
     has ruled, only an admin may (409 otherwise). Self-reviews attached to it survive, detached."""
     try:
@@ -122,6 +122,7 @@ def delete_review(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except InvalidReviewTransition as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return Response(status_code=204)
 
 
 @router.post("/{review_id}/ack", response_model=ReviewOut)
