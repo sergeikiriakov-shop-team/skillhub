@@ -16,7 +16,7 @@ from skillhub_core.skills.errors import (
     RecommendationNotFound,
     SkillNotFound,
 )
-from skillhub_core.skills.repositories import _effectiveness
+from skillhub_core.skills.repositories.notebook import _effectiveness
 from skillhub_core.skills.services import (
     IngestService,
     RecommendationService,

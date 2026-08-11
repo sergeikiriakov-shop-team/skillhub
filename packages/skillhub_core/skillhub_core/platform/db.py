@@ -139,7 +139,7 @@ def _seed_rubric_weights() -> None:
     """Seed the admin-managed dimension weights from the rubric defaults (missing dimensions only),
     then align stored ``overall`` scores with the weighted-mean definition so the server-computed
     score is authoritative from first boot. Idempotent."""
-    from ..skills import repository
+    from ..skills import repositories as repository
     from ..skills.models import RubricWeight
     from ..skills.rubric import RUBRIC_WEIGHTS
 
@@ -175,7 +175,7 @@ def _seed_skill_notebooks() -> None:
     import json
     from pathlib import Path
 
-    from ..skills import repository
+    from ..skills import repositories as repository
     from ..skills.models import Skill, SkillNotebook
 
     seed_dir = Path(__file__).resolve().parents[1] / "skills" / "seed_data"

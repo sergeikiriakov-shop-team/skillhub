@@ -4,7 +4,8 @@ ORM engine + pgvector embeddings)."""
 
 from __future__ import annotations
 
-from skillhub_core.skills.repository import DuplicateSkillError, normalize_content
+from skillhub_core.skills.errors import DuplicateSkill
+from skillhub_core.skills.repositories import normalize_content
 
 
 def test_normalize_collapses_whitespace():
@@ -25,7 +26,7 @@ def test_normalize_keeps_genuinely_different_content_distinct():
 
 
 def test_duplicate_error_carries_identity():
-    err = DuplicateSkillError(7, "beliani-db-schema")
+    err = DuplicateSkill(7, "beliani-db-schema")
     assert err.existing_id == 7
     assert err.existing_name == "beliani-db-schema"
     assert "beliani-db-schema" in str(err)
