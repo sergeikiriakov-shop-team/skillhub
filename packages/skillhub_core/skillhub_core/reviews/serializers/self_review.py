@@ -26,7 +26,7 @@ def to_summary(self_review: SelfReview) -> SelfReviewSummary:
         severity_counts=self_review.severity_counts,
         fixed_count=self_review.fixed_count,
         author=self_review.author.name if self_review.author else None,
-        review_id=self_review.review_id,
+        task_review_id=self_review.task_review_id,
         created_at=self_review.created_at,
     )
 

@@ -21,12 +21,12 @@ class SelfReviewRepository(Protocol):
     *means* lives on the aggregate."""
 
     def submit(self, author: User, data: SelfReviewSubmitIn) -> SelfReviewOut:
-        """Record a run and attach it to a peer review when one is identified (flush only). Raises
+        """Record a run, creating or updating its task on the board (flush only). Raises
         ``InvalidSelfReview`` / ``UnknownReviewSkill`` / ``SelfReviewPolicyNotSet``."""
         ...
 
     def list(
-        self, *, author_id: int | None, task_ref: str | None, review_id: int | None
+        self, *, author_id: int | None, task_ref: str | None, task_review_id: int | None
     ) -> list[SelfReviewSummary]: ...
 
     def get(self, self_review_id: int) -> SelfReviewOut | None: ...
@@ -38,12 +38,9 @@ class SelfReviewRepository(Protocol):
         does not exist; raises ``NotReviewAuthor`` / ``InvalidSelfReview``."""
         ...
 
-    def has_self_review(self, author_id: int, task_ref: str) -> bool:
-        """Whether this author already self-reviewed this task (the ``required`` gate)."""
-        ...
 
     def delete(self, self_review_id: int, user: User) -> bool:
-        """Delete a self-review, its fixes and its thread entry (flush only). False if it does not
+        """Delete a self-review, its fixes (flush only). False if it does not
         exist; raises ``NotReviewAuthor`` for someone else's."""
         ...
 

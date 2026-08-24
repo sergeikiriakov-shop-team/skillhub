@@ -5,14 +5,6 @@ Re-exported flat so callers keep importing from ``skillhub_core.reviews.schemas`
 from __future__ import annotations
 
 from .policy import SelfReviewPolicyLane, SelfReviewPolicyOut, SelfReviewPolicyUpdate
-from .review import (
-    ReviewEventOut,
-    ReviewOut,
-    ReviewResubmitIn,
-    ReviewResultIn,
-    ReviewSubmitIn,
-    ReviewSummary,
-)
 from .self_review import (
     SelfReviewFinding,
     SelfReviewFindingOut,
@@ -22,14 +14,12 @@ from .self_review import (
     SelfReviewSubmitIn,
     SelfReviewSummary,
 )
+from .task_review import TaskReviewOut, TaskReviewReturnIn, TaskReviewSummary
 
 __all__ = [
-    "ReviewSubmitIn",
-    "ReviewResultIn",
-    "ReviewResubmitIn",
-    "ReviewEventOut",
-    "ReviewSummary",
-    "ReviewOut",
+    "TaskReviewSummary",
+    "TaskReviewOut",
+    "TaskReviewReturnIn",
     "SelfReviewFinding",
     "SelfReviewFindingOut",
     "SelfReviewFixIn",

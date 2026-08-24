@@ -13,9 +13,8 @@ from ..code_links import normalize_repo_url
 from ..errors import InvalidSelfReview, NotReviewAuthor, SelfReviewPolicyNotSet, UnknownReviewSkill
 from ..models import (
     LANE_DEFAULT,
-    REVIEW_DONE,
     SELF_REVIEW_LANES,
-    Review,
+    TaskReview,
     SelfReview,
     SelfReviewFix,
     SelfReviewPolicy,
@@ -24,7 +23,6 @@ from ..models import (
 )
 from ..schemas import SelfReviewFixIn, SelfReviewOut, SelfReviewSubmitIn, SelfReviewSummary
 from ..serializers import self_review as serializer
-
 
 class SqlSelfReviewRepository:
     """``SelfReviewRepository`` backed by SQLAlchemy."""
@@ -58,17 +56,6 @@ class SqlSelfReviewRepository:
 
         return self._session.scalars(select(Skill.name).where(Skill.id == skill_id)).first() or ""
 
-    def _open_review_for(self, author_id: int, task_ref: str) -> Review | None:
-        """The author's most recent still-open peer review of this task, if any."""
-        return self._session.scalars(
-            select(Review)
-            .where(
-                Review.author_user_id == author_id,
-                Review.task_ref == task_ref,
-                Review.status != REVIEW_DONE,
-            )
-            .order_by(Review.id.desc())
-        ).first()
 
     # --- writes ----------------------------------------------------------------------------------
 
@@ -81,7 +68,7 @@ class SqlSelfReviewRepository:
         findings = list(data.findings or [])
         validate_findings(findings)
         skill_id, skill_name = self._resolve_skill(lane, data.skill)
-        review = self._target_review(author, data)
+        task_review = self._task_review_for(data)
 
         self_review = SelfReview(
             task_ref=data.task_ref,
@@ -95,15 +82,29 @@ class SqlSelfReviewRepository:
             verdict=derive_verdict(findings, data.verdict),
             summary=data.summary or "",
             findings=[f.model_dump() for f in findings],
-            review_id=review.id if review is not None else None,
             author_user_id=author.id,
         )
         self._session.add(self_review)
         self._session.flush()
-        if review is not None:
-            review.attach_self_review(self_review, author.id)
+        task_review.record_run(self_review)
         self._session.flush()
         return serializer.to_detail(self_review)
+
+    def _task_review_for(self, data: SelfReviewSubmitIn) -> TaskReview:
+        """The board row for this task, created on its first run.
+
+        A task reaches the board by being reviewed — there is no separate "submit" step any more,
+        so the first run is what puts it in front of the lead."""
+        row = self._session.scalars(
+            select(TaskReview).where(TaskReview.task_ref == data.task_ref)
+        ).first()
+        if row is None:
+            row = TaskReview(task_ref=data.task_ref, title=data.title or "")
+            self._session.add(row)
+            self._session.flush()
+        elif data.title and not row.title:
+            row.title = data.title
+        return row
 
     def _resolve_skill(self, lane: str, requested: str | None) -> tuple[int | None, str]:
         """The lane's configured skill decides who reviews — the client may only override it by
@@ -121,17 +122,6 @@ class SqlSelfReviewRepository:
             )
         return policy.skill_id, self._skill_name(policy.skill_id)
 
-    def _target_review(self, author: User, data: SelfReviewSubmitIn) -> Review | None:
-        if data.review_id is None:
-            return self._open_review_for(author.id, data.task_ref)
-        review = self._session.get(Review, data.review_id)
-        if review is None:
-            raise InvalidSelfReview(f"review {data.review_id} not found")
-        # A self-review is the author's own account of their own change — it may only be attached
-        # to a review they authored, never to someone else's.
-        if review.author_user_id != author.id and not author.is_admin:
-            raise NotReviewAuthor(f"review {data.review_id} was not submitted by you")
-        return review
 
     def record_fixes(
         self, self_review_id: int, user: User, fixes: list[SelfReviewFixIn]
@@ -148,24 +138,28 @@ class SqlSelfReviewRepository:
 
     def delete(self, self_review_id: int, user: User) -> bool:
         """Delete a self-review and its fixes. False if it does not exist; raises when this user may
-        not. If it was threaded into a peer review, that entry is removed too — a thread line
-        pointing at findings nobody can open is worse than no line."""
+        not. The task keeps its remaining runs and re-derives its status; a task left with no runs
+        at all leaves the board, since a run is the only thing that puts it there.
+        """
         self_review = self._loaded(self_review_id)
         if self_review is None:
             return False
         self_review.assert_deletable_by(user)
-        if self_review.review_id is not None:
-            review = self._session.get(Review, self_review.review_id)
-            if review is not None:
-                review.detach_self_review(self_review.id)
+        task_review = self_review.task_review
         self._session.delete(self_review)
         self._session.flush()
+        if task_review is not None:
+            if not task_review.self_reviews:
+                self._session.delete(task_review)
+            else:
+                task_review.resync()
+            self._session.flush()
         return True
 
     # --- reads -----------------------------------------------------------------------------------
 
     def list(
-        self, *, author_id: int | None, task_ref: str | None, review_id: int | None
+        self, *, author_id: int | None, task_ref: str | None, task_review_id: int | None
     ) -> list[SelfReviewSummary]:
         stmt = select(SelfReview).options(
             selectinload(SelfReview.author), selectinload(SelfReview.fixes)
@@ -174,8 +168,8 @@ class SqlSelfReviewRepository:
             stmt = stmt.where(SelfReview.author_user_id == author_id)
         if task_ref:
             stmt = stmt.where(SelfReview.task_ref == task_ref)
-        if review_id is not None:
-            stmt = stmt.where(SelfReview.review_id == review_id)
+        if task_review_id is not None:
+            stmt = stmt.where(SelfReview.task_review_id == task_review_id)
         rows = self._session.scalars(stmt.order_by(SelfReview.id.desc())).all()
         return [serializer.to_summary(r) for r in rows]
 
@@ -183,13 +177,6 @@ class SqlSelfReviewRepository:
         row = self._loaded(self_review_id)
         return serializer.to_detail(row) if row is not None else None
 
-    def has_self_review(self, author_id: int, task_ref: str) -> bool:
-        found = self._session.scalars(
-            select(SelfReview.id)
-            .where(SelfReview.author_user_id == author_id, SelfReview.task_ref == task_ref)
-            .limit(1)
-        ).first()
-        return found is not None
 
     def commit(self) -> None:
         self._session.commit()

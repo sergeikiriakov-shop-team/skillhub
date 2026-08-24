@@ -77,11 +77,9 @@ class SelfReviewSubmitIn(BaseModel):
         default=None,
         description="pass | changes_needed. Omit to derive it from the findings' severities.",
     )
+    title: str = Field(default="", description="Short human title for the task on the board.")
     summary: str = Field(default="", description="What the review covered and concluded.")
     findings: list[SelfReviewFinding] = Field(default_factory=list)
-    review_id: int | None = Field(
-        default=None, description="Attach to this peer review; omit to attach by task_ref later."
-    )
 
 
 class SelfReviewSummary(BaseModel):
@@ -105,7 +103,7 @@ class SelfReviewSummary(BaseModel):
         "'not addressed, because…') and is deliberately NOT counted here.",
     )
     author: str | None
-    review_id: int | None
+    task_review_id: int | None
     created_at: datetime
 
 

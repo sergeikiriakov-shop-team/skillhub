@@ -105,12 +105,30 @@ def _apply_column_migrations() -> None:
         "NOT NULL DEFAULT 'skill'",
         "CREATE INDEX IF NOT EXISTS ix_recommendations_target_kind ON recommendations (target_kind)",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_mcp_servers_name ON mcp_servers (name)",
-        # Self-review: thread entries can now point at the self-review they carry. review_events
-        # predates self_reviews, so the column is added here rather than by create_all.
-        "ALTER TABLE review_events ADD COLUMN IF NOT EXISTS self_review_id INTEGER "
-        "REFERENCES self_reviews(id) ON DELETE SET NULL",
         # Findings deep-link into the repository they were found in, which the agent reports.
         "ALTER TABLE self_reviews ADD COLUMN IF NOT EXISTS repo VARCHAR(400)",
+        # One flow only: the peer-review hand-over (submit -> verdict -> resubmit -> ack) is gone,
+        # replaced by a board keyed on the task itself. Each self-review run now belongs to its
+        # task_reviews row; the status is derived from the latest run and the lead approves the
+        # task. Existing runs are carried over — they ARE the history — and the old reviews /
+        # review_events tables are dropped once nothing points at them.
+        "ALTER TABLE self_reviews ADD COLUMN IF NOT EXISTS task_review_id INTEGER "
+        "REFERENCES task_reviews(id) ON DELETE CASCADE",
+        "CREATE INDEX IF NOT EXISTS ix_self_reviews_task_review_id ON self_reviews (task_review_id)",
+        # One board row per task that has ever been self-reviewed, owned by whoever ran the newest
+        # run, with the status that run implies.
+        "INSERT INTO task_reviews (task_ref, title, branch, repo, status, author_user_id, created_at, updated_at) "
+        "SELECT DISTINCT ON (sr.task_ref) sr.task_ref, '', sr.branch, sr.repo, "
+        "  CASE WHEN sr.verdict = 'pass' THEN 'passed' ELSE 'changes_needed' END, "
+        "  sr.author_user_id, sr.created_at, sr.created_at "
+        "FROM self_reviews sr "
+        "WHERE NOT EXISTS (SELECT 1 FROM task_reviews t WHERE t.task_ref = sr.task_ref) "
+        "ORDER BY sr.task_ref, sr.id DESC",
+        "UPDATE self_reviews sr SET task_review_id = t.id FROM task_reviews t "
+        "WHERE t.task_ref = sr.task_ref AND sr.task_review_id IS NULL",
+        "ALTER TABLE self_reviews DROP COLUMN IF EXISTS review_id",
+        "DROP TABLE IF EXISTS review_events",
+        "DROP TABLE IF EXISTS reviews",
     ]
     with engine.begin() as conn:
         for stmt in statements:

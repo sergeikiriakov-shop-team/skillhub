@@ -61,7 +61,7 @@ class FakeSelfReviewRepo:
             raise self._raise
         return "SR"
 
-    def list(self, *, author_id, task_ref, review_id):
+    def list(self, *, author_id, task_ref, task_review_id):
         return ["s1"]
 
     def get(self, self_review_id):

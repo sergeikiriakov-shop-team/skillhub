@@ -1,33 +1,14 @@
 """Task Review context models — re-exported so callers keep importing from
 ``skillhub_core.reviews.models`` unchanged. Importing this package registers every model on the
-shared :class:`Base`."""
+shared :class:`Base`.
+
+One flow only: the developer runs the self-review skill, each run lands on its task's
+``TaskReview``, and the lead approves that task or sends it back."""
 
 from __future__ import annotations
 
-from .event import (
-    EVENT_ACK,
-    EVENT_KINDS,
-    EVENT_RESUBMIT,
-    EVENT_SELF_REVIEW,
-    EVENT_SUBMIT,
-    EVENT_VERDICT,
-    ReviewEvent,
-)
-from .review import (
-    REVIEW_APPROVED,
-    REVIEW_CHANGES_REQUESTED,
-    REVIEW_DONE,
-    REVIEW_STATUSES,
-    REVIEW_SUBMITTED,
-    VERDICT_APPROVE,
-    VERDICT_CHANGES,
-    VERDICTS,
-    Review,
-)
 from .self_review import (
     BLOCKING_SEVERITIES,
-    derive_verdict,
-    validate_findings,
     SELF_REVIEW_CHANGES,
     SELF_REVIEW_PASS,
     SELF_REVIEW_VERDICTS,
@@ -37,6 +18,8 @@ from .self_review import (
     SEVERITY_MINOR,
     SEVERITY_NIT,
     SelfReview,
+    derive_verdict,
+    validate_findings,
 )
 from .self_review_fix import SelfReviewFix
 from .self_review_policy import (
@@ -46,27 +29,23 @@ from .self_review_policy import (
     SELF_REVIEW_LANES,
     SelfReviewPolicy,
 )
+from .task_review import (
+    TASK_REVIEW_APPROVED,
+    TASK_REVIEW_CHANGES_NEEDED,
+    TASK_REVIEW_PASSED,
+    TASK_REVIEW_STATUSES,
+    TaskReview,
+)
 
 __all__ = [
-    "Review",
-    "ReviewEvent",
+    "TaskReview",
     "SelfReview",
     "SelfReviewFix",
     "SelfReviewPolicy",
-    "REVIEW_SUBMITTED",
-    "REVIEW_CHANGES_REQUESTED",
-    "REVIEW_APPROVED",
-    "REVIEW_DONE",
-    "REVIEW_STATUSES",
-    "VERDICT_APPROVE",
-    "VERDICT_CHANGES",
-    "VERDICTS",
-    "EVENT_SUBMIT",
-    "EVENT_VERDICT",
-    "EVENT_RESUBMIT",
-    "EVENT_ACK",
-    "EVENT_SELF_REVIEW",
-    "EVENT_KINDS",
+    "TASK_REVIEW_CHANGES_NEEDED",
+    "TASK_REVIEW_PASSED",
+    "TASK_REVIEW_APPROVED",
+    "TASK_REVIEW_STATUSES",
     "SELF_REVIEW_PASS",
     "SELF_REVIEW_CHANGES",
     "SELF_REVIEW_VERDICTS",

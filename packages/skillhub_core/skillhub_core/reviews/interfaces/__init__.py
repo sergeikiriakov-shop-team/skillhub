@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .review import ReviewRepository
 from .self_review import SelfReviewPolicyRepository, SelfReviewRepository
+from .task_review import TaskReviewRepository
 
-__all__ = ["ReviewRepository", "SelfReviewRepository", "SelfReviewPolicyRepository"]
+__all__ = ["TaskReviewRepository", "SelfReviewRepository", "SelfReviewPolicyRepository"]

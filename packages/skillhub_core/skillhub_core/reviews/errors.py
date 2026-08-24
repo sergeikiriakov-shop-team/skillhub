@@ -10,16 +10,17 @@ class ReviewsError(Exception):
     """Base class for Task Review domain errors."""
 
 
-class ReviewNotFound(ReviewsError):
-    """A review id did not resolve (the API maps it to 404)."""
+class TaskReviewNotFound(ReviewsError):
+    """A task-review id did not resolve (the API maps it to 404)."""
 
 
 class NotReviewAuthor(ReviewsError):
-    """A non-author (and non-admin) tried an author-only action — resubmit/ack (mapped to 403)."""
+    """A non-author (and non-admin) tried an author-only action (mapped to 403)."""
 
 
 class InvalidReviewTransition(ReviewsError):
-    """An illegal workflow transition (e.g. approving a review not awaiting review; mapped to 409)."""
+    """An illegal move on the board — approving a task with no run, approving twice, approving over
+    an unclean run when the policy forbids it, or returning one without a reason (mapped to 409)."""
 
 
 class SelfReviewNotFound(ReviewsError):
@@ -39,6 +40,3 @@ class InvalidSelfReview(ReviewsError):
     """A malformed self-review: unknown lane, verdict or finding severity (mapped to 400)."""
 
 
-class SelfReviewRequired(ReviewsError):
-    """The lane's policy requires a self-review before the task may be handed to the lead, and the
-    author has none for this task (mapped to 409)."""

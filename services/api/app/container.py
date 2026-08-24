@@ -14,12 +14,12 @@ from skillhub_core.mcp.services import McpRubricService, McpService
 from skillhub_core.platform.repositories import SqlUserAdminRepository
 from skillhub_core.platform.services import UserAdminService
 from skillhub_core.reviews.repositories import (
-    SqlReviewRepository,
+    SqlTaskReviewRepository,
     SqlSelfReviewPolicyRepository,
     SqlSelfReviewRepository,
 )
 from skillhub_core.reviews.services import (
-    ReviewService,
+    TaskReviewService,
     SelfReviewPolicyService,
     SelfReviewService,
 )
@@ -50,7 +50,7 @@ class Container(containers.DeclarativeContainer):
     evaluation_repository = providers.Factory(SqlEvaluationRepository)
     recommendation_repository = providers.Factory(SqlRecommendationRepository)
     catalog_repository = providers.Factory(SqlCatalogRepository)
-    review_repository = providers.Factory(SqlReviewRepository)
+    task_review_repository = providers.Factory(SqlTaskReviewRepository)
     self_review_repository = providers.Factory(SqlSelfReviewRepository)
     self_review_policy_repository = providers.Factory(SqlSelfReviewPolicyRepository)
     mcp_repository = providers.Factory(SqlMcpRepository)
@@ -64,7 +64,7 @@ class Container(containers.DeclarativeContainer):
     evaluation_service = providers.Factory(EvaluationService)
     recommendation_service = providers.Factory(RecommendationService)
     catalog_service = providers.Factory(CatalogService)
-    review_service = providers.Factory(ReviewService)
+    task_review_service = providers.Factory(TaskReviewService)
     self_review_service = providers.Factory(SelfReviewService)
     self_review_policy_service = providers.Factory(SelfReviewPolicyService)
     mcp_service = providers.Factory(McpService)

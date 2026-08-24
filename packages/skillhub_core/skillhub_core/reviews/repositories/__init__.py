@@ -1,16 +1,13 @@
-"""SQLAlchemy-backed repositories for the Task Review context, one module per aggregate.
-
-Each satisfies the matching Protocol in ``..interfaces`` and returns DTOs, so services stay DB-free
-and fakeable. Persistence only: the workflow rules live on the aggregates in ``..models``."""
+"""SQLAlchemy-backed repositories for the Task Review context, one module per aggregate."""
 
 from __future__ import annotations
 
 from .policy import SqlSelfReviewPolicyRepository
-from .review import SqlReviewRepository
 from .self_review import SqlSelfReviewRepository
+from .task_review import SqlTaskReviewRepository
 
 __all__ = [
-    "SqlReviewRepository",
+    "SqlTaskReviewRepository",
     "SqlSelfReviewRepository",
     "SqlSelfReviewPolicyRepository",
 ]

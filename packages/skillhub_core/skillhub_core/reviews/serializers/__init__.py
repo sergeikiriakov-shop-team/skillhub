@@ -1,11 +1,7 @@
-"""ORM aggregate → DTO, one module per aggregate.
-
-Imported as ``from .serializers import review as review_serializer`` so call sites read as
-``review_serializer.to_detail(...)`` — the aggregate stays visible at the call, which flat
-``to_review_detail`` / ``to_self_review_detail`` names lost as the context grew."""
+"""ORM aggregate → DTO, one module per aggregate."""
 
 from __future__ import annotations
 
-from . import policy, review, self_review
+from . import policy, self_review, task_review
 
-__all__ = ["review", "self_review", "policy"]
+__all__ = ["task_review", "self_review", "policy"]

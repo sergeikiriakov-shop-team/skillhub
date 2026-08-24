@@ -8,7 +8,7 @@ happens in the developer's own Claude Code.
 
 Thin layer over ``SelfReviewService`` (injected via the DI container); domain errors are mapped to
 HTTP status here. Mounted at ``/self-reviews`` rather than under ``/reviews`` so nothing collides
-with ``/reviews/{review_id}``.
+with ``/task-reviews/{id}``.
 """
 
 from __future__ import annotations
@@ -45,8 +45,8 @@ router = APIRouter(tags=["self-reviews"], prefix="/self-reviews")
 def get_policy(
     service: SelfReviewPolicyService = Depends(get_self_review_policy_service),
 ) -> SelfReviewPolicyOut:
-    """Which catalog skill self-reviews each lane, and whether it is mandatory before handing a task
-    to the lead. Claude Code reads this, then fetches that skill with ``get_skill``."""
+    """Which catalog skill self-reviews each lane, and whether a clean run is mandatory
+    before the lead may approve. Claude Code reads this, then fetches that skill with ``get_skill``."""
     return service.get_policy()
 
 
@@ -73,8 +73,8 @@ def submit_self_review(
     user: User = Depends(require_user),
     service: SelfReviewService = Depends(get_self_review_service),
 ) -> SelfReviewOut:
-    """Record the result of reviewing your own change with the lane's skill. Attaches to your open
-    peer review of the same task when there is one (and to a later one when you submit it)."""
+    """Record the result of reviewing your own change with the lane's skill. This is what puts the
+    task on the review board: the first run creates its row, every later run re-derives its status."""
     try:
         return service.submit(user, payload)
     except UnknownReviewSkill as exc:
@@ -91,12 +91,12 @@ def submit_self_review(
 def list_self_reviews(
     mine: bool = Query(default=False, description="Only the ones you ran."),
     task_ref: str | None = Query(default=None, description="Filter by task."),
-    review_id: int | None = Query(default=None, description="Only those attached to this review."),
+    task_review_id: int | None = Query(default=None, description="Only the runs of this board task."),
     user: User = Depends(require_user),
     service: SelfReviewService = Depends(get_self_review_service),
 ) -> list[SelfReviewSummary]:
     return service.list(
-        author_id=user.id if mine else None, task_ref=task_ref, review_id=review_id
+        author_id=user.id if mine else None, task_ref=task_ref, task_review_id=task_review_id
     )
 
 
@@ -125,8 +125,8 @@ def delete_self_review(
     user: User = Depends(require_user),
     service: SelfReviewService = Depends(get_self_review_service),
 ) -> Response:
-    """Delete one of your own self-reviews, with its fixes and its entry in a peer review's thread.
-    Admins may delete any."""
+    """Delete one of your own self-reviews, with its fixes. The task keeps its other runs and
+    re-derives its status; a task left with no runs leaves the board. Admins may delete any."""
     try:
         service.delete(self_review_id, user)
     except SelfReviewNotFound as exc:

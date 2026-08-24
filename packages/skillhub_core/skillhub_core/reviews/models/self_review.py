@@ -2,8 +2,8 @@
 
 The skill that does the reviewing is chosen server-side (``SelfReviewPolicy``) so the whole team
 reviews itself the same way; the developer's own Claude Code applies that SKILL.md to the diff and
-posts the result back here. A self-review stands on its own (it points at a task/branch, not at a
-peer review) and is attached to a ``Review`` when the task is later handed to the lead."""
+posts the result back here. Each run belongs to its task's ``TaskReview`` — the board row the lead
+reads — and the task's status is derived from the latest run."""
 
 from __future__ import annotations
 
@@ -58,15 +58,15 @@ class SelfReview(Base):
     verdict: Mapped[str] = mapped_column(String(20), default=SELF_REVIEW_PASS)
     summary: Mapped[str] = mapped_column(Text, default="")
     findings: Mapped[list] = mapped_column(JSONB, default=list)
-    review_id: Mapped[int | None] = mapped_column(
-        ForeignKey("reviews.id", ondelete="SET NULL"), nullable=True, index=True
+    task_review_id: Mapped[int | None] = mapped_column(
+        ForeignKey("task_reviews.id", ondelete="CASCADE"), nullable=True, index=True
     )
     author_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     author: Mapped["User"] = relationship("User", foreign_keys=[author_user_id])  # noqa: F821
-    review: Mapped["Review | None"] = relationship(  # noqa: F821
-        "Review", back_populates="self_reviews", foreign_keys=[review_id]
+    task_review: Mapped["TaskReview | None"] = relationship(  # noqa: F821
+        "TaskReview", back_populates="self_reviews", foreign_keys=[task_review_id]
     )
     # Owned by the review: a fix is meaningless without the finding it answers.
     fixes: Mapped[list["SelfReviewFix"]] = relationship(  # noqa: F821

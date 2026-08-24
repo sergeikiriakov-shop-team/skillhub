@@ -34,9 +34,9 @@ class SelfReviewService:
         *,
         author_id: int | None = None,
         task_ref: str | None = None,
-        review_id: int | None = None,
+        task_review_id: int | None = None,
     ) -> list[SelfReviewSummary]:
-        return self._self_reviews.list(author_id=author_id, task_ref=task_ref, review_id=review_id)
+        return self._self_reviews.list(author_id=author_id, task_ref=task_ref, task_review_id=task_review_id)
 
     def get(self, self_review_id: int) -> SelfReviewOut:
         self_review = self._self_reviews.get(self_review_id)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .review import ReviewService
 from .self_review import SelfReviewPolicyService, SelfReviewService
+from .task_review import TaskReviewService
 
-__all__ = ["ReviewService", "SelfReviewService", "SelfReviewPolicyService"]
+__all__ = ["TaskReviewService", "SelfReviewService", "SelfReviewPolicyService"]

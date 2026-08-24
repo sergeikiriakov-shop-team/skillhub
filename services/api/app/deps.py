@@ -13,7 +13,7 @@ from skillhub_core.mcp.services import McpRubricService, McpService
 from skillhub_core.platform.db import get_session
 from skillhub_core.platform.services import UserAdminService
 from skillhub_core.reviews.services import (
-    ReviewService,
+    TaskReviewService,
     SelfReviewPolicyService,
     SelfReviewService,
 )
@@ -62,12 +62,11 @@ def get_catalog_service(session: Session = Depends(get_session)) -> CatalogServi
     return container.catalog_service(catalog=container.catalog_repository(session=session))
 
 
-def get_review_service(session: Session = Depends(get_session)) -> ReviewService:
-    # Three repositories: the review itself, plus the self-review + policy pair the service reads to
-    # enforce "no handover without a self-review when the policy demands one".
-    return container.review_service(
-        reviews=container.review_repository(session=session),
-        self_reviews=container.self_review_repository(session=session),
+def get_task_review_service(session: Session = Depends(get_session)) -> TaskReviewService:
+    # Two repositories: the board itself, plus the policy it consults to decide whether an approval
+    # may stand on a run that still has blocking findings.
+    return container.task_review_service(
+        tasks=container.task_review_repository(session=session),
         policies=container.self_review_policy_repository(session=session),
     )
 

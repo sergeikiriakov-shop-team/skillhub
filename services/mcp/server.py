@@ -41,8 +41,8 @@ ArgModelBase.model_config = ConfigDict(arbitrary_types_allowed=True, extra="forb
 # These are DUPLICATED, not imported: this container installs only `mcp` + `httpx` (see Dockerfile),
 # deliberately excluding skillhub_core so the image stays small (no torch). The source of truth is
 # `skillhub_core.skills.constants` (REC_KINDS / REC_STATUSES / REC_TARGET_KINDS / FORMAT_*),
-# `skillhub_core.mcp.models.mcp_server` (TRANSPORTS) and `skillhub_core.reviews.models.review`
-# (REVIEW_STATUSES / VERDICTS) — keep them in step when a vocabulary changes there.
+# `skillhub_core.mcp.models.mcp_server` (TRANSPORTS) and `skillhub_core.reviews.models.task_review`
+# (TASK_REVIEW_STATUSES) — keep them in step when a vocabulary changes there.
 #
 # Only stable domain vocabularies belong here. Evaluation DIMENSIONS deliberately do NOT: they are
 # strategy, served live from /api/rubric so one algorithm governs every developer, and embedding
@@ -54,8 +54,7 @@ SourceFormat = Literal[
     "claude_skill", "cursor_mdc", "codex_skill", "copilot_instructions", "generic_md"
 ]
 McpTransport = Literal["stdio", "http"]
-ReviewStatus = Literal["submitted", "changes_requested", "approved", "done"]
-ReviewVerdict = Literal["approve", "changes_requested"]
+TaskReviewStatus = Literal["changes_needed", "passed", "approved"]
 SelfReviewLane = Literal["default", "backend", "frontend"]
 SelfReviewVerdict = Literal["pass", "changes_needed"]
 FindingSeverity = Literal["blocker", "major", "minor", "nit"]
@@ -739,119 +738,74 @@ def submit_skill_notebook(
     return _authed_call("PUT", f"/api/skills/{skill_id}/notebook", json=body)
 
 
-# --- Task Review context (peer-review handoff developer <-> lead) ------------------------------
+# --- The review board (one row per task; the lead approves or sends it back) ----------------------
 
 
 @mcp.tool()
-def submit_for_review(
-    task_ref: Annotated[str, Field(description="The issue_logs id or link the work belongs to.")],
-    title: Annotated[str, Field(description="Short title for the reviewer's queue.")] = "",
-    branch: Annotated[str | None, Field(description="Branch the reviewer should fetch.")] = None,
-    commit_shas: Annotated[
-        list[str] | None, Field(description="Commits that make up the change.")
-    ] = None,
-    summary: Annotated[str, Field(description="What changed and why.")] = "",
-    files: Annotated[list[str] | None, Field(description="Paths the change touches.")] = None,
-    verified_notes: Annotated[
-        str, Field(description="What you actually checked (php -l / harness / QA) AND what you did not.")
-    ] = "",
-) -> Any:
-    """Submit a deploy-ready Prologistics task for review by the lead. Pass a POINTER to the work —
-    the code stays in git; the reviewer fetches the branch and reviews the real diff. The single
-    lead is auto-assigned. Returns the created review (with its id and status); unauthorized in
-    stdio mode returns `{action_required: <how to approve>}`."""
-    body = {
-        "task_ref": task_ref, "title": title, "branch": branch,
-        "commit_shas": commit_shas or [], "summary": summary,
-        "files": files or [], "verified_notes": verified_notes,
-    }
-    return _authed_call("POST", "/api/reviews", json=body)
-
-
-@mcp.tool()
-def list_review_queue() -> Any:
-    """Lead's inbox: reviews awaiting review (status `submitted`). For each, run `get_review`, fetch
-    the branch and review the diff, then post `submit_review_result`."""
-    return _read_call("GET", "/api/reviews", params={"status": "submitted"})
-
-
-@mcp.tool()
-def list_my_reviews(
+def list_review_board(
     status: Annotated[
-        ReviewStatus | None, Field(description="Lifecycle filter; omit for all of yours.")
+        TaskReviewStatus | None,
+        Field(description="Filter by state; omit for the whole board."),
     ] = None,
+    mine: Annotated[bool, Field(description="Only tasks you self-reviewed.")] = False,
 ) -> Any:
-    """Reviews you authored. The ones needing your action are `changes_requested` (fix +
-    `resubmit_review`) and `approved` (`ack_review`)."""
-    params = {"mine": "true"}
+    """The review board: one row per task, not per run. `status='passed'` is the LEAD'S QUEUE —
+    tasks whose latest self-review came back clean and which are waiting for a sign-off.
+    `status='changes_needed'` is what the author still has to fix (either the run found something,
+    or the lead sent it back with a comment)."""
+    params: dict[str, Any] = {}
     if status:
         params["status"] = status
-    return _read_call("GET", "/api/reviews", params=params)
+    if mine:
+        params["mine"] = "true"
+    return _read_call("GET", "/api/task-reviews", params=params)
 
 
 @mcp.tool()
-def get_review(
-    review_id: Annotated[int, Field(description="Numeric review id from a list tool.")],
+def get_task_review(
+    task_review_id: Annotated[int, Field(description="Numeric id from `list_review_board`.")],
 ) -> Any:
-    """Get one review with its full thread (submit -> verdict -> resubmit -> ...), pointer fields
-    (task_ref, branch, commit_shas, files), summary and the author's verification notes."""
-    return _read_call("GET", f"/api/reviews/{review_id}")
+    """One task with its whole run history and the latest run's findings and fixes — what the lead
+    reads before approving. `open_finding_count` is how many findings nobody has answered yet."""
+    return _read_call("GET", f"/api/task-reviews/{task_review_id}")
 
 
 @mcp.tool()
-def submit_review_result(
-    review_id: Annotated[int, Field(description="Numeric review id from `list_review_queue`.")],
-    verdict: Annotated[
-        ReviewVerdict, Field(description="`changes_requested` requires `comments`.")
-    ],
-    comments: Annotated[
-        str, Field(description="What must change; required when requesting changes.")
-    ] = "",
+def approve_task_review(
+    task_review_id: Annotated[int, Field(description="Numeric id from `list_review_board`.")],
 ) -> Any:
-    """Lead posts a verdict on a review. Requires the reviewer (lead) role; unauthorized in stdio
-    mode returns `{action_required: <how to approve>}`. Only a review awaiting review can be
-    decided."""
-    return _authed_call(
-        "POST", f"/api/reviews/{review_id}/result", json={"verdict": verdict, "comments": comments}
-    )
-
-
-@mcp.tool()
-def resubmit_review(
-    review_id: Annotated[int, Field(description="Numeric review id being resubmitted.")],
-    commit_shas: Annotated[
-        list[str] | None, Field(description="The NEW commits added since the verdict.")
-    ] = None,
-    note: Annotated[str, Field(description="What you changed in response to the comments.")] = "",
-) -> Any:
-    """Author sends a task back for another round after addressing the review comments. Moves the
-    review back into the lead's queue; unauthorized in stdio mode returns
-    `{action_required: <how to approve>}`."""
-    return _authed_call(
-        "POST", f"/api/reviews/{review_id}/resubmit",
-        json={"commit_shas": commit_shas or [], "note": note},
-    )
-
-
-@mcp.tool()
-def ack_review(
-    review_id: Annotated[int, Field(description="Numeric review id you authored.")],
-) -> Any:
-    """Author acknowledges the outcome; an approved review is closed (status `done`). Unauthorized
+    """Sign a task off as the lead — the final step of the flow. Read `get_task_review` first: this
+    approves what the self-review found, so approving without looking is the one way to make the
+    board meaningless. Rejected (409) when the task has no run at all, is already approved, or —
+    if the policy requires a clean run — has not passed. Requires the reviewer role; unauthorized
     in stdio mode returns `{action_required: <how to approve>}`."""
-    return _authed_call("POST", f"/api/reviews/{review_id}/ack", json={})
+    return _authed_call("POST", f"/api/task-reviews/{task_review_id}/approve", json={})
 
 
 @mcp.tool()
-def delete_review(
-    review_id: Annotated[int, Field(description="Numeric review id you authored.")],
+def return_task_review(
+    task_review_id: Annotated[int, Field(description="Numeric id from `list_review_board`.")],
+    comment: Annotated[
+        str, Field(description="What must change. Required — a bare rejection costs a round trip.")
+    ],
 ) -> Any:
-    """Withdraw a review you submitted — for a duplicate or a mistyped task_ref. Allowed while it is
-    still awaiting a verdict; once the lead has ruled, only an admin may delete it (409 otherwise),
-    because the thread then records someone else's judgement. Self-reviews attached to it are NOT
-    deleted — they detach and stay in the standalone list. Unauthorized in stdio mode returns
+    """Send a task back to its author instead of approving it — for when the run came back clean
+    but you disagree, or you want something changed anyway. The comment is mandatory and is what
+    the author sees; their next self-review run clears it. Requires the reviewer role."""
+    return _authed_call(
+        "POST", f"/api/task-reviews/{task_review_id}/return", json={"comment": comment}
+    )
+
+
+@mcp.tool()
+def delete_task_review(
+    task_review_id: Annotated[int, Field(description="Numeric id from `list_review_board`.")],
+) -> Any:
+    """Remove a task and ALL its self-review runs from the board — for a duplicate or a mistyped
+    task_ref. The author may while it is unapproved; after a sign-off only an admin may, so an
+    approval cannot be quietly erased. Unauthorized in stdio mode returns
     `{action_required: <how to approve>}`."""
-    return _authed_call("DELETE", f"/api/reviews/{review_id}")
+    return _authed_call("DELETE", f"/api/task-reviews/{task_review_id}")
 
 
 # --- Self-review (review your OWN change with the skill the team configured) ---------------------
@@ -908,17 +862,16 @@ def submit_self_review(
         Field(description="Omit to derive it: any blocker/major finding means changes_needed."),
     ] = None,
     summary: Annotated[str, Field(description="What the review covered and concluded.")] = "",
-    review_id: Annotated[
-        int | None, Field(description="Attach to this peer review; omit to attach by task_ref.")
-    ] = None,
+    title: Annotated[str, Field(description="Short human title for the task on the board.")] = "",
 ) -> Any:
-    """Post the result of reviewing your OWN change with the configured skill. It attaches to your
-    open peer review of the same task (or to a later one when you submit it), so the lead sees what
-    you already caught. Unauthorized in stdio mode returns `{action_required: <how to approve>}`."""
+    """Post the result of reviewing your OWN change with the configured skill. This is what puts
+    the task on the review board: the row is created on the first run, and every later run updates
+    its status — clean run means it is waiting for the lead, findings mean it is back with you.
+    Unauthorized in stdio mode returns `{action_required: <how to approve>}`."""
     body = {
         "task_ref": task_ref, "branch": branch, "commit_shas": commit_shas or [], "repo": repo,
         "lane": lane, "skill": skill, "model": model, "verdict": verdict,
-        "summary": summary, "review_id": review_id,
+        "summary": summary, "title": title,
         "findings": [f.model_dump() for f in (findings or [])],
     }
     return _authed_call("POST", "/api/self-reviews", json=body)
@@ -928,8 +881,8 @@ def submit_self_review(
 def list_self_reviews(
     mine: Annotated[bool, Field(description="Only the ones you ran.")] = True,
     task_ref: Annotated[str | None, Field(description="Filter by task.")] = None,
-    review_id: Annotated[
-        int | None, Field(description="Only those attached to this peer review.")
+    task_review_id: Annotated[
+        int | None, Field(description="Only the runs belonging to this board task.")
     ] = None,
 ) -> Any:
     """Self-reviews, newest first — each with its verdict and finding counts. Use `get_self_review`
@@ -937,8 +890,8 @@ def list_self_reviews(
     params: dict[str, Any] = {"mine": "true" if mine else "false"}
     if task_ref:
         params["task_ref"] = task_ref
-    if review_id is not None:
-        params["review_id"] = str(review_id)
+    if task_review_id is not None:
+        params["task_review_id"] = str(task_review_id)
     return _read_call("GET", "/api/self-reviews", params=params)
 
 
