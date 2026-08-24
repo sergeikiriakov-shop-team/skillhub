@@ -14,6 +14,9 @@ worth reading at all:
    is worse than one that reports the single real thing, so the checks cap the finding count and
    require the real one to be localized to the file that actually contains it.
 
+4. The run is the hand-over. Posting it creates the task's row on the board, so the payload has to
+   carry what a lead needs to triage the queue — the task name included, not just its id.
+
 The fake service stands in for SkillHub itself: the policy endpoint, the catalog entry for the
 configured reviewing skill, and the self-review submission endpoint.
 """
@@ -215,6 +218,12 @@ scenario = Scenario(
         Check(
             "left the verdict to the service instead of asserting it",
             lambda ctx: _payload(ctx).get("verdict") in (None, ""),
+        ),
+        Check(
+            # The run creates the board row, so whatever it names the task is what the lead reads
+            # in the queue. A bare id is a row nobody can triage without opening it.
+            "named the task for the board rather than leaving it as a bare id",
+            lambda ctx: len(str(_payload(ctx).get("title") or "").strip()) >= 8,
         ),
         Check(
             "wrote a human-readable report",
