@@ -53,40 +53,40 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   out the same way — **a package per layer, a module per aggregate**: `models/ · schemas/ ·
   serializers/ · repositories/ · interfaces/ · services/ · errors.py` — wired by a
   `dependency-injector` container (`services/api/app/container.py` + `deps.py`). Routers are thin:
-  they only map domain errors to HTTP. Rules live on the aggregates (`Review.decide()`,
-  `SelfReview.record_fix()`, `derive_verdict()`), not in the repositories; a rule spanning two
-  aggregates lives in an application service (the required-self-review gate in `ReviewService`).
-  Flat facades in each `__init__.py` mean `from skillhub_core.<context>.<layer> import X` still
-  works regardless of which module X ended up in.
-  - **Peer review.** Submit a deploy-ready task as a POINTER (task_ref, branch, commit SHAs, files,
-    summary, verified_notes) → the lead fetches the branch and reviews the real diff → verdict
-    `approve | changes_requested` → author resubmits or acks. `submitted → approved |
-    changes_requested → … → done`, every step appended to `review_events`. The lead is the single
-    `is_reviewer` user (auto-assigned at submit); **open-review mode** (default, config-gated) lets
-    any authenticated user post a verdict.
-  - **Self-review.** WHICH skill reviews a developer's own diff is an admin-managed server setting
-    (`self_review_policies`: lane `default|backend|frontend` → catalog skill, + `required`), the same
-    pattern as the rubric weights. Claude Code reads the policy, fetches that SKILL.md via
-    `get_skill`, applies it to the diff, and POSTs the findings back; the result attaches to the peer
-    review of the same `task_ref` (on submit, unattached ones are picked up) and shows in its thread.
-    Verdict is server-derived when omitted: any `blocker`/`major` → `changes_needed`, else `pass`.
-    Any lane marked `required` makes `POST /api/reviews` 409 without a self-review. Findings
-    deep-link to their line: the agent passes `repo` (its `git remote get-url origin`), stored per
-    self-review because the team spans repositories; URLs are derived at read time in
-    `reviews/code_links.py` and pinned to the last reviewed commit.
+  they only map domain errors to HTTP. Rules live on the aggregates (`TaskReview.approve()`,
+  `TaskReview.record_run()`, `SelfReview.record_fix()`, `derive_verdict()`), not in the repositories;
+  a rule spanning two aggregates lives in an application service (the required-clean-run gate in
+  `TaskReviewService`). Flat facades in each `__init__.py` mean
+  `from skillhub_core.<context>.<layer> import X` still works regardless of which module X ended up in.
+  - **One flow.** The developer runs the review on their own change; that run puts the task on the
+    board; the lead signs it off. No hand-over step, no second reviewer re-running the diff.
+  - **Self-review run.** WHICH skill reviews a developer's own diff is an admin-managed server
+    setting (`self_review_policies`: lane `default|backend|frontend` → catalog skill, + `required`),
+    the same pattern as the rubric weights. Claude Code reads the policy, fetches that SKILL.md via
+    `get_skill`, applies it to the diff, and POSTs the findings back. Verdict is server-derived when
+    omitted: any `blocker`/`major` → `changes_needed`, else `pass`. Findings deep-link to their line:
+    the agent passes `repo` (its `git remote get-url origin`), stored per run because the team spans
+    repositories; URLs are derived at read time in `reviews/code_links.py` and pinned to the last
+    reviewed commit. Afterwards the author records what each fix closed (a commit = closed, a
+    note-only fix = an answer, counted separately) — additive, never editing the original findings.
+  - **Task board.** One `task_reviews` row per `task_ref`, created by the first run. Its status is
+    DERIVED from the latest run — `changes_needed` (with the author) or `passed` (the lead's queue) —
+    never posted. The lead ends it: `approved`, or returned with a mandatory `lead_comment` that puts
+    it back to `changes_needed` until the next run clears it. A lane marked `required` makes
+    approving an unclean task 409.
 
 ## Key API endpoints
 - Reads (open when `SKILLHUB_PUBLIC_READS=true`, else require a logged-in user): `GET /api/stats`,
   `/api/skills`, `/api/skills?evaluated=false` (work queue), `/api/skills/{id}`, `/api/search?q=`,
   `/api/categories`, `/api/rubric`, `/api/skills/{id}/evaluations`. `GET /api/health` is always open.
-- Task review: `POST /api/reviews` (submit), `GET /api/reviews?status=|mine=|queue=`,
-  `GET /api/reviews/{id}`, `POST /api/reviews/{id}/result` (reviewer), `/resubmit`, `/ack` (author),
-  `DELETE /api/reviews/{id}` (author while `submitted`, admin any — 409 after a verdict).
-- Self-review: `GET /api/self-reviews/policy`, `PUT /api/self-reviews/policy` (admin),
-  `POST /api/self-reviews`, `GET /api/self-reviews?mine=|task_ref=|review_id=`,
-  `GET /api/self-reviews/{id}`, `POST /api/self-reviews/{id}/fixes` (author),
-  `DELETE /api/self-reviews/{id}` (author or admin; takes its fixes and its thread entry with it). Mounted at `/self-reviews`, not under `/reviews`, so nothing
-  collides with `/reviews/{review_id}`.
+- Review board: `GET /api/task-reviews?status=|mine=`, `GET /api/task-reviews/{id}`,
+  `POST /api/task-reviews/{id}/approve` (reviewer), `POST /api/task-reviews/{id}/return` (reviewer,
+  comment required), `DELETE /api/task-reviews/{id}` (author while unapproved, admin any).
+- Self-review runs: `GET /api/self-reviews/policy`, `PUT /api/self-reviews/policy` (admin),
+  `POST /api/self-reviews` (this is what creates/updates the board row),
+  `GET /api/self-reviews?mine=|task_ref=|task_review_id=`, `GET /api/self-reviews/{id}`,
+  `POST /api/self-reviews/{id}/fixes` (author), `DELETE /api/self-reviews/{id}` (author or admin;
+  takes its fixes with it and re-derives the task's status).
 - Token/cookie writes: `POST /api/skills` (contributor+), `POST /api/skills/{id}/assessment`
   (evaluator), `DELETE /api/skills/{id}` (admin).
 - Auth: `GET /api/auth/login|callback`, `GET /api/auth/me`, `POST /api/auth/logout`,
@@ -136,21 +136,21 @@ Install `skills/skillhub/SKILL.md` into Claude Code (or point it at the repo). S
 Tools: `list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `get_stats`,
 `list_task_groups`, `list_recommendations`, `upload_skill` (contributor+), `submit_assessment`
 (evaluator), `add_recommendation`/`set_recommendation_status` (contributor+), `authenticate`;
-task review — `submit_for_review`, `list_review_queue`, `list_my_reviews`, `get_review`,
-`submit_review_result`, `resubmit_review`, `ack_review`; self-review — `get_self_review_policy`,
+review board (lead) — `list_review_board`, `get_task_review`, `approve_task_review`,
+`return_task_review`, `delete_task_review`; self-review — `get_self_review_policy`,
 `submit_self_review`, `list_self_reviews`, `get_self_review`, `record_self_review_fixes`,
-`delete_self_review`, `delete_review`. See `services/mcp/README.md`.
+`delete_self_review`. See `services/mcp/README.md`.
 
 ## Skills shipped with the service (`skills/`)
 `skillhub` (evaluate the catalog) · `connect-skillhub` (one-line MCP setup) · `sandbox-eval` ·
-`submit-for-review` · `review-inbox` (lead, under `/loop`) · `review-status` · `self-review`.
+`self-review` (developer) · `review-board` (lead, under `/loop`) · `review-status` (developer).
 
 ## Next
-- **End-to-end trial of the review board on prod** — it has never run on real data: `self-review`
-  (with a lane pointed at a review skill) → `submit-for-review` → `review-inbox` verdict →
-  `resubmit_review` → approve → `ack_review`.
-- **Wire `green-loop` to the board**: auto-submit once a task is deploy-ready, auto-resubmit after
-  `changes_requested` (`submit-for-review` still says "once wired").
+- **End-to-end trial of the one-flow board on prod**: `self-review` (with the lane pointed at a
+  review skill) → the task appears `changes_needed`/`passed` → `record_self_review_fixes` → re-run →
+  the lead approves or returns it.
+- **Wire `green-loop` to the board**: re-run the self-review once a task is deploy-ready, and again
+  after the lead returns it.
 - Then: "optimal skills" (synthesis of an ideal skill from a cluster) display + richer stats.
 - Later/optional: a scheduler running headless `claude -p` re-evaluation.
 

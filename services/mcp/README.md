@@ -18,11 +18,12 @@ Tools: `list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `
 `submit_assessment` (evaluator), `add_recommendation`/`set_recommendation_status` (contributor+),
 `authenticate`.
 
-Task review: `submit_for_review`, `list_review_queue`, `list_my_reviews`, `get_review`, `delete_review`,
-`submit_review_result` (reviewer), `resubmit_review`, `ack_review`.
+Self-review — review your own change with the skill the team configured; this is what puts the task
+on the board: `get_self_review_policy`, `submit_self_review`, `list_self_reviews`, `get_self_review`,
+`record_self_review_fixes`, `delete_self_review`.
 
-Self-review (review your own change with the skill the team configured): `get_self_review_policy`,
-`submit_self_review`, `list_self_reviews`, `get_self_review`, `record_self_review_fixes`, `delete_self_review`.
+Review board — the lead's half: `list_review_board`, `get_task_review`, `approve_task_review`
+(reviewer), `return_task_review` (reviewer), `delete_task_review`.
 
 ## Connect (developer — remote HTTP, no build, no Docker)
 

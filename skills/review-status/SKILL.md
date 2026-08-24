@@ -1,36 +1,42 @@
 ---
 name: review-status
 description: >
-  Use (typically a DEVELOPER, under `/loop`) to check the outcome of tasks you submitted to the
-  SkillHub review board. Triggers on "review status", "any review feedback?", "что там с ревью",
-  or a `/loop review-status`. Surfaces your reviews that need action — `changes_requested` (with the
-  lead's comments) and `approved` — via the `skillhub` MCP. v1 is NOTIFY-ONLY: it reports the verdict
-  and the next step (fix + resubmit, or acknowledge); it does not change code itself.
+  Use (a DEVELOPER, typically under `/loop`) to check where your tasks stand on the SkillHub review
+  board — what the lead sent back, what is still waiting for their sign-off, and what got Approved.
+  Triggers on "review status", "что там с ревью", "any review feedback?", or a `/loop review-status`.
+  Reads your own rows via the `skillhub` MCP (`list_review_board(mine=true)`) and reports the next
+  step: fix and re-run `self-review`, or wait, or done. NOTIFY-ONLY — it does not change code, and it
+  never posts a verdict.
 ---
 
-# Review status — check feedback on your submitted tasks (developer)
+# Review status — where your tasks stand (developer)
 
-Poll the SkillHub review board for verdicts on tasks you submitted. Designed to run under `/loop` on
-a developer's machine (e.g. `/loop 15m review-status`). Requires the `skillhub` MCP connected.
+One flow: your own `self-review` run puts a task on the board and sets its status; the lead then
+marks it **Approved** or sends it back with a comment. This skill tells you which of those happened.
+Designed to run under `/loop` on a developer's machine (e.g. `/loop 15m review-status`). Requires the
+`skillhub` MCP connected.
 
 ## Each tick
-1. **Needs your action:** `list_my_reviews(status="changes_requested")` and
-   `list_my_reviews(status="approved")`.
-2. If both are empty, report "no review feedback" and stop this tick.
-3. For each item, `get_review(review_id)` to read the latest verdict + the lead's comments from the
-   thread.
+1. **Your rows:** `list_review_board(mine=true)` — every task you self-reviewed, with its status.
+2. If nothing has moved since you last reported, say so and stop this tick.
+3. For anything that needs attention, `get_task_review(id)` for the lead's comment and the latest
+   run's findings.
 
-## Report (notify only — do NOT change code in v1)
-- **changes_requested:** show the task, the branch, and the lead's comments verbatim, then state the
-  next step: fix the points on the task's branch and run `resubmit_review(review_id, commit_shas,
-  note)` — or, once green-loop is wired to the board, re-run `green-loop` on the task and it will
-  apply the fixes and resubmit. Ask the user whether to proceed with fixes now; do not start editing
-  on your own from this loop.
-- **approved:** congratulate briefly and offer to close it: `ack_review(review_id)` (an approved
-  review becomes `done` on ack). Production rollout / tracker moves remain the user's separate step.
+## Report (notify only — do NOT change code)
+- **`changes_needed`** — the task is with you. Two ways it got there, and they read differently:
+  - the run itself found blockers/majors → show them (severity · file:line · what to do);
+  - the lead returned it → `lead_comment` is why, quote it verbatim.
+
+  Next step either way: fix the points on the task's branch, commit, record what each fix closed
+  (`record_self_review_fixes`), then **re-run `self-review`** — a fresh run is what moves the status.
+  Ask the user whether to start fixing now; do not begin editing on your own from this loop.
+- **`passed`** — clean run, waiting for the lead's sign-off. Nothing for you to do; say how long it
+  has been waiting so the user can nudge if it is stale.
+- **`approved`** — done, with who approved it and when. Deployment and the tracker remain the user's
+  separate step.
 
 ## Loop etiquette
-- Notify once per new/changed verdict; don't re-nag about the same unchanged item every tick (track
-  what you already surfaced this session).
-- This skill never posts verdicts, edits code, pushes, or touches the tracker — it only reports and
-  hands off to `resubmit_review` / `ack_review` (or green-loop) on the user's go-ahead.
+- Notify once per change; don't re-nag about the same unchanged row every tick (track what you
+  already surfaced this session).
+- This skill never approves, returns, edits code, pushes, or touches the tracker. It reports and
+  hands off to `self-review` on the user's go-ahead.

@@ -93,39 +93,42 @@ Two rules keep this honest rather than decorative:
 Dependencies inside a context point one way. In `skills`, `catalog` (the read-model over
 taxonomy/stats/task-groups) may use the per-aggregate modules; none of them uses `catalog`.
 
-## Task Review + self-review (`skillhub_core/reviews`)
+## Review (`skillhub_core/reviews`)
 
-Two halves of one context, both carrying a **pointer** to the work — the code stays in git.
+**One flow, two aggregates.** The developer reviews their own change with the skill the team
+configured; that run is what puts the task on the board; the lead signs it off. There is no separate
+hand-over step and no second reviewer re-running the diff — a review nobody performs twice is the
+whole point. Both aggregates carry a **pointer** to the work; the code stays in git.
 
-- **Task review (peer).** A developer submits a deploy-ready task (`task_ref`, branch, commit SHAs,
-  changed files, summary, verification notes); the lead fetches the branch, reviews the real diff and
-  posts a verdict. State machine: `submitted → approved | changes_requested → (resubmit) submitted
-  … → done` (author `ack`). Every transition appends to an immutable thread (`review_events`). The
-  lead is the single `is_reviewer` user, auto-assigned at submit; in **open-review** mode (default)
-  any authenticated user may post a verdict.
-- **Self-review (own change, team's skill).** *Which* skill reviews a developer's own diff is a
-  server setting, exactly like the rubric weights: `self_review_policies` maps a lane
+- **Self-review run (`self_reviews`) — the reviewing.** *Which* skill reviews a developer's own diff
+  is a server setting, exactly like the rubric weights: `self_review_policies` maps a lane
   (`default | backend | frontend`) to a catalog skill, plus a `required` flag. Claude Code reads it
   (`GET /api/self-reviews/policy` / MCP `get_self_review_policy`), fetches that SKILL.md with
-  `get_skill`, applies it to the diff, and posts findings back (`POST /api/self-reviews`). The result
-  (`self_reviews`: verdict + `findings[]` with severity/file/line/detail/suggestion) attaches to the
-  author's peer review of the same task — on submit, any unattached self-review for that `task_ref`
-  is picked up — and appears in its thread as a `self_review` event. With any lane marked `required`,
-  submitting a task to the lead without a self-review is rejected (409).
+  `get_skill`, applies it to the diff, and posts findings back (`POST /api/self-reviews`): verdict +
+  `findings[]` with severity/file/line/detail/suggestion, plus the fixes recorded afterwards.
 
   The verdict is derived server-side when the client omits it: any `blocker`/`major` finding →
   `changes_needed`, otherwise `pass`. Same split as everywhere else in SkillHub — the *strategy*
   lives in the service, the *reviewing* happens in the developer's own Claude Code.
 
-  **Deletion.** Who may remove what is a domain rule on the aggregates. A *self-review* is the
-  author's own account of their own change, so its author (or an admin) may delete it at any time;
-  its fixes go with it and so does its entry in a peer review's thread — a line pointing at findings
-  nobody can open is worse than no line, which the FK's `SET NULL` alone would have left. A *peer
-  review* is different: the author may withdraw it only while it is still awaiting a verdict, after
-  which only an admin may, because an author who could delete a `changes_requested` review could
-  erase the request and resubmit as if it never happened. Withdrawing a review keeps the
-  self-reviews attached to it — they existed before the handover, so they detach and return to the
-  standalone list.
+- **Task (`task_reviews`) — the board row.** One row per `task_ref`, created by the first run and
+  updated by every later one. Its `status` is *derived*, never posted: a run that came back clean
+  leaves the task `passed` (the lead's queue), a run with blockers/majors leaves it `changes_needed`
+  (back with the author). The lead ends it — `approved` — or returns it with a mandatory
+  `lead_comment`, which puts it back to `changes_needed` until the author's next run clears it.
+  Status is a fact about the latest run rather than a field anyone sets, so the board cannot claim a
+  task is fine while its own review says otherwise.
+
+  Approving is guarded by the same `required` flag: with the lane marked required, a task whose
+  latest run is not clean cannot be signed off (409). Requires `is_reviewer` or admin.
+
+  **Deletion.** Who may remove what is a domain rule on the aggregates. A *run* is the author's own
+  account of their own change, so its author (or an admin) may delete it at any time; its fixes go
+  with it, and the task re-derives its status from what is left (an approval already given stands —
+  it was a judgement about the task, not about the row). Deleting the last run leaves nothing to
+  show, so the empty task row goes too. A *task* may be withdrawn by its author while it is still
+  unapproved; once approved, only an admin may remove it, because an author who could delete a
+  returned task could erase the lead's objection and start over as if it never happened.
 
   **Deep links.** A finding carries `file`/`line`, and the service turns that into a link to the
   line. The repository is recorded **per self-review** (`self_reviews.repo`, normalized from the
@@ -153,9 +156,10 @@ Two halves of one context, both carrying a **pointer** to the work — the code 
 `skills *─* categories` (via `skill_categories`, with confidence + source). A new version is
 created only when the content hash changes, so re-imports are idempotent.
 
-`reviews 1─* review_events`, `reviews 1─* self_reviews` (nullable FK: a self-review exists before,
-and outlives, the peer review), `self_reviews *─1 skills` (the reviewing skill, with `skill_name`
-kept as a snapshot so the record survives a rename/delete), `self_review_policies` keyed by lane.
+`task_reviews 1─* self_reviews` (one board row per `task_ref`, one row per run, cascading — a run
+without its task has nothing to be a run *of*), `self_reviews 1─* self_review_fixes`,
+`self_reviews *─1 skills` (the reviewing skill, with `skill_name` kept as a snapshot so the record
+survives a rename/delete), `self_review_policies` keyed by lane.
 
 **Identity + authorship (team registry).** A skill is keyed by **name** (unique `uq_skills_name`);
 re-uploading a name adds a version rather than a duplicate row. Verified authorship: `skills` and

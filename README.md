@@ -69,22 +69,24 @@ each skill against it, and submits results back (`POST /api/skills/{id}/assessme
 `skills/skillhub/SKILL.md` into Claude Code, or add the SkillHub MCP server (`services/mcp/`), to
 drive this. Storing the strategy server-side means every developer runs the one identical algorithm.
 
-## Task review & self-review
+## Review board
 
-Beyond the skill catalog, SkillHub runs the team's **task review board** — the same design stance
-applied to reviewing work: the service holds the pointer and the strategy, Claude Code does the
-reviewing.
+Beyond the skill catalog, SkillHub runs the team's **review board** — the same design stance applied
+to reviewing work: the service holds the pointer and the strategy, Claude Code does the reviewing.
 
-- **Peer review.** A developer hands a deploy-ready task over (`task_ref`, branch, commit SHAs,
-  changed files, summary, what was verified — the code stays in git); the lead fetches the branch,
-  reviews the real diff and posts `approve` / `changes_requested`. Every step lands in an immutable
-  thread. Skills: `submit-for-review`, `review-inbox` (lead, under `/loop`), `review-status`.
-- **Self-review.** *Which* skill reviews your own diff is a server setting, not a personal choice:
-  an admin points each lane (`default` / `backend` / `frontend`) at a catalog skill on the Reviews
-  page, optionally marking it mandatory. Your Claude Code reads the policy, fetches that SKILL.md,
-  applies it to your diff and posts the findings back — they attach to the peer review of the same
-  task, so the lead sees what you already caught. Skill: `self-review`. When a lane is marked
-  mandatory, handing a task to the lead without a self-review is rejected.
+**One flow.** The developer reviews their own change, and the lead signs it off:
+
+1. **The developer runs the review.** *Which* skill reviews your diff is a server setting, not a
+   personal choice: an admin points each lane (`default` / `backend` / `frontend`) at a catalog skill
+   on the Reviews page. Your Claude Code reads the policy, fetches that SKILL.md, applies it to your
+   diff and posts the findings back. Skill: `self-review`.
+2. **The run puts the task on the board.** One row per task; its status follows the latest run —
+   `review не пройдено` (`changes_needed`) while findings are open, `review пройдено` (`passed`)
+   once a run comes back clean. You fix, record which commit closed which point, and re-run.
+3. **The lead decides.** They read what the review found and either mark the task **Approved** or
+   send it back with a reason, which returns it to you. Skills: `review-board` (lead, under `/loop`),
+   `review-status` (developer). When the lane is marked mandatory, a task whose latest run is not
+   clean cannot be approved.
 
 ## Authentication
 

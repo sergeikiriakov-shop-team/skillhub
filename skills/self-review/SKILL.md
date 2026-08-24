@@ -1,17 +1,20 @@
 ---
 name: self-review
 description: >
-  Use to review your OWN finished change before anyone else sees it, with the review skill the team
-  configured centrally in SkillHub. Triggers on "саморевью", "self-review", "проверь мой код перед
-  ревью", "review my own diff", or right before `submit-for-review` / a push. It reads the team's
-  self-review policy from the `skillhub` MCP (`get_self_review_policy`), fetches THAT skill
-  (`get_skill`), applies it to your actual diff, and posts the findings back with
-  `submit_self_review` — so the result is visible on the SkillHub review board and attaches to the
-  peer review of the same task. Not a substitute for the lead's review, and it never fixes the code
-  on its own unless you ask.
+  Use to review your OWN finished change with the review skill the team configured centrally in
+  SkillHub. Triggers on "саморевью", "self-review", "проверь мой код перед ревью", "review my own
+  diff", or right before handing a task over. It reads the team's self-review policy from the
+  `skillhub` MCP (`get_self_review_policy`), fetches THAT skill (`get_skill`), applies it to your
+  actual diff, and posts the findings back with `submit_self_review` — which is what puts the task
+  on the SkillHub review board for the lead to approve. It never fixes the code on its own unless
+  you ask.
 ---
 
 # Self-review — review your own change with the team's skill
+
+There is one review flow, and this is it: **you** run the review, the result lands on the board as
+your task's status, and the **lead** reads it and either marks it Approved or sends the task back
+with a reason. Nobody re-runs the review for you.
 
 The **skill that reviews you is chosen server-side**, not by you: an admin points each lane at a
 catalog skill, so every developer's self-review runs the same way and the results are comparable.
@@ -41,6 +44,8 @@ One git command at a time, no `cd`:
 - **commit_shas** — `git log --format=%H origin/master8..HEAD` (fall back to `git log --format=%H -n 20 HEAD`).
 - **the diff** — `git diff origin/master8...HEAD` (same fallback). This is what the skill reviews.
 - **task_ref** — the issue_logs id/link, from the branch name or the user.
+- **title** — one short line naming the task, for whoever reads the board. Take it from the issue or
+  the branch slug; the board falls back to the bare `task_ref` without it.
 
 If the working tree is dirty, say so and review the committed diff plus the uncommitted changes,
 noting which is which.
@@ -58,20 +63,23 @@ actually checked in the summary so the lead can judge the coverage. Do not inven
 `nit`-only output is a legitimate result.
 
 ## 5. Post it
-`submit_self_review(task_ref, findings, branch, commit_shas, repo, lane, model=<the model you ran
-as>, summary=<what you covered and concluded>)`.
+`submit_self_review(task_ref, findings, branch, commit_shas, repo, lane, title, model=<the model you
+ran as>, summary=<what you covered and concluded>)`.
 - Omit `verdict` — the service derives it: any `blocker`/`major` → `changes_needed`, else `pass`.
 - Omit `skill` — the service records the lane's configured skill. Pass it ONLY if you deliberately
   applied a different one, so the record stays truthful.
-- It attaches to your open peer review of the same task automatically (and to a later one when you
-  run `submit-for-review`), appearing in its thread.
+- **This is the hand-over.** The first run creates the task's row on the board; every later run
+  updates its status — a clean run means it is waiting for the lead, findings mean it is back with
+  you. There is nothing else to submit.
 - Report back: the self-review id, the verdict, and the findings by severity.
 
 ## After
-- **`changes_needed`** — fix the blockers/majors first, then re-run this skill so the board shows the
-  clean pass. Fix the code only if the user asks; by default you report.
-- **`pass`** — the task is ready for `submit-for-review`. When the policy is `required`, submitting
-  without a self-review is rejected (409), so run this first.
+- **`changes_needed`** — the task now reads "review не пройдено" on the board. Fix the blockers and
+  majors first, then re-run this skill so the board shows the clean pass. Fix the code only if the
+  user asks; by default you report.
+- **`pass`** — the task sits in the lead's queue waiting for **Approved**. Only the lead can set it.
+- **Returned by the lead** — the task comes back with a comment saying why. Read it
+  (`get_task_review(id)`), address it, and re-run this skill; the new run replaces the status.
 
 ## Once the findings are fixed — say what you did
 After committing the fixes, call
