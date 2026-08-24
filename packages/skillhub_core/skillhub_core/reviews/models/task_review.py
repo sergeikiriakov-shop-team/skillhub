@@ -37,7 +37,7 @@ class TaskReview(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     task_ref: Mapped[str] = mapped_column(String(200), unique=True, index=True)
-    title: Mapped[str] = mapped_column(String(300), default="")
+    title: Mapped[str] = mapped_column(String(300), default="", server_default="")
     branch: Mapped[str | None] = mapped_column(String(300), nullable=True)
     repo: Mapped[str | None] = mapped_column(String(400), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default=TASK_REVIEW_CHANGES_NEEDED, index=True)
@@ -51,7 +51,7 @@ class TaskReview(Base):
     )
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Why the lead sent it back, and when. Set on a return, cleared by the next run that answers it.
-    lead_comment: Mapped[str] = mapped_column(Text, default="")
+    lead_comment: Mapped[str] = mapped_column(Text, default="", server_default="")
     returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

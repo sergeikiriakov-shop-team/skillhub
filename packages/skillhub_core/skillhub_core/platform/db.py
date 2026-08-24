@@ -117,9 +117,9 @@ def _apply_column_migrations() -> None:
         "CREATE INDEX IF NOT EXISTS ix_self_reviews_task_review_id ON self_reviews (task_review_id)",
         # One board row per task that has ever been self-reviewed, owned by whoever ran the newest
         # run, with the status that run implies.
-        "INSERT INTO task_reviews (task_ref, title, branch, repo, status, author_user_id, created_at, updated_at) "
+        "INSERT INTO task_reviews (task_ref, title, branch, repo, status, lead_comment, author_user_id, created_at, updated_at) "
         "SELECT DISTINCT ON (sr.task_ref) sr.task_ref, '', sr.branch, sr.repo, "
-        "  CASE WHEN sr.verdict = 'pass' THEN 'passed' ELSE 'changes_needed' END, "
+        "  CASE WHEN sr.verdict = 'pass' THEN 'passed' ELSE 'changes_needed' END, '', "
         "  sr.author_user_id, sr.created_at, sr.created_at "
         "FROM self_reviews sr "
         "WHERE NOT EXISTS (SELECT 1 FROM task_reviews t WHERE t.task_ref = sr.task_ref) "
