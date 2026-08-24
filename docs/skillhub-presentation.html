@@ -727,10 +727,10 @@
           <ul class="ep-list"><li>list_mcp_servers · get_mcp_server · get_mcp_rubric · upload_mcp_server · submit_mcp_assessment</li></ul>
           <div class="ep-group">Песочница (трайлы)</div>
           <ul class="ep-list"><li>get_skill_notebook · get_skill_fit · submit_skill_notebook</li></ul>
-          <div class="ep-group">Ревью задач</div>
-          <ul class="ep-list"><li>submit_for_review · list_review_queue · list_my_reviews · get_review · submit_review_result · resubmit_review · ack_review</li></ul>
           <div class="ep-group amber">Саморевью — скилл задаёт сервер</div>
-          <ul class="ep-list"><li>get_self_review_policy · submit_self_review · list_self_reviews · get_self_review</li></ul>
+          <ul class="ep-list"><li>get_self_review_policy · submit_self_review · list_self_reviews · get_self_review · record_self_review_fixes</li></ul>
+          <div class="ep-group">Доска ревью — половина лида</div>
+          <ul class="ep-list"><li>list_review_board · get_task_review · approve_task_review · return_task_review</li></ul>
           <div class="ep-group">Авторизация</div>
           <ul class="ep-list"><li>authenticate <span style="color:var(--muted)">— http: OAuth (браузер) · stdio: device flow</span></li></ul>
         </div>
@@ -750,7 +750,7 @@
       <div class="step compute"><div class="n">3</div><h4>Категоризация</h4><p>Два уровня: широкая категория + узкий <code>task_group</code> («та же работа»).</p></div>
       <div class="step compute"><div class="n">4</div><h4>Отбор</h4><p>Внутри одного <code>task_group</code> выбирается лучший по overall.</p></div>
       <div class="step compute"><div class="n">5</div><h4>Синтез</h4><p>Из кластера собирается «идеальный» скилл по фиксированному алгоритму.</p></div>
-      <div class="step"><div class="n">6</div><h4>Рекомендации / Ревью</h4><p>Куратор предлагает изменения; задачи проходят peer-review.</p></div>
+      <div class="step"><div class="n">6</div><h4>Рекомендации / Ревью</h4><p>Куратор предлагает изменения; задачи проходят саморевью и отметку лида.</p></div>
     </div>
 
     <p class="prose" style="margin-top:6px">Дедупликация встроена в импорт: загрузка контента, <strong>идентичного</strong> существующему скиллу под другим именем, отклоняется (HTTP 409); просто <strong>похожий</strong> (косинус ≥ 0.90) — принимается с предупреждением. Так настоящие варианты живут под разными именами внутри одного <code>task_group</code>.</p>
@@ -866,12 +866,12 @@
         <ul><li>kind · scope · targets</li><li>suggested_action</li><li>status</li></ul>
       </div>
       <div class="entity">
-        <div class="hd">reviews · review_events</div>
-        <ul><li>task_ref · branch · commits</li><li>verdict · status</li><li>лента событий</li></ul>
+        <div class="hd">task_reviews</div>
+        <ul><li>task_ref · branch · repo</li><li>статус выводится из прогона</li><li>Approved / возврат с причиной</li></ul>
       </div>
       <div class="entity">
         <div class="hd">self_reviews · self_review_policies</div>
-        <ul><li>дорожка → скилл-ревьюер</li><li>вердикт · findings</li><li>привязка к ревью</li></ul>
+        <ul><li>дорожка → скилл-ревьюер</li><li>вердикт · findings · фиксы</li><li>прогон ставит задачу на доску</li></ul>
       </div>
       <div class="entity">
         <div class="hd">users</div>
@@ -898,8 +898,8 @@
       <div class="card"><h3>🔎 Векторный поиск</h3><p>Поиск через векторные эмбеддинги (pgvector), а не по подстроке.</p></div>
       <div class="card"><h3>📊 Методология</h3><p>Та же рубрика v2, что отдаётся Claude Code, показана человеку — прозрачность оценки.</p></div>
       <div class="card"><h3>💡 Рекомендации</h3><p>Предложения куратора: <code>synthesize · split · merge · dedup · improve · delete</code> с готовым действием для Claude Code.</p></div>
-      <div class="card"><h3>✅ Task Review</h3><p>Peer-review deploy-ready задач: указатель на ветку/коммиты, вердикт <code>approve / changes_requested</code>, лента событий.</p></div>
-      <div class="card"><h3>🪞 Саморевью</h3><p>Разработчик проверяет свой дифф скиллом, который выбран <b>на сервере</b> (дорожки default / backend / frontend, флаг «обязательно»). Находки видны на доске и прикрепляются к ревью задачи.</p></div>
+      <div class="card"><h3>🪞 Саморевью</h3><p>Разработчик проверяет свой дифф скиллом, который выбран <b>на сервере</b> (дорожки default / backend / frontend, флаг «обязательно»). Находки со ссылками на строки в GitHub; фиксы отмечают, какой коммит закрыл какой пункт.</p></div>
+      <div class="card"><h3>✅ Доска ревью</h3><p>Прогон саморевью сам ставит задачу на доску, статус выводится из последнего прогона: <code>review не пройдено → review пройдено</code>. Лид ставит <b>Approved</b> или возвращает задачу с причиной.</p></div>
       <div class="card"><h3>🌐 Guide · RU/EN</h3><p>Инструкция для разработчика прямо на портале; двуязычный интерфейс с переключателем.</p></div>
     </div>
   </section>
@@ -916,7 +916,7 @@
           <li><span class="pill done">done</span> Ключевая архитектура: сервис хранит, Claude Code оценивает — без LLM в сервисе</li>
           <li><span class="pill done">done</span> Рубрика v2 + двухуровневая таксономия + стратегия синтеза на сервере</li>
           <li><span class="pill done">done</span> Авторизация: собственный OAuth 2.1-сервер, вход через GitHub, MCP OAuth / device flow, роли, гейт по доступу к репозиторию</li>
-          <li><span class="pill done">done</span> Рекомендации куратора + Task Review (peer-review задач) + саморевью скиллом из настройки сервера</li>
+          <li><span class="pill done">done</span> Рекомендации куратора + один поток ревью: саморевью скиллом из настройки сервера → доска задач → Approved от лида</li>
           <li><span class="pill done">done</span> Портал RU/EN + Guide; удалённый HTTP MCP (одна команда); DDD-ядро; TLS + push-to-deploy</li>
         </ul>
       </div>
