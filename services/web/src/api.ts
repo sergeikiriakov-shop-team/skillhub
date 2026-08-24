@@ -207,18 +207,30 @@ export interface Me {
   is_reviewer?: boolean;
 }
 
-// --- Task Review context ---
-export interface ReviewEvent {
+// --- The review board: one row per task, its self-review runs as history ---
+export interface TaskReviewSummary {
   id: number;
-  kind: string;
+  task_ref: string;
+  title: string;
+  branch: string | null;
+  status: string;
   author: string | null;
-  verdict: string | null;
-  body: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  lead_comment: string;
+  run_count: number;
+  latest_verdict: string | null;
+  open_finding_count: number;
+  updated_at: string;
   created_at: string;
-  self_review_id: number | null;
 }
 
-// --- Self-review: the author's own change, reviewed by the skill the team configured ---
+export interface TaskReviewDetail extends TaskReviewSummary {
+  repo: string | null;
+  self_reviews: SelfReviewSummary[];
+  latest_run: SelfReviewDetail | null;
+}
+
 // What the developer did about a finding — recorded next to the review, never inside it.
 export interface SelfReviewFix {
   id: number;
@@ -257,7 +269,7 @@ export interface SelfReviewSummary {
   // Findings with at least one recorded fix.
   fixed_count: number;
   author: string | null;
-  review_id: number | null;
+  task_review_id: number | null;
   created_at: string;
 }
 
@@ -278,26 +290,7 @@ export interface SelfReviewPolicy {
   lanes: SelfReviewPolicyLane[];
 }
 
-export interface ReviewSummary {
-  id: number;
-  task_ref: string;
-  title: string;
-  branch: string | null;
-  status: string;
-  author: string | null;
-  reviewer: string | null;
-  updated_at: string;
-}
 
-export interface ReviewDetail extends ReviewSummary {
-  commit_shas: string[];
-  summary: string;
-  files: string[];
-  verified_notes: string;
-  created_at: string;
-  events: ReviewEvent[];
-  self_reviews: SelfReviewSummary[];
-}
 
 export interface RubricCategory {
   key: string;
@@ -458,16 +451,23 @@ export const api = {
   getMcpServer: (id: number) => request<McpServerDetail>(`/mcp/${id}`),
   mcpRubric: () => request<McpRubric>("/mcp/rubric"),
   // --- reviews ---
-  listReviews: (opts?: { status?: string; mine?: boolean; queue?: boolean }) => {
+  // --- the review board ---
+  listTaskReviews: (opts?: { status?: string; mine?: boolean }) => {
     const params = new URLSearchParams();
     if (opts?.status) params.set("status", opts.status);
     if (opts?.mine) params.set("mine", "true");
-    if (opts?.queue) params.set("queue", "true");
     const qs = params.toString();
-    return request<ReviewSummary[]>(`/reviews${qs ? `?${qs}` : ""}`);
+    return request<TaskReviewSummary[]>(`/task-reviews${qs ? `?${qs}` : ""}`);
   },
-  getReview: (id: number) => request<ReviewDetail>(`/reviews/${id}`),
-  deleteReview: (id: number) => request<void>(`/reviews/${id}`, { method: "DELETE" }),
+  getTaskReview: (id: number) => request<TaskReviewDetail>(`/task-reviews/${id}`),
+  approveTaskReview: (id: number) =>
+    request<TaskReviewDetail>(`/task-reviews/${id}/approve`, { method: "POST", body: "{}" }),
+  returnTaskReview: (id: number, comment: string) =>
+    request<TaskReviewDetail>(`/task-reviews/${id}/return`, {
+      method: "POST",
+      body: JSON.stringify({ comment }),
+    }),
+  deleteTaskReview: (id: number) => request<void>(`/task-reviews/${id}`, { method: "DELETE" }),
   deleteSelfReview: (id: number) => request<void>(`/self-reviews/${id}`, { method: "DELETE" }),
   // --- self-review ---
   selfReviewPolicy: () => request<SelfReviewPolicy>("/self-reviews/policy"),
@@ -477,11 +477,11 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ lane, skill, required }),
     }),
-  listSelfReviews: (opts?: { mine?: boolean; taskRef?: string; reviewId?: number }) => {
+  listSelfReviews: (opts?: { mine?: boolean; taskRef?: string; taskReviewId?: number }) => {
     const params = new URLSearchParams();
     if (opts?.mine) params.set("mine", "true");
     if (opts?.taskRef) params.set("task_ref", opts.taskRef);
-    if (opts?.reviewId !== undefined) params.set("review_id", String(opts.reviewId));
+    if (opts?.taskReviewId !== undefined) params.set("task_review_id", String(opts.taskReviewId));
     const qs = params.toString();
     return request<SelfReviewSummary[]>(`/self-reviews${qs ? `?${qs}` : ""}`);
   },

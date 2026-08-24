@@ -1,7 +1,6 @@
 import { Anchor, Badge, Button, Card, Code, Collapse, Group, Paper, Stack, Text } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { SelfReviewFinding, SelfReviewSummary } from "../api";
 import { useAuth } from "../auth";
@@ -86,7 +85,7 @@ function Finding({ f }: { f: SelfReviewFinding }) {
 /** One self-review: what the team's review skill found in the author's own change, before anyone
  * else saw it. The summary is cheap and comes with the list; the findings are the heavy half and
  * are fetched separately — in a list (`collapsible`) only once the reader expands the card.
- * `showTask` adds the pointer fields, which are redundant on a peer review's own page. */
+ * `showTask` adds the pointer fields, which the task's own page already shows in its header. */
 export default function SelfReviewCard({
   sr,
   collapsible = false,
@@ -107,9 +106,10 @@ export default function SelfReviewCard({
   const remove = useMutation({
     mutationFn: () => api.deleteSelfReview(sr.id),
     onSuccess: () => {
-      // The peer review's thread loses an entry too, so refresh both lists.
+      // The task loses a run — and with it, possibly its status — so refresh the board as well.
       qc.invalidateQueries({ queryKey: ["selfReviews"] });
-      qc.invalidateQueries({ queryKey: ["review"] });
+      qc.invalidateQueries({ queryKey: ["taskReview"] });
+      qc.invalidateQueries({ queryKey: ["taskReviews"] });
     },
   });
   const { data } = useQuery({
@@ -155,15 +155,6 @@ export default function SelfReviewCard({
               · {t("reviews.by", { author: sr.author })}
             </Text>
           )}
-          {sr.review_id ? (
-            <Anchor component={Link} to={`/reviews/${sr.review_id}`} size="xs">
-              {t("selfReview.attachedTo", { id: sr.review_id })}
-            </Anchor>
-          ) : (
-            <Text size="xs" c="dimmed">
-              · {t("selfReview.standalone")}
-            </Text>
-          )}
         </Group>
       )}
 
@@ -199,7 +190,7 @@ export default function SelfReviewCard({
             ml={collapsible ? undefined : "auto"}
             loading={remove.isPending}
             onClick={() => {
-              // Deleting takes the fixes and the thread entry with it, so make the reader confirm.
+              // Deleting takes the fixes with it and can move the task's status, so confirm first.
               if (window.confirm(t("selfReview.confirmDelete"))) remove.mutate();
             }}
           >

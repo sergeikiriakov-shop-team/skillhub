@@ -41,7 +41,7 @@ function ServiceCard({
 export default function Home() {
   const { t } = useI18n();
   const statsQuery = useQuery({ queryKey: ["stats"], queryFn: api.stats });
-  const reviewsQuery = useQuery({ queryKey: ["reviews", "all"], queryFn: () => api.listReviews() });
+  const reviewsQuery = useQuery({ queryKey: ["taskReviews", "all"], queryFn: () => api.listTaskReviews() });
 
   const stats = statsQuery.data;
   const skillsStat = stats
@@ -51,9 +51,9 @@ export default function Home() {
       })
     : null;
 
-  const openCount = (reviewsQuery.data ?? []).filter(
-    (r) => r.status === "submitted" || r.status === "changes_requested",
-  ).length;
+  // Anything not yet approved still needs someone's move — the lead's sign-off when the run came
+  // back clean, the author's fixes when it did not.
+  const openCount = (reviewsQuery.data ?? []).filter((r) => r.status !== "approved").length;
   const reviewsStat = reviewsQuery.data ? t("home.reviews.stat", { open: openCount }) : null;
 
   return (

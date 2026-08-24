@@ -1,24 +1,25 @@
 import {
-  Badge,
+  Alert,
   Button,
   Card,
   Code,
   Container,
   Group,
   Loader,
-  Paper,
   Stack,
   Text,
+  Textarea,
   Title,
 } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { api, ReviewEvent } from "../api";
+import { api } from "../api";
 import { useAuth } from "../auth";
 import SelfReviewCard from "../components/SelfReviewCard";
 import { useI18n } from "../i18n";
-import { STATUS_COLOR, StatusBadge } from "./Reviews";
+import { StatusBadge } from "./Reviews";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -31,57 +32,40 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function ThreadItem({ ev }: { ev: ReviewEvent }) {
-  const { t } = useI18n();
-  const isVerdict = ev.kind === "verdict";
-  const color = isVerdict ? STATUS_COLOR[ev.verdict === "approve" ? "approved" : "changes_requested"] : "gray";
-  return (
-    <Paper withBorder radius="md" p="sm">
-      <Group justify="space-between" mb={ev.body ? "xs" : 0} wrap="nowrap">
-        <Group gap="xs" wrap="nowrap">
-          <Badge size="sm" color={color} variant="light">
-            {t(`reviews.event.${ev.kind}`)}
-          </Badge>
-          {ev.author && (
-            <Text size="xs" c="dimmed">
-              {ev.author}
-            </Text>
-          )}
-        </Group>
-        <Text size="xs" c="dimmed">
-          {new Date(ev.created_at).toLocaleString()}
-        </Text>
-      </Group>
-      {ev.body && (
-        <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-          {ev.body}
-        </Text>
-      )}
-    </Paper>
-  );
-}
-
 export default function ReviewDetail() {
   const { t } = useI18n();
   const { me } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { data: r, isLoading } = useQuery({
-    queryKey: ["review", id],
-    queryFn: () => api.getReview(Number(id)),
+  const [comment, setComment] = useState("");
+
+  const { data: task, isLoading } = useQuery({
+    queryKey: ["taskReview", id],
+    queryFn: () => api.getTaskReview(Number(id)),
     enabled: !!id,
   });
 
-  // The author may withdraw their own submission; the server additionally refuses once a verdict
-  // exists (409), which surfaces as the error line below rather than a hidden button — an author
-  // who tries deserves the reason, not a missing control.
-  const canDelete = !!me?.is_admin || (!!me?.name && !!r && me.name === r.author);
-  const remove = useMutation({
-    mutationFn: () => api.deleteReview(Number(id)),
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["taskReviews"] });
+    qc.invalidateQueries({ queryKey: ["taskReview", id] });
+  };
+
+  const approve = useMutation({
+    mutationFn: () => api.approveTaskReview(Number(id)),
+    onSuccess: refresh,
+  });
+  const sendBack = useMutation({
+    mutationFn: () => api.returnTaskReview(Number(id), comment),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reviews"] });
-      qc.invalidateQueries({ queryKey: ["selfReviews"] });
+      setComment("");
+      refresh();
+    },
+  });
+  const remove = useMutation({
+    mutationFn: () => api.deleteTaskReview(Number(id)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["taskReviews"] });
       navigate("/reviews");
     },
   });
@@ -93,29 +77,35 @@ export default function ReviewDetail() {
       </Group>
     );
   }
-  if (!r) {
+  if (!task) {
     return (
       <Container size="md">
         <Text c="dimmed" mt="xl">
-          {t("reviews.notFound")}
+          {t("board.notFound")}
         </Text>
       </Container>
     );
   }
+
+  // The lead acts on the board; the author may withdraw their own task while it is unapproved.
+  const isLead = !!me?.is_reviewer || !!me?.is_admin;
+  const canDelete = !!me?.is_admin || (!!me?.name && me.name === task.author);
+  const busy = approve.isPending || sendBack.isPending;
+  const error = approve.error || sendBack.error || remove.error;
 
   return (
     <Container size="md">
       <Stack gap="md">
         <Group justify="space-between" align="flex-start" wrap="nowrap">
           <div>
-            <Title order={2}>{r.title || r.task_ref}</Title>
+            <Title order={2}>{task.title || task.task_ref}</Title>
             <Text c="dimmed" size="sm">
-              {t("reviews.by", { author: r.author ?? "—" })} ·{" "}
-              {t("reviews.reviewer", { who: r.reviewer ?? t("reviews.unassigned") })}
+              {t("reviews.by", { author: task.author ?? "—" })} ·{" "}
+              {t("board.runs", { count: task.run_count })}
             </Text>
           </div>
           <Group gap="xs" wrap="nowrap">
-            <StatusBadge status={r.status} t={t} />
+            <StatusBadge status={task.status} t={t} />
             {canDelete && (
               <Button
                 size="compact-xs"
@@ -123,7 +113,7 @@ export default function ReviewDetail() {
                 color="red"
                 loading={remove.isPending}
                 onClick={() => {
-                  if (window.confirm(t("reviews.confirmDelete"))) remove.mutate();
+                  if (window.confirm(t("board.confirmDelete"))) remove.mutate();
                 }}
               >
                 {t("common.delete")}
@@ -131,9 +121,10 @@ export default function ReviewDetail() {
             )}
           </Group>
         </Group>
-        {remove.isError && (
+
+        {error && (
           <Text c="red" size="sm">
-            {String(remove.error)}
+            {String(error)}
           </Text>
         )}
 
@@ -141,55 +132,74 @@ export default function ReviewDetail() {
           <Stack gap="sm">
             <Group gap="xl" wrap="wrap">
               <Field label={t("reviews.task")}>
-                <Text size="sm">{r.task_ref}</Text>
+                <Text size="sm">{task.task_ref}</Text>
               </Field>
               <Field label={t("reviews.branch")}>
-                <Text size="sm">{r.branch || "—"}</Text>
+                <Text size="sm">{task.branch || "—"}</Text>
               </Field>
+              {task.approved_by && (
+                <Field label={t("board.approved")}>
+                  <Text size="sm">
+                    {task.approved_by}
+                    {task.approved_at ? ` · ${new Date(task.approved_at).toLocaleString()}` : ""}
+                  </Text>
+                </Field>
+              )}
             </Group>
-            {r.commit_shas.length > 0 && (
-              <Field label={t("reviews.commits")}>
-                <Group gap={4}>
-                  {r.commit_shas.map((c) => (
-                    <Code key={c}>{c.slice(0, 10)}</Code>
-                  ))}
-                </Group>
-              </Field>
-            )}
-            {r.files.length > 0 && (
-              <Field label={t("reviews.files")}>
-                <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                  {r.files.join("\n")}
-                </Text>
-              </Field>
-            )}
-            {r.summary && (
-              <Field label={t("reviews.summary")}>
-                <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                  {r.summary}
-                </Text>
-              </Field>
-            )}
-            {r.verified_notes && (
-              <Field label={t("reviews.verified")}>
-                <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
-                  {r.verified_notes}
-                </Text>
+            {task.repo && (
+              <Field label={t("board.repo")}>
+                <Code>{task.repo}</Code>
               </Field>
             )}
           </Stack>
         </Card>
 
+        {task.lead_comment && (
+          <Alert variant="light" color="orange" title={t("board.leadSaid")}>
+            <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+              {task.lead_comment}
+            </Text>
+          </Alert>
+        )}
+
+        {isLead && task.status !== "approved" && (
+          <Card withBorder radius="md" padding="md">
+            <Title order={5} mb="xs">
+              {t("board.leadActions")}
+            </Title>
+            <Text size="xs" c="dimmed" mb="sm">
+              {t("board.leadHint")}
+            </Text>
+            <Textarea
+              value={comment}
+              onChange={(e) => setComment(e.currentTarget.value)}
+              placeholder={t("board.returnPlaceholder")}
+              autosize
+              minRows={2}
+              mb="sm"
+            />
+            <Group gap="sm">
+              <Button color="green" loading={approve.isPending} disabled={busy} onClick={() => approve.mutate()}>
+                {t("board.approve")}
+              </Button>
+              <Button
+                variant="default"
+                loading={sendBack.isPending}
+                disabled={busy || !comment.trim()}
+                onClick={() => sendBack.mutate()}
+              >
+                {t("board.return")}
+              </Button>
+            </Group>
+          </Card>
+        )}
+
         <div>
           <Title order={4} mb="xs">
-            {t("selfReview.title")}
+            {t("board.latestRun")}
           </Title>
-          {r.self_reviews.length > 0 ? (
-            <Stack gap="xs">
-              {r.self_reviews.map((sr) => (
-                <SelfReviewCard key={sr.id} sr={sr} />
-              ))}
-            </Stack>
+          {task.latest_run ? (
+            <SelfReviewCard sr={task.latest_run} />
           ) : (
             <Text c="dimmed" size="sm">
               {t("selfReview.none")}
@@ -197,16 +207,21 @@ export default function ReviewDetail() {
           )}
         </div>
 
-        <div>
-          <Title order={4} mb="xs">
-            {t("reviews.thread")}
-          </Title>
-          <Stack gap="xs">
-            {r.events.map((ev) => (
-              <ThreadItem key={ev.id} ev={ev} />
-            ))}
-          </Stack>
-        </div>
+        {task.self_reviews.length > 1 && (
+          <div>
+            <Title order={4} mb="xs">
+              {t("board.history")}
+            </Title>
+            <Stack gap="xs">
+              {task.self_reviews
+                .slice(0, -1)
+                .reverse()
+                .map((run) => (
+                  <SelfReviewCard key={run.id} sr={run} collapsible />
+                ))}
+            </Stack>
+          </div>
+        )}
       </Stack>
     </Container>
   );

@@ -14,88 +14,85 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { api, ReviewSummary } from "../api";
-import { useAuth } from "../auth";
-import SelfReviewCard from "../components/SelfReviewCard";
+import { api, TaskReviewSummary } from "../api";
 import SelfReviewPolicy from "../components/SelfReviewPolicy";
 import { useI18n } from "../i18n";
 import type { TFunc } from "../i18n";
 
 export const STATUS_COLOR: Record<string, string> = {
-  submitted: "blue",
-  changes_requested: "orange",
+  changes_needed: "orange",
+  passed: "blue",
   approved: "green",
-  done: "gray",
 };
 
 export function StatusBadge({ status, t }: { status: string; t: TFunc }) {
   return (
     <Badge color={STATUS_COLOR[status] ?? "gray"} variant="light">
-      {t(`reviews.status.${status}`)}
+      {t(`board.status.${status}`)}
     </Badge>
   );
 }
 
-function ReviewCard({ r, t }: { r: ReviewSummary; t: TFunc }) {
+function TaskCard({ task, t }: { task: TaskReviewSummary; t: TFunc }) {
   return (
-    <Card withBorder radius="md" padding="md" component={Link} to={`/reviews/${r.id}`}>
+    <Card withBorder radius="md" padding="md" component={Link} to={`/reviews/${task.id}`}>
       <Group justify="space-between" wrap="nowrap" mb="xs">
         <Text fw={600} truncate>
-          {r.title || r.task_ref}
+          {task.title || task.task_ref}
         </Text>
-        <StatusBadge status={r.status} t={t} />
+        <StatusBadge status={task.status} t={t} />
       </Group>
       <Text size="xs" c="dimmed">
-        {t("reviews.task")}: {r.task_ref}
-        {r.branch ? ` · ${r.branch}` : ""}
+        {t("reviews.task")}: {task.task_ref}
+        {task.branch ? ` · ${task.branch}` : ""}
       </Text>
       <Group gap="xs" mt="xs">
         <Text size="xs" c="dimmed">
-          {t("reviews.by", { author: r.author ?? "—" })}
+          {t("reviews.by", { author: task.author ?? "—" })}
         </Text>
         <Text size="xs" c="dimmed">
-          · {t("reviews.reviewer", { who: r.reviewer ?? t("reviews.unassigned") })}
+          · {t("board.runs", { count: task.run_count })}
         </Text>
+        {task.open_finding_count > 0 && (
+          <Text size="xs" c="orange">
+            · {t("board.openFindings", { count: task.open_finding_count })}
+          </Text>
+        )}
+        {task.approved_by && (
+          <Text size="xs" c="teal">
+            · {t("board.approvedBy", { who: task.approved_by })}
+          </Text>
+        )}
       </Group>
+      {task.lead_comment && (
+        <Text size="xs" c="orange" mt={6} lineClamp={2}>
+          {t("board.leadSaid")}: {task.lead_comment}
+        </Text>
+      )}
     </Card>
   );
 }
 
-type Tab = "queue" | "assigned" | "mine" | "all" | "self";
+type Tab = "queue" | "open" | "mine" | "all";
 
-// The board is open-review by default (anyone may pick a task up), so "queue" is every submitted
-// review — not just the ones assigned to you. A designated lead (`is_reviewer`) additionally gets
-// "assigned to me", which is what `queue=true` filters on server-side.
-const TAB_PARAMS: Record<string, Parameters<typeof api.listReviews>[0]> = {
-  queue: { status: "submitted" },
-  assigned: { queue: true, status: "submitted" },
+// The lead's queue is `passed`: the developer's own review came back clean, so the task is waiting
+// for a sign-off. `open` is what is still with its author, either from the run or from a return.
+const TAB_PARAMS: Record<string, Parameters<typeof api.listTaskReviews>[0]> = {
+  queue: { status: "passed" },
+  open: { status: "changes_needed" },
   mine: { mine: true },
   all: {},
 };
 
 export default function Reviews() {
   const { t } = useI18n();
-  const { me } = useAuth();
   const [tab, setTab] = useState<Tab>("queue");
-  const isReviewer = !!me?.is_reviewer;
 
   const query = useQuery({
-    queryKey: ["reviews", tab],
-    queryFn: () => api.listReviews(TAB_PARAMS[tab]),
-    enabled: tab !== "self",
-  });
-  // Self-reviews live independently of the board: one exists as soon as a developer runs the
-  // configured skill on their own diff, whether or not the task was ever handed to a lead.
-  const selfQuery = useQuery({
-    queryKey: ["selfReviews"],
-    queryFn: () => api.listSelfReviews(),
-    enabled: tab === "self",
+    queryKey: ["taskReviews", tab],
+    queryFn: () => api.listTaskReviews(TAB_PARAMS[tab]),
   });
   const items = query.data ?? [];
-  const selfItems = selfQuery.data ?? [];
-  const isSelf = tab === "self";
-  const loading = isSelf ? selfQuery.isLoading : query.isLoading;
-  const count = isSelf ? selfItems.length : items.length;
 
   return (
     <Container size="xl">
@@ -103,7 +100,7 @@ export default function Reviews() {
         <div>
           <Title order={2}>{t("reviews.title")}</Title>
           <Text c="dimmed" size="sm">
-            {isSelf ? t("selfReview.count", { count }) : t("reviews.count", { count })}
+            {t("board.count", { count: items.length })}
           </Text>
         </div>
 
@@ -115,34 +112,25 @@ export default function Reviews() {
           value={tab}
           onChange={(v) => setTab(v as Tab)}
           data={[
-            { label: t("reviews.queueTab"), value: "queue" },
-            ...(isReviewer ? [{ label: t("reviews.assignedTab"), value: "assigned" }] : []),
+            { label: t("board.queueTab"), value: "queue" },
+            { label: t("board.openTab"), value: "open" },
             { label: t("reviews.mineTab"), value: "mine" },
             { label: t("reviews.allTab"), value: "all" },
-            { label: t("reviews.selfTab"), value: "self" },
           ]}
         />
 
-        {loading ? (
+        {query.isLoading ? (
           <Group justify="center" mt="xl">
             <Loader />
           </Group>
-        ) : count === 0 ? (
+        ) : items.length === 0 ? (
           <Text c="dimmed" ta="center" mt="xl">
-            {isSelf ? t("selfReview.empty") : t("reviews.empty")}
+            {t("board.empty")}
           </Text>
-        ) : isSelf ? (
-          <Stack gap="sm">
-            {/* The newest one opens by itself — it is the one you came to read; the rest stay
-                collapsed so the page does not fetch every findings payload at once. */}
-            {selfItems.map((sr, i) => (
-              <SelfReviewCard key={sr.id} sr={sr} collapsible={i > 0} showTask />
-            ))}
-          </Stack>
         ) : (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-            {items.map((r) => (
-              <ReviewCard key={r.id} r={r} t={t} />
+            {items.map((task) => (
+              <TaskCard key={task.id} task={task} t={t} />
             ))}
           </SimpleGrid>
         )}

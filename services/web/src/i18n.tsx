@@ -93,52 +93,48 @@ const en: Dict = {
   "home.skills.stat": "{total} skills · avg {avg}",
   "home.reviews.title": "🔁 Task reviews",
   "home.reviews.desc":
-    "Peer-review handoff: submit a deploy-ready task, the lead reviews the branch and sends a " +
-    "verdict, feedback flows back — all from Claude Code.",
+    "One flow: the developer self-reviews with the team's skill, the task lands on the board, " +
+    "and the lead approves it or sends it back with a reason.",
   "home.reviews.stat": "{open} awaiting action",
 
   // reviews
   "reviews.title": "Task reviews",
   "reviews.intro":
-    "The review board. Developers submit deploy-ready tasks (a pointer to the branch); the lead " +
-    "reviews and posts a verdict. Actions happen from Claude Code (submit-for-review / review-inbox " +
-    "/ review-status); this page is read-only.",
-  "reviews.queueTab": "Review queue",
-  "reviews.assignedTab": "Assigned to me",
+    "One flow: a developer reviews their own change with the skill the team configured, and that " +
+    "run puts the task here. The lead reads it and either approves the task or sends it back with " +
+    "a reason. Runs happen in Claude Code (the self-review skill); the lead decides on this page.",
+  "board.queueTab": "Awaiting sign-off",
+  "board.openTab": "With the author",
+  "board.count": "{count} task(s)",
+  "board.empty": "Nothing here. A task reaches the board when its author runs the self-review skill.",
+  "board.notFound": "Task not found.",
+  "board.status.changes_needed": "review not passed",
+  "board.status.passed": "review passed",
+  "board.status.approved": "approved",
+  "board.runs": "{count} run(s)",
+  "board.openFindings": "{count} unanswered",
+  "board.approvedBy": "approved by {who}",
+  "board.approved": "Approved",
+  "board.repo": "Repository",
+  "board.leadSaid": "The lead asked for",
+  "board.leadActions": "Lead decision",
+  "board.leadHint": "Read the run below first. Approve signs the task off; returning it needs a reason, which the author sees until their next run answers it.",
+  "board.returnPlaceholder": "What must change before this can be approved…",
+  "board.approve": "Approve",
+  "board.return": "Return to author",
+  "board.latestRun": "Latest self-review",
+  "board.history": "Earlier runs",
+  "board.confirmDelete": "Remove this task from the board? Its self-review runs go with it. This cannot be undone.",
   "reviews.mineTab": "My submissions",
-  "reviews.selfTab": "Self-reviews",
   "reviews.allTab": "All",
-  "reviews.count": "{count} review(s)",
-  "reviews.empty": "No reviews here yet.",
   "reviews.by": "by {author}",
-  "reviews.reviewer": "reviewer: {who}",
-  "reviews.unassigned": "unassigned",
-  "reviews.status.submitted": "in review",
-  "reviews.status.changes_requested": "changes requested",
-  "reviews.status.approved": "approved",
-  "reviews.status.done": "done",
   "reviews.task": "Task",
   "reviews.branch": "Branch",
-  "reviews.commits": "Commits",
-  "reviews.files": "Changed files",
-  "reviews.summary": "Summary",
-  "reviews.verified": "Verified by author",
-  "reviews.thread": "Thread",
-  "reviews.notFound": "Review not found.",
-  "reviews.confirmDelete":
-    "Withdraw this review? Its thread goes with it. Self-reviews attached to it are kept — they " +
-    "detach and stay in the Self-reviews list. This cannot be undone.",
-  "reviews.event.submit": "submitted",
-  "reviews.event.verdict": "verdict",
-  "reviews.event.resubmit": "resubmitted",
-  "reviews.event.ack": "acknowledged",
-  "reviews.event.self_review": "self-review",
   "reviews.usageHint":
-    "Act from Claude Code: developers use the submit-for-review / review-status skills; the lead " +
-    "runs review-inbox (under /loop). Verdicts and resubmits are not done from this page.",
+    "The runs come from Claude Code: a developer applies the configured skill to their own diff " +
+    "and posts the findings, then records what each fix closed. Approving is the lead's step here.",
 
   // self-review
-  "selfReview.title": "Self-review",
   "selfReview.policyTitle": "Self-review policy",
   "selfReview.policyIntro":
     "Which catalog skill reviews a developer's own change, per lane. The choice is a server " +
@@ -154,25 +150,17 @@ const en: Dict = {
   "selfReview.requiredShort": "mandatory",
   "selfReview.optional": "optional",
   "selfReview.save": "Save",
-  "selfReview.saved": "Saved",
   "selfReview.adminOnly": "Only an admin can change this.",
   "selfReview.none": "No self-review was recorded for this task.",
   "selfReview.verdict.pass": "clean",
   "selfReview.verdict.changes_needed": "changes needed",
   "selfReview.findings": "{count} finding(s)",
-  "selfReview.ranBy": "{skill} · {model}",
   "selfReview.severity.blocker": "blocker",
   "selfReview.severity.major": "major",
   "selfReview.severity.minor": "minor",
   "selfReview.severity.nit": "nit",
   "selfReview.noFindings": "The skill reported nothing.",
   "selfReview.suggestion": "Fix",
-  "selfReview.count": "{count} self-review(s)",
-  "selfReview.empty":
-    "No self-reviews yet. Run the self-review skill from Claude Code — it applies the skill " +
-    "configured below to your own diff and posts the findings here.",
-  "selfReview.attachedTo": "· on review #{id}",
-  "selfReview.standalone": "· not handed to a lead yet",
   "selfReview.show": "Findings",
   "selfReview.hide": "Hide",
   "selfReview.fixed": "fixed",
@@ -453,52 +441,48 @@ const ru: Dict = {
   "home.skills.stat": "скиллов: {total} · средн. {avg}",
   "home.reviews.title": "🔁 Ревью задач",
   "home.reviews.desc":
-    "Передача на ревью: разработчик отправляет готовую задачу (указатель на ветку), лид смотрит " +
-    "ветку и выносит вердикт, обратная связь возвращается — всё из Claude Code.",
+    "Один поток: разработчик проверяет себя скиллом команды, задача попадает на доску, " +
+    "лид ставит Approved или возвращает её с причиной.",
   "home.reviews.stat": "требуют действия: {open}",
 
   // reviews
   "reviews.title": "Ревью задач",
   "reviews.intro":
-    "Доска ревью. Разработчики отправляют готовые к деплою задачи (указатель на ветку); лид " +
-    "смотрит и выносит вердикт. Действия выполняются из Claude Code (submit-for-review / " +
-    "review-inbox / review-status); эта страница — только для чтения.",
-  "reviews.queueTab": "Очередь ревью",
-  "reviews.assignedTab": "Назначено мне",
+    "Один поток: разработчик проверяет свои изменения скиллом, который выбрала команда, и этот " +
+    "прогон ставит задачу сюда. Лид смотрит результат и либо ставит Approved, либо возвращает " +
+    "задачу с причиной. Прогоны — в Claude Code (скилл self-review), решение лида — на этой странице.",
+  "board.queueTab": "Ждут отметки",
+  "board.openTab": "У разработчика",
+  "board.count": "задач: {count}",
+  "board.empty": "Пока пусто. Задача попадает на доску, когда автор прогоняет скилл саморевью.",
+  "board.notFound": "Задача не найдена.",
+  "board.status.changes_needed": "review не пройдено",
+  "board.status.passed": "review пройдено",
+  "board.status.approved": "approved",
+  "board.runs": "прогонов: {count}",
+  "board.openFindings": "без ответа: {count}",
+  "board.approvedBy": "отметил {who}",
+  "board.approved": "Approved",
+  "board.repo": "Репозиторий",
+  "board.leadSaid": "Лид просит",
+  "board.leadActions": "Решение лида",
+  "board.leadHint": "Сначала посмотрите прогон ниже. Approve закрывает задачу; при возврате нужна причина — автор видит её, пока следующий прогон на неё не ответит.",
+  "board.returnPlaceholder": "Что нужно исправить перед отметкой…",
+  "board.approve": "Approved",
+  "board.return": "Вернуть автору",
+  "board.latestRun": "Последнее саморевью",
+  "board.history": "Предыдущие прогоны",
+  "board.confirmDelete": "Убрать задачу с доски? Вместе с ней удалятся её прогоны саморевью. Действие необратимо.",
   "reviews.mineTab": "Мои заявки",
-  "reviews.selfTab": "Саморевью",
   "reviews.allTab": "Все",
-  "reviews.count": "заявок: {count}",
-  "reviews.empty": "Здесь пока нет заявок.",
   "reviews.by": "автор: {author}",
-  "reviews.reviewer": "ревьюер: {who}",
-  "reviews.unassigned": "не назначен",
-  "reviews.status.submitted": "на ревью",
-  "reviews.status.changes_requested": "нужны правки",
-  "reviews.status.approved": "одобрено",
-  "reviews.status.done": "закрыто",
   "reviews.task": "Задача",
   "reviews.branch": "Ветка",
-  "reviews.commits": "Коммиты",
-  "reviews.files": "Изменённые файлы",
-  "reviews.summary": "Сводка",
-  "reviews.verified": "Проверено автором",
-  "reviews.thread": "Тред",
-  "reviews.notFound": "Заявка не найдена.",
-  "reviews.confirmDelete":
-    "Отозвать эту заявку? Вместе с ней удалится её лента. Прикреплённые саморевью сохранятся — " +
-    "они отвяжутся и останутся во вкладке «Саморевью». Действие необратимо.",
-  "reviews.event.submit": "отправлено",
-  "reviews.event.verdict": "вердикт",
-  "reviews.event.resubmit": "переотправлено",
-  "reviews.event.ack": "подтверждено",
-  "reviews.event.self_review": "саморевью",
   "reviews.usageHint":
-    "Действия — из Claude Code: разработчики используют скиллы submit-for-review / review-status; " +
-    "лид запускает review-inbox (под /loop). Вердикты и переотправка не делаются с этой страницы.",
+    "Прогоны идут из Claude Code: разработчик применяет назначенный скилл к своему диффу и " +
+    "отправляет находки, затем отмечает, чем закрыт каждый пункт. Approved ставит лид — здесь.",
 
   // self-review
-  "selfReview.title": "Саморевью",
   "selfReview.policyTitle": "Политика саморевью",
   "selfReview.policyIntro":
     "Каким скиллом из каталога разработчик проверяет собственные изменения — по дорожкам. Выбор " +
@@ -514,25 +498,17 @@ const ru: Dict = {
   "selfReview.requiredShort": "обязательно",
   "selfReview.optional": "по желанию",
   "selfReview.save": "Сохранить",
-  "selfReview.saved": "Сохранено",
   "selfReview.adminOnly": "Менять может только администратор.",
   "selfReview.none": "Саморевью по этой задаче не записано.",
   "selfReview.verdict.pass": "чисто",
   "selfReview.verdict.changes_needed": "нужны правки",
   "selfReview.findings": "замечаний: {count}",
-  "selfReview.ranBy": "{skill} · {model}",
   "selfReview.severity.blocker": "блокер",
   "selfReview.severity.major": "серьёзное",
   "selfReview.severity.minor": "мелкое",
   "selfReview.severity.nit": "придирка",
   "selfReview.noFindings": "Скилл не нашёл замечаний.",
   "selfReview.suggestion": "Как исправить",
-  "selfReview.count": "саморевью: {count}",
-  "selfReview.empty":
-    "Саморевью пока нет. Запустите скилл self-review из Claude Code — он применит к вашему диффу " +
-    "скилл, выбранный ниже, и пришлёт находки сюда.",
-  "selfReview.attachedTo": "· в заявке #{id}",
-  "selfReview.standalone": "· лиду ещё не передано",
   "selfReview.show": "Замечания",
   "selfReview.hide": "Скрыть",
   "selfReview.fixed": "исправлено",
