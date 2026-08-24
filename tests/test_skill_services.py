@@ -45,7 +45,10 @@ class FakeSkillRepo:
     def list(self, *, search, category, evaluated):
         return ["s1", "s2"]
 
-    def get(self, skill_id):
+    def get(self, skill_id, *, include_references=True):
+        # Recorded rather than acted on: the service's only job with the flag is to pass it through,
+        # so a test can assert that without the fake having to model reference loading.
+        self.include_references = include_references
         return self._detail if self._exists else None
 
     def delete(self, skill_id):
@@ -78,6 +81,14 @@ def _parsed():
 
 def test_get_skill_found_returns_detail():
     assert SkillService(FakeSkillRepo(detail="DETAIL")).get_skill(1) == "DETAIL"
+
+
+def test_get_skill_passes_the_references_flag_through():
+    # The lean list view asks for no reference files; an install asks for them. Getting this
+    # backwards is invisible in the response shape and expensive in payload, so pin it.
+    repo = FakeSkillRepo(detail="DETAIL")
+    SkillService(repo).get_skill(1, include_references=False)
+    assert repo.include_references is False
 
 
 def test_get_skill_missing_raises():
