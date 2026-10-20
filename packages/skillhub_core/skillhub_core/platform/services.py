@@ -1,12 +1,12 @@
 """Application service for the Platform admin slice (user + role administration).
 
-Owns validation (role must be allowed → ``InvalidRole``) and the commit; maps a missing user to
-``UserNotFound``. Depends only on the ``UserAdminRepository`` Protocol, so it is unit-testable with
-an in-memory fake."""
+Owns validation (role must be allowed → ``InvalidRole``; an admin may not change their own role →
+``OwnRoleChange``) and the commit; maps a missing user to ``UserNotFound``. Depends only on the
+``UserAdminRepository`` Protocol, so it is unit-testable with an in-memory fake."""
 
 from __future__ import annotations
 
-from .errors import InvalidRole, UserNotFound
+from .errors import InvalidRole, OwnRoleChange, UserNotFound
 from .interfaces import UserAdminRepository
 from .models import ROLES
 from .schemas import UserCreated, UserOut
@@ -26,9 +26,11 @@ class UserAdminService:
         self._users.commit()
         return UserCreated(**created)
 
-    def set_role(self, user_id: int, role: str) -> UserOut:
+    def set_role(self, user_id: int, role: str, *, actor_id: int) -> UserOut:
         if role not in ROLES:
             raise InvalidRole(f"role must be one of {ROLES}")
+        if user_id == actor_id:
+            raise OwnRoleChange("you cannot change your own role; ask another admin")
         user = self._users.set_role(user_id, role)
         if user is None:
             raise UserNotFound(f"user {user_id} not found")

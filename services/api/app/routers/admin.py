@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from skillhub_core.platform.errors import InvalidRole, UserNotFound
+from skillhub_core.platform.errors import InvalidRole, OwnRoleChange, UserNotFound
 from skillhub_core.platform.models import User
 from skillhub_core.platform.schemas import (
     ReviewerUpdate,
@@ -49,13 +49,15 @@ def set_role(
     user_id: int,
     payload: RoleUpdate,
     service: UserAdminService = Depends(get_user_admin_service),
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
 ) -> UserOut:
     """Change a user's role — e.g. promote to 'evaluator' so they may submit assessments."""
     try:
-        return service.set_role(user_id, payload.role)
+        return service.set_role(user_id, payload.role, actor_id=admin.id)
     except InvalidRole as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except OwnRoleChange as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except UserNotFound as exc:
         raise HTTPException(status_code=404, detail="User not found") from exc
 

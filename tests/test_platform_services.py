@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from skillhub_core.platform.errors import InvalidRole, UserNotFound
+from skillhub_core.platform.errors import InvalidRole, OwnRoleChange, UserNotFound
 from skillhub_core.platform.models import ROLES
 from skillhub_core.platform.services import UserAdminService
 
@@ -55,14 +55,27 @@ def test_create_user_ok_commits_and_returns_token():
 
 def test_set_role_rejects_unknown_role():
     with pytest.raises(InvalidRole):
-        UserAdminService(FakeUserAdminRepo()).set_role(1, "bogus")
+        UserAdminService(FakeUserAdminRepo()).set_role(1, "bogus", actor_id=2)
 
 
 def test_set_role_missing_user_raises_and_no_commit():
     repo = FakeUserAdminRepo(found=False)
     with pytest.raises(UserNotFound):
-        UserAdminService(repo).set_role(9, VALID_ROLE)
+        UserAdminService(repo).set_role(9, VALID_ROLE, actor_id=2)
     assert repo.committed is False
+
+
+def test_set_role_on_yourself_is_refused_and_no_commit():
+    repo = FakeUserAdminRepo()
+    with pytest.raises(OwnRoleChange):
+        UserAdminService(repo).set_role(2, VALID_ROLE, actor_id=2)
+    assert repo.committed is False
+
+
+def test_set_role_on_someone_else_commits():
+    repo = FakeUserAdminRepo()
+    UserAdminService(repo).set_role(7, VALID_ROLE, actor_id=2)
+    assert repo.committed is True
 
 
 def test_set_reviewer_missing_user_raises():

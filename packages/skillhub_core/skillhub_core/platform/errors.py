@@ -17,3 +17,8 @@ class UserNotFound(PlatformError):
 
 class InvalidRole(PlatformError):
     """A role value is not one of the allowed roles (the API maps it to 400)."""
+
+
+class OwnRoleChange(PlatformError):
+    """An admin tried to change their own role (the API maps it to 409). Another admin must do it,
+    so nobody demotes themselves out of user management by a slip of the role picker."""
