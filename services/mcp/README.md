@@ -25,6 +25,9 @@ on the board: `get_self_review_policy`, `submit_self_review`, `list_self_reviews
 Review board — the lead's half: `list_review_board`, `get_task_review`, `approve_task_review`
 (reviewer), `return_task_review` (reviewer), `delete_task_review`.
 
+Users (admin) — `list_users`, `set_user_role` (refused with 409 for your own role), `set_reviewer`
+(the lead flag, independent of the role). The portal has the same controls at `/users`.
+
 ## Connect (developer — remote HTTP, no build, no Docker)
 
 Ask your Claude Code in plain language (with the `connect-skillhub` skill installed):

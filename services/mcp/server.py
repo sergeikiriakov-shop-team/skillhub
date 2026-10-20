@@ -41,8 +41,9 @@ ArgModelBase.model_config = ConfigDict(arbitrary_types_allowed=True, extra="forb
 # These are DUPLICATED, not imported: this container installs only `mcp` + `httpx` (see Dockerfile),
 # deliberately excluding skillhub_core so the image stays small (no torch). The source of truth is
 # `skillhub_core.skills.constants` (REC_KINDS / REC_STATUSES / REC_TARGET_KINDS / FORMAT_*),
-# `skillhub_core.mcp.models.mcp_server` (TRANSPORTS) and `skillhub_core.reviews.models.task_review`
-# (TASK_REVIEW_STATUSES) — keep them in step when a vocabulary changes there.
+# `skillhub_core.mcp.models.mcp_server` (TRANSPORTS), `skillhub_core.reviews.models.task_review`
+# (TASK_REVIEW_STATUSES) and `skillhub_core.platform.models.base` (ROLES) — keep them in step when a
+# vocabulary changes there.
 #
 # Only stable domain vocabularies belong here. Evaluation DIMENSIONS deliberately do NOT: they are
 # strategy, served live from /api/rubric so one algorithm governs every developer, and embedding
@@ -58,6 +59,7 @@ TaskReviewStatus = Literal["changes_needed", "passed", "approved"]
 SelfReviewLane = Literal["default", "backend", "frontend"]
 SelfReviewVerdict = Literal["pass", "changes_needed"]
 FindingSeverity = Literal["blocker", "major", "minor", "nit"]
+UserRole = Literal["viewer", "contributor", "evaluator", "admin"]
 
 TRANSPORT = os.environ.get("SKILLHUB_MCP_TRANSPORT", "stdio").strip().lower()
 BASE = os.environ.get("SKILLHUB_URL", "http://host.docker.internal:8000").rstrip("/")
@@ -941,6 +943,48 @@ def record_self_review_fixes(
     `{action_required: <how to approve>}`."""
     return _authed_call(
         "POST", f"/api/self-reviews/{self_review_id}/fixes", json=[f.model_dump() for f in fixes]
+    )
+
+
+# --- Admin: users, roles and the lead flag (admin only) ------------------------------------------
+
+
+@mcp.tool()
+def list_users() -> Any:
+    """Everyone who has signed in to SkillHub: id, name, role and `is_reviewer` (the lead flag).
+    Use the id with `set_user_role` / `set_reviewer`. Admin only — anyone else gets 403."""
+    return _authed_call("GET", "/api/admin/users")
+
+
+@mcp.tool()
+def set_user_role(
+    user_id: Annotated[int, Field(description="Numeric id from `list_users`.")],
+    role: Annotated[
+        UserRole,
+        Field(
+            description="viewer reads · contributor uploads · evaluator also scores · admin also "
+            "manages users and the self-review policy."
+        ),
+    ],
+) -> Any:
+    """Change someone's role. Admin only. Refused with 409 for your OWN role — another admin has to
+    change it, so nobody locks themselves out of user management. The lead flag is separate: see
+    `set_reviewer`. A user must have signed in once before they appear here."""
+    return _authed_call("POST", f"/api/admin/users/{user_id}/role", json={"role": role})
+
+
+@mcp.tool()
+def set_reviewer(
+    user_id: Annotated[int, Field(description="Numeric id from `list_users`.")],
+    is_reviewer: Annotated[
+        bool, Field(description="true makes them a lead on the review board; false revokes it.")
+    ],
+) -> Any:
+    """Grant or revoke the lead flag: a lead may approve tasks on the review board or send them back
+    with a comment. Independent of the role — an admin can mark a lead without being one, and admins
+    can sign off tasks anyway. Admin only."""
+    return _authed_call(
+        "POST", f"/api/admin/users/{user_id}/reviewer", json={"is_reviewer": is_reviewer}
     )
 
 
