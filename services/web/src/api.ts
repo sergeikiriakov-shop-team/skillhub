@@ -207,6 +207,15 @@ export interface Me {
   is_reviewer?: boolean;
 }
 
+// --- Admin: one row per signed-in user ---
+export interface AdminUser {
+  id: number;
+  name: string;
+  role: string;
+  is_reviewer: boolean;
+  created_at: string;
+}
+
 // --- The review board: one row per task, its self-review runs as history ---
 export interface TaskReviewSummary {
   id: number;
@@ -486,6 +495,15 @@ export const api = {
     return request<SelfReviewSummary[]>(`/self-reviews${qs ? `?${qs}` : ""}`);
   },
   getSelfReview: (id: number) => request<SelfReviewDetail>(`/self-reviews/${id}`),
+  // --- admin: users ---
+  listUsers: () => request<AdminUser[]>("/admin/users"),
+  setUserRole: (id: number, role: string) =>
+    request<AdminUser>(`/admin/users/${id}/role`, { method: "POST", body: JSON.stringify({ role }) }),
+  setReviewer: (id: number, isReviewer: boolean) =>
+    request<AdminUser>(`/admin/users/${id}/reviewer`, {
+      method: "POST",
+      body: JSON.stringify({ is_reviewer: isReviewer }),
+    }),
   // --- auth ---
   me: () => request<Me>("/auth/me"),
   logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),

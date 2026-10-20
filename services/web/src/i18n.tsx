@@ -22,6 +22,7 @@ const en: Dict = {
   "nav.skills": "Skills",
   "nav.mcp": "MCP",
   "nav.reviews": "Reviews",
+  "nav.users": "Users",
 
   // mcp catalog
   "mcp.title": "MCP servers",
@@ -335,6 +336,27 @@ const en: Dict = {
     "This SkillHub instance is limited to the team — GitHub accounts with access to our repository. " +
     "Ask an admin (or the repo owner) to grant your account access, then sign in again.",
 
+  // admin: users
+  "users.title": "Users",
+  "users.intro":
+    "Everyone who has signed in. The role decides what they may do in the catalog; the lead flag " +
+    "lets them approve tasks on the review board or send them back.",
+  "users.adminOnly": "Only an admin can manage users.",
+  "users.name": "User",
+  "users.role": "Role",
+  "users.lead": "Lead on the board",
+  "users.since": "Since",
+  "users.you": "you",
+  "users.leadOn": "lead",
+  "users.leadOff": "no",
+  "users.roleName.viewer": "viewer",
+  "users.roleName.contributor": "contributor",
+  "users.roleName.evaluator": "evaluator",
+  "users.roleName.admin": "admin",
+  "users.hint":
+    "Someone appears here after their first GitHub sign-in. Your own role is changed by another " +
+    "admin. Admins can sign tasks off without the lead flag.",
+
   // device flow
   "device.title": "Connect a device",
   "device.intro":
@@ -368,6 +390,7 @@ const ru: Dict = {
   "nav.skills": "Скиллы",
   "nav.mcp": "MCP",
   "nav.reviews": "Ревью",
+  "nav.users": "Пользователи",
 
   // каталог mcp
   "mcp.title": "MCP-серверы",
@@ -682,6 +705,27 @@ const ru: Dict = {
   "auth.orgDenied":
     "Этот экземпляр SkillHub доступен только команде — GitHub-аккаунтам с доступом к нашему " +
     "репозиторию. Попросите админа (или владельца репо) выдать вашему аккаунту доступ и войдите снова.",
+
+  // admin: users
+  "users.title": "Пользователи",
+  "users.intro":
+    "Все, кто хоть раз входил. Роль определяет, что человеку можно в каталоге; флаг лида " +
+    "позволяет одобрять задачи на доске ревью или возвращать их.",
+  "users.adminOnly": "Управлять пользователями может только администратор.",
+  "users.name": "Пользователь",
+  "users.role": "Роль",
+  "users.lead": "Лид на доске",
+  "users.since": "С",
+  "users.you": "вы",
+  "users.leadOn": "лид",
+  "users.leadOff": "нет",
+  "users.roleName.viewer": "читатель",
+  "users.roleName.contributor": "контрибьютор",
+  "users.roleName.evaluator": "оценщик",
+  "users.roleName.admin": "админ",
+  "users.hint":
+    "Человек появляется здесь после первого входа через GitHub. Свою роль меняет другой админ. " +
+    "Админы могут подписывать задачи и без флага лида.",
 
   // device flow
   "device.title": "Подключение устройства",

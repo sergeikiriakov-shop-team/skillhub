@@ -29,6 +29,7 @@ import Recommendations from "./pages/Recommendations";
 import Reviews from "./pages/Reviews";
 import ReviewDetail from "./pages/ReviewDetail";
 import SkillDetail from "./pages/SkillDetail";
+import Users from "./pages/Users";
 import PageLoader from "./components/PageLoader";
 import { useI18n } from "./i18n";
 import type { Lang } from "./i18n";
@@ -122,6 +123,11 @@ function AuthControl() {
           </Group>
         </Menu.Label>
         <Menu.Divider />
+        {me?.is_admin && (
+          <Menu.Item component={Link} to="/users">
+            {t("nav.users")}
+          </Menu.Item>
+        )}
         <Menu.Item onClick={() => void logout()}>{t("auth.signOut")}</Menu.Item>
       </Menu.Dropdown>
     </Menu>
@@ -157,11 +163,12 @@ export default function App() {
   const gated = readsRequireAuth && !isAuthenticated && path !== "/device";
 
   const isReviews = path === "/reviews" || path.startsWith("/reviews/");
+  const isUsers = path === "/users";
   // The MCP section lives under /servers, NOT /mcp: nginx prefix-matches `location /mcp` and
   // proxies the whole /mcp* space to the MCP protocol container, which would shadow these routes.
   const isMcp = path === "/servers" || path.startsWith("/servers/");
   // Skills is the catch-all section, so it must exclude every sibling service explicitly.
-  const isSkills = !isReviews && !isMcp && path !== "/" && path !== "/device";
+  const isSkills = !isReviews && !isMcp && !isUsers && path !== "/" && path !== "/device";
 
   return (
     <AppShell header={{ height: 60 }} padding="md">
@@ -230,6 +237,7 @@ export default function App() {
             <Route path="/servers/:id" element={<McpDetail />} />
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/reviews/:id" element={<ReviewDetail />} />
+            <Route path="/users" element={<Users />} />
             <Route path="/device" element={<DeviceApprove />} />
           </Routes>
         )}
