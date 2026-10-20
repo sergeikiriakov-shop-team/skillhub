@@ -91,7 +91,9 @@ Read this first to resume cold. SkillHub is a **standalone** service (independen
   (evaluator), `DELETE /api/skills/{id}` (admin).
 - Auth: `GET /api/auth/login|callback`, `GET /api/auth/me`, `POST /api/auth/logout`,
   `POST /api/auth/device/{code,token,approve}`, `GET/POST/DELETE /api/auth/tokens` (self-service).
-- Admin: `GET/POST /api/admin/users`, `POST /api/admin/users/{id}/role` (mark evaluator).
+- Admin: `GET/POST /api/admin/users`, `POST /api/admin/users/{id}/role` (mark evaluator; 409 on
+  your own role), `POST /api/admin/users/{id}/reviewer` (the lead flag). Portal page `/users`
+  (admin only, linked from the account menu).
 - Auth: `Authorization: Bearer <token>` (MCP/CLI) or the `skillhub_session` cookie (browser).
 
 ## Run it (behind the VPN)
@@ -139,7 +141,8 @@ Tools: `list_unevaluated`, `list_skills`, `get_skill`, `search`, `get_rubric`, `
 review board (lead) — `list_review_board`, `get_task_review`, `approve_task_review`,
 `return_task_review`, `delete_task_review`; self-review — `get_self_review_policy`,
 `submit_self_review`, `list_self_reviews`, `get_self_review`, `record_self_review_fixes`,
-`delete_self_review`. See `services/mcp/README.md`.
+`delete_self_review`; users (admin) — `list_users`, `set_user_role`, `set_reviewer`. See
+`services/mcp/README.md`.
 
 ## Skills shipped with the service (`skills/`)
 `skillhub` (evaluate the catalog) · `connect-skillhub` (one-line MCP setup) · `sandbox-eval` ·
