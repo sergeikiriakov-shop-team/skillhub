@@ -1,3 +1,4 @@
+<title>SkillHub</title>
 <style>
   :root {
     --font-sans: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -27,13 +28,16 @@
     --plan: #4E628F;
     --plan-tint: #E1E7F2;
     --warn: #A9700A;
+    --bad: #B23A2E;
+    --bad-tint: #F6DEDA;
 
     --shadow: 0 1px 2px rgba(15,30,28,.05), 0 8px 26px -14px rgba(15,30,28,.22);
     --radius: 14px;
   }
 
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
       --bg: #0C1514;
       --surface: #111F1D;
       --surface-2: #17302C;
@@ -55,6 +59,8 @@
       --plan: #8FA3CE;
       --plan-tint: #1B2540;
       --warn: #E4A64A;
+      --bad: #F08A7C;
+      --bad-tint: #3A1C18;
 
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -16px rgba(0,0,0,.55);
     }
@@ -67,15 +73,18 @@
     --teal: #0C7A76; --teal-strong: #085B58; --teal-tint: #DCEEEC;
     --amber: #B06E10; --amber-strong: #8C5608; --amber-tint: #F4E6CD;
     --good: #1F7A4D; --good-tint: #DCEEE2; --plan: #4E628F; --plan-tint: #E1E7F2; --warn: #A9700A;
+    --bad: #B23A2E; --bad-tint: #F6DEDA;
     --shadow: 0 1px 2px rgba(15,30,28,.05), 0 8px 26px -14px rgba(15,30,28,.22);
   }
   :root[data-theme="dark"] {
+    color-scheme: dark;
     --bg: #0C1514; --surface: #111F1D; --surface-2: #17302C;
     --ink: #E9F1EF; --ink-2: #B6C9C5; --muted: #8DA29E;
     --line: #24403C; --line-strong: #305650;
     --teal: #34C1B6; --teal-strong: #57D6CB; --teal-tint: #10322E;
     --amber: #E4A64A; --amber-strong: #F0BC6E; --amber-tint: #35291396;
     --good: #45C77E; --good-tint: #16341F; --plan: #8FA3CE; --plan-tint: #1B2540; --warn: #E4A64A;
+    --bad: #F08A7C; --bad-tint: #3A1C18;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 30px -16px rgba(0,0,0,.55);
   }
 
@@ -421,13 +430,96 @@
 
   hr.sep { border: none; border-top: 1px solid var(--line); margin: 0; }
 
+  h3.sub-h { margin: 34px 0 10px; font-size: 19px; letter-spacing: -.01em; text-wrap: balance; }
+
+  /* ---------- review flow: who does what ---------- */
+  .lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 880px) { .lanes { grid-template-columns: 1fr; } }
+  .lane {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 20px; box-shadow: var(--shadow); min-width: 0;
+    display: flex; flex-direction: column;
+  }
+  .lane-who {
+    align-self: flex-start; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .12em; padding: 3px 9px; border-radius: 6px; margin-bottom: 10px;
+  }
+  .lane.dev .lane-who { background: var(--amber-tint); color: var(--amber-strong); }
+  .lane.hub .lane-who { background: var(--teal-tint); color: var(--teal-strong); }
+  .lane.lead .lane-who { background: var(--plan-tint); color: var(--plan); }
+  .lane h3 { margin: 0 0 2px; font-size: 16.5px; }
+  .lane .skill { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); margin: 0 0 10px; }
+  .lane ol { margin: 0; padding-left: 20px; font-size: 14px; color: var(--ink-2); display: grid; gap: 7px; }
+  .lane .tools {
+    margin-top: auto; padding-top: 12px; border-top: 1px dashed var(--line-strong);
+    font-family: var(--font-mono); font-size: 12px; color: var(--muted); line-height: 1.6; word-break: break-word;
+  }
+  .lane ol + .tools { margin-top: 14px; }
+
+  /* status machine (SVG) */
+  .st-box { stroke-width: 1.5; }
+  .st-box.none { fill: var(--surface); stroke: var(--line-strong); stroke-dasharray: 5 3; }
+  .st-box.cn { fill: var(--bad-tint); stroke: var(--bad); }
+  .st-box.ps { fill: var(--amber-tint); stroke: var(--amber); }
+  .st-box.ap { fill: var(--good-tint); stroke: var(--good); }
+  .st-name { font-family: var(--font-mono); font-weight: 700; fill: var(--ink); }
+  .st-sub { font-family: var(--font-sans); fill: var(--ink-2); }
+  .st-edge { stroke: var(--muted); stroke-width: 1.6; fill: none; }
+  .st-edge.lead { stroke: var(--plan); }
+  .st-edge.back { stroke: var(--bad); stroke-dasharray: 6 4; }
+  .st-head { fill: var(--muted); }
+  .st-head.lead { fill: var(--plan); }
+  .st-head.back { fill: var(--bad); }
+  .st-lbl { font-family: var(--font-mono); fill: var(--ink-2); }
+  .st-lbl.lead { fill: var(--plan); font-weight: 600; }
+  .st-lbl.back { fill: var(--bad); font-weight: 600; }
+
+  /* plain data table */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px; }
+  .tbl th, .tbl td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); }
+  .tbl thead th {
+    font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); background: var(--surface-2); font-weight: 700;
+  }
+  .tbl tbody tr:last-child td { border-bottom: none; }
+  .tbl td.mono { font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
+  .tbl .num { font-variant-numeric: tabular-nums; }
+
+  /* readiness check */
+  .tally { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 18px 0 22px; }
+  @media (max-width: 640px) { .tally { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .tally div { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .tally b { display: block; font-family: var(--font-mono); font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .tally span { font-size: 13px; color: var(--muted); }
+  .tally .t-ok b { color: var(--good); }
+  .tally .t-block b { color: var(--bad); }
+  .tally .t-risk b { color: var(--amber-strong); }
+  .tally .t-minor b { color: var(--plan); }
+
+  .checks { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .checks li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px; padding: 14px 18px; border-top: 1px solid var(--line); }
+  .checks li:first-child { border-top: none; }
+  @media (max-width: 560px) { .checks li { grid-template-columns: 1fr; gap: 6px; } }
+  .checks .pill { justify-self: start; }
+  .checks .what { font-weight: 650; color: var(--ink); font-size: 15px; margin: 0; max-width: none; }
+  .checks .why { color: var(--ink-2); font-size: 14px; margin: 3px 0 0; max-width: none; }
+  .checks .fix { color: var(--muted); font-size: 13.5px; margin: 5px 0 0; max-width: none; }
+  .checks .fix b { color: var(--ink-2); font-weight: 650; }
+  .pill.ok { background: var(--good-tint); color: var(--good); }
+  .pill.block { background: var(--bad-tint); color: var(--bad); }
+  .pill.risk { background: var(--amber-tint); color: var(--amber-strong); }
+  .pill.minor { background: var(--plan-tint); color: var(--plan); }
+  .callout.verdict { border-left-color: var(--bad); }
+  .callout.verdict .k { color: var(--bad); }
+
   @media (prefers-reduced-motion: reduce) {
     * { scroll-behavior: auto !important; }
   }
 </style>
 
 <header class="hero">
-  <p class="hero-kicker">Внутренняя презентация для команды · июль 2026</p>
+  <p class="hero-kicker">Внутренняя презентация для команды · обновлено 21.10.2026</p>
   <h1 class="wordmark">Skill<span class="hub">Hub</span></h1>
   <p class="hero-thesis">Общий реестр скиллов Claude Code, где <b>сервер ничего не «думает»</b> — думает Claude Code каждого разработчика.</p>
   <p class="hero-sub">Скиллы (<code style="background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15);color:#CFE6E3">SKILL.md</code>) со всей команды собираются в одном месте: хранятся, ищутся векторным поиском, оцениваются по единой рубрике и ставятся к себе одной фразой. Вся «умная» работа выполняется на собственном аккаунте разработчика.</p>
@@ -437,6 +529,7 @@
     <span class="chip"><b>Postgres 16</b> · pgvector</span>
     <span class="chip">MCP · <b>OAuth 2.1</b></span>
     <span class="chip">Один VPS · push-to-deploy</span>
+    <span class="chip">Ревью: <b>один поток</b> · проверка 21.10</span>
   </div>
 </header>
 
@@ -592,7 +685,7 @@
     </div>
 
     <div class="grid cols-4" style="margin-top:16px">
-      <div class="card"><h3><span class="tag">web</span></h3><p>React + Vite + Mantine. Read-only портал: каталог, поиск, методология, рекомендации, ревью, Guide. Двуязычный RU/EN.</p></div>
+      <div class="card"><h3><span class="tag">web</span></h3><p>React + Vite + Mantine. Портал: каталог, поиск, методология, рекомендации, ревью, Guide; для админа — пользователи и политика ревью. Двуязычный RU/EN.</p></div>
       <div class="card"><h3><span class="tag">api</span></h3><p>FastAPI. Роутеры: skills, evaluations, categories, search, rubric, recommendations, reviews, task_groups, stats, admin, auth, oauth.</p></div>
       <div class="card"><h3><span class="tag">skillhub_core</span></h3><p>Общая библиотека (DDD): контексты <code>platform</code>, <code>skills</code>, <code>reviews</code>. Парсинг, эмбеддинги, репозиторий, пайплайн.</p></div>
       <div class="card"><h3><span class="tag">db + mcp</span></h3><p>Postgres 16 + pgvector для поиска. <code>mcp</code> — удалённый HTTP-сервер MCP за nginx (<code>/mcp</code>), точка входа для Claude Code.</p></div>
@@ -651,7 +744,7 @@
           <text x="534" y="136" class="d-svc-sub" font-size="11.5">FastMCP · :9000</text>
           <text x="534" y="164" class="d-ep" font-size="11.5">1 · проверяет Bearer → GET /api/auth/me</text>
           <text x="534" y="186" class="d-ep" font-size="11.5">2 · форвардит ТОТ ЖЕ токен в REST API</text>
-          <text x="534" y="214" class="d-route" font-size="11">инструменты (31):</text>
+          <text x="534" y="214" class="d-route" font-size="11">инструменты (35):</text>
           <text x="534" y="231" class="d-ep-dim" font-size="11">reads · writes · reviews · authenticate</text>
 
           <!-- api: authorization server + data -->
@@ -664,7 +757,7 @@
           <text x="534" y="410" class="d-ep-dim" font-size="11">/device/{code,token,approve} · /tokens</text>
           <text x="534" y="434" class="d-route" font-size="11">DATA · require_read_access · роли</text>
           <text x="534" y="451" class="d-ep" font-size="11">skills · assessment · search · rubric</text>
-          <text x="534" y="466" class="d-ep-dim" font-size="11">stats · recommendations · reviews</text>
+          <text x="534" y="466" class="d-ep-dim" font-size="11">stats · recommendations · self/task-reviews</text>
           <text x="534" y="481" class="d-ep-dim" font-size="11">categories · task-groups · admin</text>
 
           <!-- db -->
@@ -714,11 +807,11 @@
           <ul class="ep-list">
             <li>/skills · /skills/{id} · /skills/{id}/assessment</li>
             <li>/search · /rubric · /categories · /task-groups · /stats</li>
-            <li>/recommendations · /reviews · /admin/*</li>
+            <li>/recommendations · /self-reviews · /task-reviews · /admin/*</li>
           </ul>
         </div>
         <div class="card">
-          <h3 style="margin-bottom:2px">MCP — инструменты (31)</h3>
+          <h3 style="margin-bottom:2px">MCP — инструменты (35)</h3>
           <div class="ep-group">Чтение</div>
           <ul class="ep-list"><li>list_skills · get_skill · search · get_rubric · list_task_groups · get_stats · list_unevaluated · list_recommendations</li></ul>
           <div class="ep-group amber">Запись — contributor+ / evaluator</div>
@@ -728,9 +821,11 @@
           <div class="ep-group">Песочница (трайлы)</div>
           <ul class="ep-list"><li>get_skill_notebook · get_skill_fit · submit_skill_notebook</li></ul>
           <div class="ep-group amber">Саморевью — скилл задаёт сервер</div>
-          <ul class="ep-list"><li>get_self_review_policy · submit_self_review · list_self_reviews · get_self_review · record_self_review_fixes</li></ul>
+          <ul class="ep-list"><li>get_self_review_policy · submit_self_review · list_self_reviews · get_self_review · record_self_review_fixes · delete_self_review</li></ul>
           <div class="ep-group">Доска ревью — половина лида</div>
-          <ul class="ep-list"><li>list_review_board · get_task_review · approve_task_review · return_task_review</li></ul>
+          <ul class="ep-list"><li>list_review_board · get_task_review · approve_task_review · return_task_review · delete_task_review</li></ul>
+          <div class="ep-group amber">Пользователи — только admin</div>
+          <ul class="ep-list"><li>list_users · set_user_role · set_reviewer</li></ul>
           <div class="ep-group">Авторизация</div>
           <ul class="ep-list"><li>authenticate <span style="color:var(--muted)">— http: OAuth (браузер) · stdio: device flow</span></li></ul>
         </div>
@@ -789,6 +884,8 @@
         <span class="role">admin<span>управляет пользователями</span></span>
       </div>
       <p class="prose" style="margin-top:14px;font-size:14.5px">Любой GitHub-аккаунт начинает как <code>viewer</code>. E-mail из <code>SKILLHUB_BOOTSTRAP_ADMINS</code> становится <code>admin</code> при первом входе; дальше админ повышает остальных. Роли — это понятие самого SkillHub, провайдер их не несёт.</p>
+      <p class="prose" style="margin-top:8px;font-size:14.5px"><strong>Лид</strong> — не отдельная ступень, а флаг <code>is_reviewer</code> поверх любой роли. Только с ним (или с ролью admin) доступны Approved и возврат задачи на доске ревью.</p>
+      <p class="prose" style="margin-top:8px;font-size:14.5px"><strong>Кто это настраивает.</strong> Админ меняет роли и флаг лида на странице <code>/users</code> (ссылка в меню аккаунта, видна только админам) или фразой в Claude Code через MCP-инструменты <code>set_user_role</code> и <code>set_reviewer</code>. Свою собственную роль админ поменять не может: сервер отвечает 409, это делает другой админ.</p>
     </div>
   </section>
 
@@ -796,24 +893,25 @@
   <section class="block" id="rubric">
     <p class="eyebrow"><span class="num">06</span> Рубрика оценки · v2</p>
     <h2>Единая мера качества — одна для всех рецензентов</h2>
-    <p class="lead">6 измерений по 0–10 плюс holistic <code>overall</code>. Версия рубрики хранится в каждой оценке: при смене рубрики старые оценки помечаются как <em>устаревшие</em>, а не переписываются молча.</p>
+    <p class="lead">6 измерений по 0–10. <code>overall</code> считает сервер как взвешенное среднее; веса хранятся в БД и меняются админом, после чего весь каталог пересчитывается сразу. Версия рубрики хранится в каждой оценке: при смене рубрики старые оценки помечаются как <em>устаревшие</em>, а не переписываются молча.</p>
 
     <div class="split" style="align-items:start">
       <div class="card">
-        <h3 style="margin-bottom:12px">Измерения и веса</h3>
+        <h3 style="margin-bottom:12px">Измерения и живые веса</h3>
         <div class="grid" style="gap:10px">
-          <div class="dim"><span>trigger_quality <small style="color:var(--muted)">— насколько точно указано, КОГДА срабатывать</small></span><span class="w heavy">×2</span></div>
+          <div class="dim"><span>safety <small style="color:var(--muted)">— предупреждения о разрушительных действиях и крайних случаях</small></span><span class="w heavy">×3</span></div>
           <hr class="sep">
           <div class="dim"><span>completeness <small style="color:var(--muted)">— покрыт ли рабочий процесс без пробелов</small></span><span class="w heavy">×2</span></div>
           <hr class="sep">
+          <div class="dim"><span>reusability <small style="color:var(--muted)">— переиспользуемость, а не разовость</small></span><span class="w heavy">×2</span></div>
+          <hr class="sep">
+          <div class="dim"><span>trigger_quality <small style="color:var(--muted)">— насколько точно указано, КОГДА срабатывать</small></span><span class="w">×1.5</span></div>
+          <hr class="sep">
           <div class="dim"><span>clarity <small style="color:var(--muted)">— ясность и однозначность</small></span><span class="w">×1</span></div>
-          <hr class="sep">
-          <div class="dim"><span>reusability <small style="color:var(--muted)">— переиспользуемость, а не разовость</small></span><span class="w">×1</span></div>
-          <hr class="sep">
-          <div class="dim"><span>safety <small style="color:var(--muted)">— предупреждения о разрушительных действиях</small></span><span class="w">×1</span></div>
           <hr class="sep">
           <div class="dim"><span>structure <small style="color:var(--muted)">— заголовки, примеры, references</small></span><span class="w">×1</span></div>
         </div>
+        <p style="font-size:13px;color:var(--muted);margin:12px 0 0">Значения из <code>GET /api/rubric</code> на 21.10. Стартовые веса в <code>rubric.py</code> другие (trigger и completeness ×2, остальные ×1); действуют те, что в БД.</p>
       </div>
       <div class="card">
         <h3 style="margin-bottom:6px">Калибровочные якоря</h3>
@@ -875,7 +973,7 @@
       </div>
       <div class="entity">
         <div class="hd">users</div>
-        <ul><li>auth_provider · provider_sub</li><li>role · email</li></ul>
+        <ul><li>auth_provider · provider_sub</li><li>role · email</li><li>is_reviewer (лид)</li></ul>
       </div>
       <div class="entity">
         <div class="hd">auth_tokens</div>
@@ -904,9 +1002,202 @@
     </div>
   </section>
 
-  <!-- 9. Статус -->
+  <!-- 9. Ревью -->
+  <section class="block" id="review">
+    <p class="eyebrow"><span class="num">09</span> Блок ревью</p>
+    <h2>Один поток: разработчик проверяет свой дифф, доска показывает статус, лид подписывает</h2>
+    <p class="lead">Ревью выполняет Claude Code автора на его собственном изменении. Каким скиллом проверять, решает сервер, поэтому все проверяются одинаково и результаты сопоставимы. Прогон сам ставит задачу на доску. Лид ничего не перезапускает: он читает находки и ставит Approved или возвращает задачу с причиной.</p>
+
+    <div class="lanes" style="margin-top:18px">
+      <div class="lane dev">
+        <span class="lane-who">Разработчик</span>
+        <h3>Саморевью</h3>
+        <p class="skill">скиллы self-review · review-status</p>
+        <ol>
+          <li>Читает политику: какая дорожка (backend, frontend, default) и какой каталожный скилл её проверяет.</li>
+          <li>Берёт этот скилл из каталога и применяет к своему диффу <code>origin/master8...HEAD</code>.</li>
+          <li>Отправляет находки с severity, коммитами и адресом репозитория, поэтому каждая находка ведёт на свою строку в GitHub.</li>
+          <li>После правок отмечает, какой коммит что закрыл, и запускает прогон заново.</li>
+        </ol>
+        <div class="tools">get_self_review_policy · get_skill · submit_self_review · record_self_review_fixes · list_review_board(mine)</div>
+      </div>
+      <div class="lane hub">
+        <span class="lane-who">SkillHub</span>
+        <h3>Доска задач</h3>
+        <p class="skill">одна строка task_reviews на задачу</p>
+        <ol>
+          <li>Первый прогон создаёт строку задачи, следующие её обновляют.</li>
+          <li>Вердикт считает сервер: любой blocker или major даёт <code>changes_needed</code>, иначе <code>pass</code>.</li>
+          <li>Статус задачи берётся из последнего прогона, вручную его никто не выставляет.</li>
+          <li>Находки не переписываются. Фиксы добавляются рядом: с коммитом это закрытие, с одной заметкой это ответ.</li>
+        </ol>
+        <div class="tools">/api/self-reviews · /api/task-reviews · страница /reviews на портале</div>
+      </div>
+      <div class="lane lead">
+        <span class="lane-who">Лид</span>
+        <h3>Подпись</h3>
+        <p class="skill">скилл review-board, обычно под /loop</p>
+        <ol>
+          <li>Берёт очередь: задачи со статусом <code>passed</code>.</li>
+          <li>Читает последний прогон целиком: находки, фиксы, прошлые прогоны.</li>
+          <li>Ставит <b>Approved</b> или возвращает задачу с обязательным комментарием.</li>
+          <li>Если дорожка помечена <code>required</code>, одобрить задачу без чистого прогона нельзя: сервер ответит 409.</li>
+        </ol>
+        <div class="tools">list_review_board(passed) · get_task_review · approve_task_review · return_task_review</div>
+      </div>
+    </div>
+
+    <h3 class="sub-h">Как меняется статус задачи на доске</h3>
+    <div class="diagram-wrap">
+      <div class="diagram-scroll">
+        <svg class="diagram" viewBox="0 0 1000 290" role="img" aria-label="Статусы задачи на доске ревью: нет на доске, changes_needed, passed, approved, и переходы между ними">
+          <defs>
+            <marker id="sth" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto-start-reverse"><path d="M0,0 L6.5,3 L0,6 Z" class="st-head"/></marker>
+            <marker id="sthl" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto-start-reverse"><path d="M0,0 L6.5,3 L0,6 Z" class="st-head lead"/></marker>
+            <marker id="sthb" markerWidth="9" markerHeight="9" refX="6.5" refY="3" orient="auto-start-reverse"><path d="M0,0 L6.5,3 L0,6 Z" class="st-head back"/></marker>
+          </defs>
+
+          <!-- edges first -->
+          <path d="M170,145 H210 V75 H326" class="st-edge" marker-end="url(#sth)"/>
+          <path d="M210,145 V215 H326" class="st-edge" marker-end="url(#sth)"/>
+          <text x="218" y="66" class="st-lbl" font-size="11">blocker / major</text>
+          <text x="218" y="233" class="st-lbl" font-size="11">чистый прогон</text>
+
+          <path d="M405,110 V176" class="st-edge" marker-end="url(#sth)"/>
+          <text x="397" y="148" text-anchor="end" class="st-lbl" font-size="11">чистый прогон</text>
+          <path d="M485,180 V114" class="st-edge" marker-end="url(#sth)"/>
+          <text x="493" y="148" class="st-lbl" font-size="11">снова находки</text>
+
+          <path d="M560,236 H806" class="st-edge lead" marker-end="url(#sthl)"/>
+          <text x="600" y="256" class="st-lbl lead" font-size="11.5">approve · лид</text>
+
+          <path d="M560,196 H700 V75 H564" class="st-edge back" marker-end="url(#sthb)"/>
+          <text x="710" y="128" class="st-lbl back" font-size="11.5">return · лид</text>
+          <text x="710" y="145" class="st-lbl back" font-size="11">с обязательным</text>
+          <text x="710" y="160" class="st-lbl back" font-size="11">комментарием</text>
+
+          <!-- states -->
+          <rect x="20" y="113" width="150" height="64" rx="12" class="st-box none"/>
+          <text x="95" y="140" text-anchor="middle" class="st-name" font-size="13">нет на доске</text>
+          <text x="95" y="159" text-anchor="middle" class="st-sub" font-size="11.5">до первого прогона</text>
+
+          <rect x="330" y="40" width="230" height="70" rx="12" class="st-box cn"/>
+          <text x="445" y="70" text-anchor="middle" class="st-name" font-size="14">changes_needed</text>
+          <text x="445" y="92" text-anchor="middle" class="st-sub" font-size="12">review не пройдено · ход автора</text>
+
+          <rect x="330" y="180" width="230" height="70" rx="12" class="st-box ps"/>
+          <text x="445" y="210" text-anchor="middle" class="st-name" font-size="14">passed</text>
+          <text x="445" y="232" text-anchor="middle" class="st-sub" font-size="12">review пройдено · очередь лида</text>
+
+          <rect x="810" y="200" width="170" height="70" rx="12" class="st-box ap"/>
+          <text x="895" y="230" text-anchor="middle" class="st-name" font-size="14">approved</text>
+          <text x="895" y="252" text-anchor="middle" class="st-sub" font-size="12">задача подписана</text>
+        </svg>
+      </div>
+    </div>
+    <p class="prose" style="font-size:14.5px;margin-top:12px">Удалить прогон или строку задачи может автор, пока задача не одобрена, и админ в любой момент. После удаления прогона статус задачи пересчитывается по оставшимся.</p>
+
+    <h3 class="sub-h">Политика саморевью на сервере</h3>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Дорожка</th><th>Чем проверяет</th><th>Обязательна</th><th>Что это значит сейчас</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">backend</td><td class="mono">beliani-pr-review-backend · id 45 v3 · <span class="num">7.90</span></td><td>нет</td><td>PHP проверяет оркестратор с субагентом-аудитором; на крупном или рискованном диффе — четыре потока и скептик на каждую находку. Версия от 12.10, загружена 21.10.</td></tr>
+          <tr><td class="mono">default</td><td class="mono">beliani-pr-review-backend · id 45</td><td>нет</td><td>Смешанный или неясный дифф идёт тем же скиллом.</td></tr>
+          <tr><td class="mono">frontend</td><td class="mono">не настроена</td><td>нет</td><td>Саморевью фронтенда остановится и попросит админа указать скилл. Подставлять свой скилл агенту запрещено.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 10. Готовность -->
+  <section class="block" id="readiness">
+    <p class="eyebrow"><span class="num">10</span> Готовность · 21.10.2026</p>
+    <h2>Инструменты готовы, осталось назначить лида и раздать скиллы</h2>
+    <p class="lead">Утром 21.10 проверили живой инстанс только чтением: портал и API, MCP из Claude Code с OAuth, VPS и базу. Днём закрыли большую часть найденного и задеплоили <code>4097068</code>. Ниже — состояние после этих работ.</p>
+
+    <div class="tally">
+      <div class="t-ok"><b>8</b><span>закрыто за день</span></div>
+      <div class="t-block"><b>2</b><span>блокера запуска</span></div>
+      <div class="t-risk"><b>3</b><span>риска</span></div>
+      <div class="t-minor"><b>5</b><span>мелочей</span></div>
+    </div>
+
+    <div class="callout verdict" style="margin-bottom:22px">
+      <p class="k">Итог</p>
+      <p>Технически всё на месте: каталог раздаёт актуальный скилл-ревьюер, скиллы потока лежат в каталоге и оценены, админ управляет ролями и флагом лида из портала или из Claude Code. До запуска на команду остаются два шага, оба организационные: выбрать и отметить лида, установить скиллы потока разработчикам и лиду. После этого нужен один боевой прогон на настоящей задаче.</p>
+    </div>
+
+    <h3 class="sub-h" style="margin-top:0">Блокеры запуска</h3>
+    <ul class="checks">
+      <li><span class="pill block">блокер</span><div>
+        <p class="what">Лид не назначен</p>
+        <p class="why">Флаг <code>is_reviewer</code> по-прежнему не стоит ни у кого. Админов теперь двое живых, но ревьюерами они быть не собираются, а <code>review-board</code> рассчитан на лида.</p>
+        <p class="fix"><b>Что сделать:</b> выбрать лида; он один раз входит на портал через GitHub, админ включает «Лид на доске» на странице <code>/users</code> или говорит Claude Code «сделай &lt;имя&gt; лидом».</p>
+      </div></li>
+      <li><span class="pill block">блокер</span><div>
+        <p class="what">Скиллы потока не установлены</p>
+        <p class="why">Все три в каталоге: <code>self-review</code> (id 50), <code>review-status</code> (id 52), <code>review-board</code> (id 51). В Claude Code у людей их пока нет.</p>
+        <p class="fix"><b>Что сделать:</b> разработчикам — <em>«установи скиллы self-review и review-status из SkillHub»</em>, лиду — <em>«установи review-board из SkillHub»</em>.</p>
+      </div></li>
+    </ul>
+
+    <h3 class="sub-h">Риски</h3>
+    <ul class="checks">
+      <li><span class="pill risk">риск</span><div>
+        <p class="what">Можно одобрить непроверенный код</p>
+        <p class="why">Нашла независимая оценка. Ни <code>review-board</code>, ни <code>review-status</code> не сверяют вершину ветки с коммитами чистого прогона. Если автор допушил после прогона, лид увидит зелёную задачу и одобрит то, что скилл не видел.</p>
+        <p class="fix"><b>Что сделать:</b> в обоих скиллах сравнивать <code>git rev-parse origin/&lt;branch&gt;</code> с <code>latest_run.commit_shas</code>; при расхождении — вернуть задачу на свежий прогон.</p>
+      </div></li>
+      <li><span class="pill risk">риск</span><div>
+        <p class="what">Frontend-дорожка не настроена</p>
+        <p class="why">Любое саморевью фронтенда остановится на первом шаге.</p>
+        <p class="fix"><b>Что сделать:</b> админом указать <code>frontend-pr-review-refined</code> (id 21, 8.52) в таблице политики на странице ревью.</p>
+      </div></li>
+      <li><span class="pill risk">риск</span><div>
+        <p class="what">Поток ни разу не прошёл целиком</p>
+        <p class="why">Approved и возврат на проде не вызывались ни разу, одобренных задач 0.</p>
+        <p class="fix"><b>Что сделать:</b> после назначения лида — боевой прогон на настоящей задаче, шаг 4 плана ниже.</p>
+      </div></li>
+    </ul>
+
+    <h3 class="sub-h">Закрыто 21.10</h3>
+    <ul class="checks">
+      <li><span class="pill ok">готово</span><div><p class="what">Скилл-ревьюер обновлён</p><p class="why"><code>beliani-pr-review-backend</code> стал версией 3 записи id 45: текст от 12.10, <code>audit-fanout.workflow.js</code> и субагент-аудитор. После загрузки всё прочитано с сервера и совпало побайтно. Политика подхватила новую версию сама.</p></div></li>
+      <li><span class="pill ok">готово</span><div><p class="what">Независимая оценка трёх скиллов</p><p class="why">Отдельный субагент по живым весам: ревьюер 7.90 (safety 9), <code>review-status</code> 7.71, <code>review-board</code> 7.05. Слабые места записаны в каталоге у каждого скилла.</p></div></li>
+      <li><span class="pill ok">готово</span><div><p class="what">Скиллы лида и разработчика в каталоге</p><p class="why"><code>review-board</code> (id 51) и <code>review-status</code> (id 52) загружены и ставятся одной фразой.</p></div></li>
+      <li><span class="pill ok">готово</span><div><p class="what">Управление пользователями</p><p class="why">Страница <code>/users</code> для админов и MCP-инструменты <code>list_users</code>, <code>set_user_role</code>, <code>set_reviewer</code>. Сервер не даёт админу сменить свою роль (409). 116 тестов зелёные, типы фронтенда проверены, на проде 35 инструментов MCP.</p></div></li>
+      <li><span class="pill ok">готово</span><div><p class="what">Второй живой админ</p><p class="why">Роль admin получил второй личный аккаунт владельца, флаг лида у обоих выключен.</p></div></li>
+      <li><span class="pill ok">готово</span><div><p class="what">GitHub догнал прод</p><p class="why">Все коммиты отправлены в <code>origin</code>, ветка совпадает с задеплоенной <code>4097068</code>.</p></div></li>
+      <li><span class="pill ok">готово</span><div><p class="what">Место на VPS</p><p class="why">Очищено 6.8 ГБ кэша сборки. После пересборки диск занят на 66%, свободно 6.6 ГБ.</p></div></li>
+      <li><span class="pill ok">готово</span><div><p class="what">Деплой проверен</p><p class="why"><code>/api/health</code> 200, <code>/users</code> и <code>/reviews</code> 200, админские ручки без входа 401, в бандле есть страница пользователей, MCP регистрирует новые инструменты.</p></div></li>
+    </ul>
+
+    <h3 class="sub-h">Мелочи</h3>
+    <ul class="checks">
+      <li><span class="pill minor">мелочь</span><div><p class="what">Задача 522625 ждёт лида с 11.08</p><p class="why">Её нужно либо одобрить, либо убрать с доски, чтобы очередь лида начиналась с чистого листа.</p></div></li>
+      <li><span class="pill minor">мелочь</span><div><p class="what">Текст рубрики расходится с весами</p><p class="why">Инструкция оценщику говорит, что больше всего весят trigger_quality и completeness, а в живых весах тяжелее всех safety ×3. На баллы это не влияет, но оценщика сбивает.</p></div></li>
+      <li><span class="pill minor">мелочь</span><div><p class="what">Мусор в рабочей копии SkillHub</p><p class="why">Незакоммиченный <code>.mcp.json</code> (убран старый stdio-конфиг), файл <code>=2</code> и папка <code>evals;C</code>.</p></div></li>
+      <li><span class="pill minor">мелочь</span><div><p class="what">green-loop не подключён к доске</p><p class="why">Цикл доводит задачу до готовности, но саморевью в SkillHub не отправляет.</p></div></li>
+      <li><span class="pill minor">мелочь</span><div><p class="what">Открытые рекомендации к скиллам ревью</p><p class="why">У <code>self-review</code> база диффа жёстко задана как <code>origin/master8</code> (№60). У ревьюера нет проверки, что субагент установлен, и нет запасного пути через <code>information_schema</code> (№53).</p></div></li>
+    </ul>
+
+    <h3 class="sub-h">План запуска</h3>
+    <div class="card">
+      <ol class="seq" style="margin-top:0">
+        <li><span class="b">✓</span><span class="t"><s>Подстраховать код и диск, обновить скилл-ревьюер, дозагрузить скиллы потока, дать админам управление лидом.</s> Сделано 21.10.</span></li>
+        <li><span class="b amber">1</span><span class="t"><b>Назначить лида</b> на странице <code>/users</code>.</span></li>
+        <li><span class="b amber">2</span><span class="t"><b>Поставить скиллы</b> в Claude Code каждого: <em>«установи скилл self-review из SkillHub»</em>.</span></li>
+        <li><span class="b">3</span><span class="t"><b>Закрыть «устаревший прогон»</b> в <code>review-board</code> и <code>review-status</code> до первого одобрения.</span></li>
+        <li><span class="b amber">4</span><span class="t"><b>Боевой прогон</b> на настоящей задаче: саморевью, фиксы, повторный прогон, Approved или возврат. Заодно решить судьбу 522625.</span></li>
+        <li><span class="b">5</span><span class="t"><b>Подключить green-loop:</b> саморевью на выходе из цикла и после возврата лидом.</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 11. Статус -->
   <section class="block" id="status">
-    <p class="eyebrow"><span class="num">09</span> Что сделано и что впереди</p>
+    <p class="eyebrow"><span class="num">11</span> Что сделано и что впереди</p>
     <h2>Статус проекта</h2>
     <div class="status-grid">
       <div class="card">
@@ -918,14 +1209,18 @@
           <li><span class="pill done">done</span> Авторизация: собственный OAuth 2.1-сервер, вход через GitHub, MCP OAuth / device flow, роли, гейт по доступу к репозиторию</li>
           <li><span class="pill done">done</span> Рекомендации куратора + один поток ревью: саморевью скиллом из настройки сервера → доска задач → Approved от лида</li>
           <li><span class="pill done">done</span> Портал RU/EN + Guide; удалённый HTTP MCP (одна команда); DDD-ядро; TLS + push-to-deploy</li>
+          <li><span class="pill done">done</span> Каталог наполнен и оценён через MCP: 46 скиллов, все с оценкой</li>
+          <li><span class="pill done">done</span> Управление пользователями для админа: страница <code>/users</code> и MCP-инструменты, флаг лида отдельно от роли</li>
         </ul>
       </div>
       <div>
         <div class="card" style="margin-bottom:16px">
           <h3 style="margin-bottom:4px">В работе / ближайшее</h3>
           <ul class="stat-list">
-            <li><span class="pill wip">next</span> Пробная загрузка скилла через MCP и его оценка</li>
+            <li><span class="pill wip">next</span> Назначить лида и раздать скиллы потока (раздел 10)</li>
+            <li><span class="pill wip">next</span> Проверка «устаревшего прогона» в review-board и review-status</li>
             <li><span class="pill wip">next</span> Боевой прогон доски ревью: саморевью → находки → правки → чистый прогон → Approved</li>
+            <li><span class="pill wip">next</span> green-loop отправляет саморевью на доску сам</li>
             <li><span class="pill wip">next</span> Витрина «идеальных» скиллов + богаче статистика</li>
           </ul>
         </div>
@@ -941,9 +1236,9 @@
     </div>
   </section>
 
-  <!-- 10. Как подключиться -->
+  <!-- 12. Как подключиться -->
   <section class="block" id="start">
-    <p class="eyebrow"><span class="num">10</span> Как начать</p>
+    <p class="eyebrow"><span class="num">12</span> Как начать</p>
     <h2>Подключение за одну команду</h2>
     <p class="lead">MCP работает на сервере — ни Docker, ни образа, ни токена не нужно.</p>
     <div class="codeblock" style="margin-bottom:8px">claude mcp add --transport http --scope user skillhub https://166.1.29.218.sslip.io/mcp
@@ -954,11 +1249,14 @@
       <div class="q">импортируй этот SKILL.md в SkillHub</div>
       <div class="q">оцени неоценённые скиллы в SkillHub</div>
       <div class="q">установи скилл &lt;имя&gt; из SkillHub в мой проект</div>
+      <div class="q">сделай саморевью моей задачи перед сдачей</div>
+      <div class="q">/loop 15m review-status <span style="color:var(--muted)">— разработчик ждёт решения лида</span></div>
+      <div class="q">/loop 15m review-board <span style="color:var(--muted)">— лид разбирает очередь</span></div>
     </div>
   </section>
 
   <footer>
-    <p><strong>Об этом документе.</strong> Файл — <code>docs/skillhub-presentation.html</code>. Он обновляется по мере развития проекта: при смене рубрики (<code>rubric.py</code> → <code>RUBRIC_VERSION</code>), добавлении фич или изменении roadmap правьте соответствующие блоки и переопубликуйте артефакт. Источники правды — <code>README.md</code>, <code>docs/architecture.md</code>, <code>docs/SESSION_HANDOFF.md</code> и <code>docs/developer-onboarding-ru.md</code>.</p>
+    <p><strong>Об этом документе.</strong> Файл — <code>docs/skillhub-presentation.html</code>. Он обновляется по мере развития проекта: при смене рубрики (<code>rubric.py</code> → <code>RUBRIC_VERSION</code>), добавлении фич или изменении roadmap правьте соответствующие блоки и переопубликуйте артефакт. Источники правды — <code>README.md</code>, <code>docs/architecture.md</code>, <code>docs/SESSION_HANDOFF.md</code> и <code>docs/developer-onboarding-ru.md</code>. Раздел 10 — снимок на 21.10.2026: цифры в нём сняты с живого инстанса и со временем устареют.</p>
   </footer>
 
 </div>
