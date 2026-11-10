@@ -2,6 +2,7 @@ import { Accordion, Button, Code, CopyButton, Group, List, SimpleGrid, Stack, Te
 import { useLocalStorage } from "@mantine/hooks";
 import { useI18n } from "../i18n";
 import type { TFunc } from "../i18n";
+import ReviewDocsLink from "./ReviewDocsLink";
 
 // The Reviews page's own how-to: the one-time setup and the everyday loop for both sides of the
 // flow, as phrases and commands to paste into Claude Code, plus the rules people trip over most.
@@ -70,7 +71,7 @@ export default function ReviewsHelp() {
         <Accordion.Panel>
           <Stack gap="lg">
             <Text size="sm" c="dimmed">
-              {t("reviews.howto.intro")}
+              {t("reviews.howto.intro")} <ReviewDocsLink label={t("reviews.docsMore")} />
             </Text>
             <Steps
               t={t}
@@ -127,6 +128,9 @@ export default function ReviewsHelp() {
               <List.Item key={i}>{t(`reviews.tips.${i + 1}`)}</List.Item>
             ))}
           </List>
+          <Text size="sm" mt="sm">
+            <ReviewDocsLink label={t("reviews.tips.more")} />
+          </Text>
         </Accordion.Panel>
       </Accordion.Item>
     </Accordion>

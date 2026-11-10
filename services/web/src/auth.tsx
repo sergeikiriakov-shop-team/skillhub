@@ -13,6 +13,8 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   readsRequireAuth: boolean;
+  // The team's review write-up (server setting), or null when unset or not a plain web link.
+  reviewDocsUrl: string | null;
   login: (next?: string) => void;
   logout: () => Promise<void>;
 }
@@ -51,6 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       isAuthenticated: !!me?.authenticated,
       readsRequireAuth: !!me?.reads_require_auth,
+      reviewDocsUrl:
+        me?.review_docs_url && /^https?:\/\//i.test(me.review_docs_url) ? me.review_docs_url : null,
       login,
       logout,
     }),

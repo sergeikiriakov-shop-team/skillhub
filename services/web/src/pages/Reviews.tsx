@@ -88,7 +88,7 @@ const TAB_PARAMS: Record<string, Parameters<typeof api.listTaskReviews>[0]> = {
 
 export default function Reviews() {
   const { t } = useI18n();
-  const { me } = useAuth();
+  const { reviewDocsUrl: docsUrl } = useAuth();
   const [tab, setTab] = useState<Tab>("queue");
 
   const query = useQuery({
@@ -96,8 +96,6 @@ export default function Reviews() {
     queryFn: () => api.listTaskReviews(TAB_PARAMS[tab]),
   });
   const items = query.data ?? [];
-  // A server setting; only a plain web link is rendered as an href.
-  const docsUrl = /^https?:\/\//i.test(me?.review_docs_url ?? "") ? me?.review_docs_url : null;
 
   return (
     <Container size="xl">

@@ -132,6 +132,18 @@ const en: Dict = {
   "reviews.task": "Task",
   "reviews.branch": "Branch",
   "reviews.docsLink": "Review docs",
+  "reviews.docsMore": "The full walkthrough is in the review docs",
+  "reviews.tips.more": "Every rule, with the reason behind it, is in the review docs",
+  "board.docsLink": "How the review flow works",
+  "board.leadDocsLink": "How to review",
+  "board.statusHint.passed":
+    "The self-review came back clean and the task waits for the lead. Read the findings and the " +
+    "author's answers below before approving; commits pushed after this run were not reviewed.",
+  "board.statusHint.changes_needed":
+    "The task is with its author. Fix the points, record which commit closed what, then run the " +
+    "self-review again: only a new run moves the status.",
+  "board.statusHint.approved":
+    "Approved. Deploying and the issue tracker stay a separate step; SkillHub does not touch them.",
   "reviews.tabHint.queue":
     "Tasks whose self-review came back clean. Open one, read its run, then approve it or return it with a reason.",
   "reviews.tabHint.open":
@@ -560,6 +572,18 @@ const ru: Dict = {
   "reviews.task": "Задача",
   "reviews.branch": "Ветка",
   "reviews.docsLink": "Документация по ревью",
+  "reviews.docsMore": "Подробная инструкция — в документации по ревью",
+  "reviews.tips.more": "Все правила с объяснениями — в документации по ревью",
+  "board.docsLink": "Как устроен поток ревью",
+  "board.leadDocsLink": "Как проводить ревью",
+  "board.statusHint.passed":
+    "Саморевью прошло чисто, задача ждёт лида. Перед Approved прочитайте замечания и ответы автора " +
+    "ниже; коммиты после этого прогона никто не проверял.",
+  "board.statusHint.changes_needed":
+    "Задача у автора. Исправить замечания, записать, какой коммит что закрыл, и прогнать саморевью " +
+    "снова: статус двигает только новый прогон.",
+  "board.statusHint.approved":
+    "Approved. Деплой и статус в трекере задач — отдельный шаг, SkillHub их не трогает.",
   "reviews.tabHint.queue":
     "Задачи, чьё саморевью прошло чисто. Откройте карточку, прочитайте прогон и поставьте Approved или верните задачу с причиной.",
   "reviews.tabHint.open":

@@ -17,9 +17,10 @@ import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import ReviewDocsLink from "../components/ReviewDocsLink";
 import SelfReviewCard from "../components/SelfReviewCard";
 import { useI18n } from "../i18n";
-import { StatusBadge } from "./Reviews";
+import { STATUS_COLOR, StatusBadge } from "./Reviews";
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -154,6 +155,14 @@ export default function ReviewDetail() {
           </Stack>
         </Card>
 
+        {/* What this status means and the next step, so nobody has to look the flow up. */}
+        <Alert variant="light" color={STATUS_COLOR[task.status] ?? "gray"}>
+          <Text size="sm">
+            {t(`board.statusHint.${task.status}`)}{" "}
+            <ReviewDocsLink label={t("board.docsLink")} />
+          </Text>
+        </Alert>
+
         {task.lead_comment && (
           <Alert variant="light" color="orange" title={t("board.leadSaid")}>
             <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
@@ -168,7 +177,7 @@ export default function ReviewDetail() {
               {t("board.leadActions")}
             </Title>
             <Text size="xs" c="dimmed" mb="sm">
-              {t("board.leadHint")}
+              {t("board.leadHint")} <ReviewDocsLink size="xs" label={t("board.leadDocsLink")} />
             </Text>
             <Textarea
               value={comment}
