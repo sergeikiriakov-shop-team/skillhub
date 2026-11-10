@@ -1,6 +1,6 @@
 import {
-  Alert,
   Badge,
+  Button,
   Card,
   Container,
   Group,
@@ -15,6 +15,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, TaskReviewSummary } from "../api";
+import { useAuth } from "../auth";
+import ReviewsHelp from "../components/ReviewsHelp";
 import SelfReviewPolicy from "../components/SelfReviewPolicy";
 import { useI18n } from "../i18n";
 import type { TFunc } from "../i18n";
@@ -86,6 +88,7 @@ const TAB_PARAMS: Record<string, Parameters<typeof api.listTaskReviews>[0]> = {
 
 export default function Reviews() {
   const { t } = useI18n();
+  const { me } = useAuth();
   const [tab, setTab] = useState<Tab>("queue");
 
   const query = useQuery({
@@ -93,16 +96,32 @@ export default function Reviews() {
     queryFn: () => api.listTaskReviews(TAB_PARAMS[tab]),
   });
   const items = query.data ?? [];
+  // A server setting; only a plain web link is rendered as an href.
+  const docsUrl = /^https?:\/\//i.test(me?.review_docs_url ?? "") ? me?.review_docs_url : null;
 
   return (
     <Container size="xl">
       <Stack gap="md">
-        <div>
-          <Title order={2}>{t("reviews.title")}</Title>
-          <Text c="dimmed" size="sm">
-            {t("board.count", { count: items.length })}
-          </Text>
-        </div>
+        <Group justify="space-between" align="flex-start">
+          <div>
+            <Title order={2}>{t("reviews.title")}</Title>
+            <Text c="dimmed" size="sm">
+              {t("board.count", { count: items.length })}
+            </Text>
+          </div>
+          {docsUrl && (
+            <Button
+              component="a"
+              href={docsUrl}
+              target="_blank"
+              rel="noreferrer"
+              variant="light"
+              title={docsUrl}
+            >
+              {t("reviews.docsLink")} ↗
+            </Button>
+          )}
+        </Group>
 
         <Text c="dimmed" size="sm">
           {t("reviews.intro")}
@@ -118,6 +137,9 @@ export default function Reviews() {
             { label: t("reviews.allTab"), value: "all" },
           ]}
         />
+        <Text c="dimmed" size="xs" mt={-8}>
+          {t(`reviews.tabHint.${tab}`)}
+        </Text>
 
         {query.isLoading ? (
           <Group justify="center" mt="xl">
@@ -135,11 +157,9 @@ export default function Reviews() {
           </SimpleGrid>
         )}
 
-        <SelfReviewPolicy />
+        <ReviewsHelp />
 
-        <Alert variant="light" color="gray" mt="md">
-          {t("reviews.usageHint")}
-        </Alert>
+        <SelfReviewPolicy />
       </Stack>
     </Container>
   );

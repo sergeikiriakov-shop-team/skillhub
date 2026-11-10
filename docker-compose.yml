@@ -43,6 +43,7 @@ services:
       SKILLHUB_DEFAULT_ROLE: ${SKILLHUB_DEFAULT_ROLE:-viewer}
       SKILLHUB_BOOTSTRAP_ADMINS: ${SKILLHUB_BOOTSTRAP_ADMINS:-}
       SKILLHUB_COOKIE_SECURE: ${SKILLHUB_COOKIE_SECURE:-false}
+      SKILLHUB_REVIEW_DOCS_URL: ${SKILLHUB_REVIEW_DOCS_URL:-}
     depends_on:
       db:
         condition: service_healthy

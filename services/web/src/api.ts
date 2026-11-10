@@ -205,6 +205,7 @@ export interface Me {
   can_evaluate?: boolean;
   is_admin?: boolean;
   is_reviewer?: boolean;
+  review_docs_url?: string | null;
 }
 
 // --- Admin: one row per signed-in user ---

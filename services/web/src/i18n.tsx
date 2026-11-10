@@ -131,9 +131,67 @@ const en: Dict = {
   "reviews.by": "by {author}",
   "reviews.task": "Task",
   "reviews.branch": "Branch",
-  "reviews.usageHint":
-    "The runs come from Claude Code: a developer applies the configured skill to their own diff " +
-    "and posts the findings, then records what each fix closed. Approving is the lead's step here.",
+  "reviews.docsLink": "Review docs",
+  "reviews.tabHint.queue":
+    "Tasks whose self-review came back clean. Open one, read its run, then approve it or return it with a reason.",
+  "reviews.tabHint.open":
+    "With the author: the run found a blocker or major, or the lead returned the task. Only a new self-review run brings it back.",
+  "reviews.tabHint.mine":
+    "Tasks you self-reviewed. To follow them without this page, run /loop 15m review-status in Claude Code.",
+  "reviews.tabHint.all": "The whole board, every status, approved tasks included.",
+  "reviews.howto.title": "Add it to your workflow with Claude Code",
+  "reviews.howto.intro":
+    "Each step is a phrase or a command for your Claude Code; this page shows the result. Set up " +
+    "once per machine, then repeat your role's steps for every task.",
+  "reviews.howto.setup": "Once per machine",
+  "reviews.howto.setupMcp":
+    "Connect the SkillHub MCP and restart Claude Code. The first SkillHub tool call opens a browser " +
+    "for a one-time GitHub sign-in.",
+  "reviews.howto.setupSkills": "Install the flow skills: a developer takes the first phrase, the lead the second.",
+  "reviews.howto.setupSkillsDev": "Install the self-review and review-status skills from SkillHub into my project",
+  "reviews.howto.setupSkillsLead": "Install the review-board skill from SkillHub into my project",
+  "reviews.howto.dev": "Developer: hand a task over",
+  "reviews.howto.dev1": "Commit and push the task branch to origin: the lead reads the diff from there.",
+  "reviews.howto.dev2":
+    "Run the self-review. This run is the hand-over: it puts the task on the board, in the lead's " +
+    "queue when clean, back with you when it finds a blocker or major.",
+  "reviews.howto.dev2Phrase": "Run the SkillHub self-review on my branch",
+  "reviews.howto.dev3":
+    "Fixed the findings? Commit, record which commit closed what, then run the self-review again: " +
+    "only a new run moves the status.",
+  "reviews.howto.dev3Phrase": "Record in SkillHub which commits closed the self-review findings",
+  "reviews.howto.dev4":
+    "Follow the lead's decision in the background: Claude Code tells you about a return with its " +
+    "comment and about the approval, and does not touch your code.",
+  "reviews.howto.lead": "Lead: sign tasks off",
+  "reviews.howto.lead1":
+    "Work the queue in the background: every 30 minutes Claude Code reads each waiting task " +
+    "(findings, the author's answers, earlier runs) and proposes a decision.",
+  "reviews.howto.lead2": "Or one task at a time, with its diff when the change is risky:",
+  "reviews.howto.lead2Show": "Show task <id> on the SkillHub review board",
+  "reviews.howto.lead2Diff": "Read the diff of task <id>",
+  "reviews.howto.lead3":
+    "Post the decision with a phrase below, or by saying yes to what review-board proposes. A " +
+    "return needs file:line, what is wrong and what to do. The same buttons are on each task's page here.",
+  "reviews.howto.lead3Approve": "Approve task <id> in SkillHub",
+  "reviews.howto.lead3Return": "Return task <id> in SkillHub: <file:line, what to fix>",
+  "reviews.tips.title": "Tips",
+  "reviews.tips.1":
+    "“Review passed” only means the reviewing skill found no blocker or major, not that the change " +
+    "is right. Read the findings and the author's answers before approving.",
+  "reviews.tips.2":
+    "A task cannot be added by hand: its first self-review run creates the row. No task on the " +
+    "board means its author has not run the self-review yet.",
+  "reviews.tips.3":
+    "Recording fixes does not change the status. Only a new self-review run takes a task out of " +
+    "“review not passed”.",
+  "reviews.tips.4":
+    "Commits pushed after the run were not reviewed by anyone. If the branch moved on, read the new " +
+    "commits or ask the author to re-run the self-review.",
+  "reviews.tips.5": "A return comment is all the author sees: give file:line, what is wrong and what to do.",
+  "reviews.tips.6":
+    "The reviewing skill comes from the policy below, not from the developer, so everyone's results " +
+    "compare. A lane that is not configured stops the self-review until an admin picks a skill.",
 
   // self-review
   "selfReview.policyTitle": "Self-review policy",
@@ -501,9 +559,67 @@ const ru: Dict = {
   "reviews.by": "автор: {author}",
   "reviews.task": "Задача",
   "reviews.branch": "Ветка",
-  "reviews.usageHint":
-    "Прогоны идут из Claude Code: разработчик применяет назначенный скилл к своему диффу и " +
-    "отправляет находки, затем отмечает, чем закрыт каждый пункт. Approved ставит лид — здесь.",
+  "reviews.docsLink": "Документация по ревью",
+  "reviews.tabHint.queue":
+    "Задачи, чьё саморевью прошло чисто. Откройте карточку, прочитайте прогон и поставьте Approved или верните задачу с причиной.",
+  "reviews.tabHint.open":
+    "Задачи у автора: прогон нашёл blocker или major, либо лид вернул задачу. Обратно в очередь её вернёт только новый прогон саморевью.",
+  "reviews.tabHint.mine":
+    "Задачи, которые вы прогнали через саморевью. Следить без портала: /loop 15m review-status в Claude Code.",
+  "reviews.tabHint.all": "Вся доска в любом статусе, включая Approved.",
+  "reviews.howto.title": "Как встроить в свою работу с Claude Code",
+  "reviews.howto.intro":
+    "Каждый шаг — фраза или команда для вашего Claude Code; эта страница показывает результат. " +
+    "Настройка — один раз на машине, дальше шаги своей роли по каждой задаче.",
+  "reviews.howto.setup": "Один раз на машине",
+  "reviews.howto.setupMcp":
+    "Подключите MCP SkillHub и перезапустите Claude Code. Первый вызов инструмента SkillHub откроет " +
+    "браузер для однократного входа через GitHub.",
+  "reviews.howto.setupSkills": "Поставьте скиллы потока: разработчику — первая фраза, лиду — вторая.",
+  "reviews.howto.setupSkillsDev": "Установи скиллы self-review и review-status из SkillHub в мой проект",
+  "reviews.howto.setupSkillsLead": "Установи скилл review-board из SkillHub в мой проект",
+  "reviews.howto.dev": "Разработчик: передать задачу",
+  "reviews.howto.dev1": "Закоммитьте и запушьте ветку задачи на origin: лид читает дифф оттуда.",
+  "reviews.howto.dev2":
+    "Прогоните саморевью. Этот прогон и есть передача: он ставит задачу на доску — в очередь лида, " +
+    "если чисто, или обратно вам, если нашёл blocker или major.",
+  "reviews.howto.dev2Phrase": "Прогони саморевью моей ветки в SkillHub",
+  "reviews.howto.dev3":
+    "Исправили замечания? Закоммитьте, запишите, какой коммит что закрыл, и прогоните саморевью " +
+    "снова: статус двигает только новый прогон.",
+  "reviews.howto.dev3Phrase": "Запиши в SkillHub, какими коммитами закрыты замечания саморевью",
+  "reviews.howto.dev4":
+    "Следите за решением лида в фоне: Claude Code сообщит о возврате с комментарием и об одобрении, " +
+    "код он не трогает.",
+  "reviews.howto.lead": "Лид: принять задачи",
+  "reviews.howto.lead1":
+    "Разбирайте очередь в фоне: раз в 30 минут Claude Code читает каждую ждущую задачу (замечания, " +
+    "ответы автора, прошлые прогоны) и предлагает решение.",
+  "reviews.howto.lead2": "Или по одной задаче — с диффом, если изменение рискованное:",
+  "reviews.howto.lead2Show": "Покажи задачу <id> на доске ревью SkillHub",
+  "reviews.howto.lead2Diff": "Прочитай дифф задачи <id>",
+  "reviews.howto.lead3":
+    "Отправьте решение фразой ниже или ответом «да» на предложение review-board. Для возврата " +
+    "нужны file:line, что не так и что сделать. Те же кнопки есть на странице каждой задачи здесь.",
+  "reviews.howto.lead3Approve": "Одобри задачу <id> в SkillHub",
+  "reviews.howto.lead3Return": "Верни задачу <id> в SkillHub: <file:line — что исправить>",
+  "reviews.tips.title": "Подсказки",
+  "reviews.tips.1":
+    "«review пройдено» значит только, что скилл-ревьюер не нашёл blocker или major, а не что " +
+    "изменение верное. Перед Approved прочитайте замечания и ответы автора.",
+  "reviews.tips.2":
+    "Вручную задачу на доску не добавить: строку создаёт первый прогон саморевью. Задачи нет — " +
+    "значит, автор ещё не прогонял саморевью.",
+  "reviews.tips.3":
+    "Запись исправлений статус не меняет. Из «review не пройдено» задачу выводит только новый " +
+    "прогон саморевью.",
+  "reviews.tips.4":
+    "Коммиты после прогона никто не проверял. Ушла ветка дальше — прочитайте новые коммиты или " +
+    "попросите автора повторить саморевью.",
+  "reviews.tips.5": "Комментарий к возврату — всё, что увидит автор: file:line, что не так, что сделать.",
+  "reviews.tips.6":
+    "Скилл-ревьюер задаёт политика ниже, а не разработчик, — поэтому результаты всех сравнимы. " +
+    "Дорожка «не настроено» остановит саморевью, пока админ не выберет скилл.",
 
   // self-review
   "selfReview.policyTitle": "Политика саморевью",

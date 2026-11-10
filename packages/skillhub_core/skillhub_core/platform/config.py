@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     # Deprecated break-glass admin token (minted into auth_tokens on boot). Prefer bootstrap admins.
     skillhub_admin_token: str = ""
 
+    # --- Reviews page ---
+    # The team's own write-up of its review flow (http/https), linked from the Reviews page header
+    # for signed-in users. Empty → no link; the page's built-in how-to still shows.
+    skillhub_review_docs_url: str = ""
+
     # --- Code browser (deep-links from a review finding to the line it is about) ---
     # Template with {ref} (commit SHA or branch), {path} and {line}. Empty → derived from
     # ``skillhub_allowed_repo`` as a GitHub blob URL, which is right for a GitHub-hosted team; set

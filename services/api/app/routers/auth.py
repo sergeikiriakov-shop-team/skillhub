@@ -204,6 +204,7 @@ def me(user: User | None = Depends(current_user_optional)):
         "can_evaluate": user.can_evaluate,
         "is_admin": user.is_admin,
         "is_reviewer": user.is_reviewer,
+        "review_docs_url": settings.skillhub_review_docs_url or None,
     }
 
 
